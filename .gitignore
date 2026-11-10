@@ -26,3 +26,5 @@
 Thumbs.db
 Desktop.ini
 .DS_Store
+/scripts/server/dsh-web-cordis.patch.yml
+/scripts/server/recon-dsh-config*.sh
