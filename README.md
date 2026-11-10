@@ -68,7 +68,8 @@
 │   ├── 08-事故复盘与重置重建报告.md ← ⚠️ bootloop 事故、恢复出厂、服务器重建与开机自启验证
 │   ├── 09-性能优化方案与可行性分析.md ← 下一轮 ADB/服务器优化清单与风险/收益评估
 │   ├── 09-文件管理-文件夹打包下载.md ← /files/ 文件夹 zip 打包下载（API + UI + 安全边界）
-│   ├── 10-DSH登录入口优化.md  ← /app/ 免 token 自动登录（dsh-login + nginx 401 跳转）
+│   ├── 10-DSH登录入口优化.md  ← /app/ 免 token 自动登录（dsh-login + nginx 入口标记）
+│   ├── 11-DSH服务器配置与模型.md ← DSH server/web profile、desktop 模型配置迁移、凭据与环境
 │   └── 11-移除DSH-GO-App环境SSH.md ← 删除旧 DSH-GO 的 App 环境 SSH（2224/57166）
 │   └── research/
 │       ├── raw-notes.md        ← 研究原始笔记与 33 条来源链接
@@ -120,6 +121,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 8. **想看下一轮性能优化方案与可行性分析** → [09-性能优化方案与可行性分析](docs/09-性能优化方案与可行性分析.md)
 8. **想下载整个文件夹 / 了解文件管理器增强** → [09-文件管理-文件夹打包下载](docs/09-文件管理-文件夹打包下载.md)
 9. **打开 DSH 时提示 authentication required / 想免 token 登录** → [10-DSH登录入口优化](docs/10-DSH登录入口优化.md)
+10. **想了解 DSH 服务器 profile / 模型配置 / 凭据** → [11-DSH服务器配置与模型](docs/11-DSH服务器配置与模型.md)
 10. **想清理旧 DSH-GO 的 App 环境 SSH / 2224 端口** → [11-移除DSH-GO-App环境SSH](docs/11-移除DSH-GO-App环境SSH.md)
 
 ## 重要警告

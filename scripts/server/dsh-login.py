@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """DSH 稳定登录入口（仅监听 127.0.0.1:3082）。
 
-流程：
-1. 从 /root/server/logs/dsh.log 读取当前 token；
-2. 用与浏览器相同的 Host 请求 DSH 的 token 入口，拿到 DSH 种下的会话 cookie；
-3. 302 到 /app/，同时把 cookie 以浏览器最兼容的属性返回：
-   Path=/app; SameSite=Lax; HttpOnly（不再带 Secure，避免自签证书/浏览器策略拒绝）。
+v2 cookie broker：
+1. 从 /root/server/logs/dsh.log 读取最新 token；
+2. 用与浏览器相同的 Host 请求 DSH 根入口 /?token=…，拿 DSH 的会话 cookie；
+3. 302 到 /app/，把 cookie 以浏览器最兼容的属性返回（Path=/app; SameSite=Lax）；
+4. 同时清掉旧的 Path=/ cookie。
 
-这样浏览器只需访问 /app/ 或 /app-login 即可完成登录，不再经历
-"/app/ 无 cookie -> DSH 302 token -> 303 ./ -> 无 cookie" 的循环。
+若 DSH 尚未启动完成 / 拿不到 token，返回 503 提示，绝不回退到 token 跳转以避免循环。
 """
 import http.client
 import http.server
@@ -60,7 +59,7 @@ def dsh_cookie(browser_host, token):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    server_version = "dsh-login/2.0"
+    server_version = "dsh-login/2.1"
     protocol_version = "HTTP/1.1"
 
     def _redirect(self):
@@ -69,22 +68,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if token:
             try:
                 cookie, _status = dsh_cookie(self.headers.get("Host", ""), token)
-            except Exception as exc:  # DSH 未起来等
+            except Exception as exc:
                 sys.stderr.write("dsh-login: token exchange failed: %r\n" % (exc,))
-        if cookie:
-            # Path=/app 只随 /app 前缀发送；SameSite=Lax 兼容浏览器跳转；不带 Secure 兼容自签证书页面
-            self.send_response(302)
-            self.send_header("Location", "/app/")
-            self.send_header("Set-Cookie", cookie + "; Path=/app; Max-Age=2592000; HttpOnly; SameSite=Lax")
-            # broker 标记：/app/ 只接受经过登录入口换取的会话，旧 DSH cookie 不会直接压过它
-            self.send_header("Set-Cookie", "dshbrk=1; Path=/app; Max-Age=86400; HttpOnly; SameSite=Lax")
-            # 清掉浏览器里同名的旧 Path=/ cookie（此前 DSH 直接种下的 Strict/Secure 版本），避免双份 cookie 混淆
-            name = cookie.split("=", 1)[0]
-            self.send_header("Set-Cookie", name + "=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax")
-        else:
-            target = "/app/?token=" + token if token else "/app/"
-            self.send_response(302)
-            self.send_header("Location", target)
+        if not cookie:
+            # DSH 尚未就绪（插件加载/重启中）或日志里还没有 token：给出 503，下一次刷新再试
+            body = ("<!doctype html><meta charset=utf-8><title>DSH 正在启动</title>"
+                    "<h2>DSH 正在启动或尚未就绪</h2>"
+                    "<p>请 5~10 秒后刷新本页；无需重新登录或复制 token。</p>").encode("utf-8")
+            self.send_response(503)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Retry-After", "10")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+            return
+        self.send_response(302)
+        self.send_header("Location", "/app/")
+        self.send_header("Set-Cookie", cookie + "; Path=/app; Max-Age=2592000; HttpOnly; SameSite=Lax")
+        # nginx /app/ 目前用 dshbrk 标记 cookie 判断"已经走过登录入口"
+        self.send_header("Set-Cookie", "dshbrk=1; Path=/app; Max-Age=2592000; HttpOnly; SameSite=Lax")
+        name = cookie.split("=", 1)[0]
+        self.send_header("Set-Cookie", name + "=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", "0")
         self.end_headers()

@@ -20,11 +20,12 @@
 3. 返回 `302 /app/`，同时下发浏览器兼容的 cookie：
    ```
    dsh-auth-…=…; Path=/app; Max-Age=2592000; HttpOnly; SameSite=Lax   # 不再带 Secure
+   dshbrk=1;     Path=/app; Max-Age=2592000; HttpOnly; SameSite=Lax   # nginx 入口标记
    dsh-auth-…=;   Path=/; Max-Age=0; Expires=…                        # 清掉旧的 Path=/ cookie
    ```
 4. nginx `/app/`：
-   - 请求没有 `dsh-auth` cookie ⇒ **一次** 302 到 `/app-login`（相对 Location，无重复跳转）
-   - 有 cookie ⇒ 正常反代到 DSH（携带 cookie 的请求直接 200）
+   - 请求没有 `dshbrk` 标记 cookie ⇒ **一次** 302 到 `/app-login`（相对 Location，无重复跳转）
+   - 有标记 + DSH cookie ⇒ 正常反代到 DSH（携带 cookie 的请求直接 200）
    - DSH 返回 401 时兜底转 `/app-login`
 
 这样浏览器最多 2 次跳转即可登录，**不会再出现重定向循环**。
