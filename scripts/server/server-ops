@@ -1,26 +1,40 @@
 #!/bin/bash
-# server-ops v1.1：DSH 只读执行层（Tier1），每条命令写审计
+# server-ops v2：Tier1 只读 + Tier2 受控写（确认/配置快照/审计）
+# Tier3（restore/升级/删除数据）不开放。
 set -u
 CONF=/root/server/etc/supervisord.conf
+CTL="supervisorctl -c $CONF"
 LOG_DIR=/root/server/logs
 AUDIT=$LOG_DIR/ops-audit.jsonl
+SNAP_ROOT=/root/server/config-snapshots
+ALLOWED_SERVICES="api fileui frpc gitea nginx runner sshd syncthing webdav dsh dsh-login dsh-guard"
+
 CMD="${1:-help}"
 [ $# -gt 0 ] && shift
 ARGS="$*"
+SNAP_DIR=""
 
 usage() {
   cat <<EOF
 用法: server-ops <command> [args]
-只读命令：
-  status                 服务 + dsh 状态摘要
-  services               supervisorctl 状态列表
-  health                 本机/公网/DSH 健康码
-  logs <name> [--lines N] 白名单日志尾
-  backups                最近加密备份列表
-  dsh [status|url]       dsh 状态 / 当前 token 入口（敏感，勿外发）
-  audit [lines]          最近 server-ops 审计
-  version                版本信息
-写操作（Tier2）暂未开放，需人工 SSH + 确认。
+Tier1 只读：
+  status                         服务 + dsh 状态摘要
+  services                       supervisorctl 状态列表
+  health                         本机/公网/DSH 健康码
+  logs <name> [--lines N]        白名单日志尾
+  backups                        最近加密备份列表
+  dsh [status|url]               dsh 状态 / token 入口（敏感）
+  audit [lines]                  最近审计
+  backup-verify                  校验最新加密备份（解密+tar 列表）
+Tier2 受控写（必须带 --confirm，自动存配置快照并写审计）：
+  restart <service> --confirm
+  start <service> --confirm
+  stop <service> --confirm
+  nginx test --confirm | nginx reload --confirm
+  backup --confirm               立即 server-backup
+  rotate --confirm               日志轮转（server-rotate）
+  允许的服务: $ALLOWED_SERVICES
+Tier3（restore/升级/删除数据）不开放，只能人工 SSH + 双重确认。
 EOF
 }
 
@@ -34,18 +48,55 @@ log_path() {
     dsh-guard) echo "$LOG_DIR/dsh-guard.log" ;;
     nginx-access) echo "$LOG_DIR/nginx_access.log" ;;
     nginx-error) echo "$LOG_DIR/nginx_site_error.log" ;;
+    ops-audit) echo "$AUDIT" ;;
     *) return 1 ;;
   esac
+}
+
+svc_ok() {
+  case " $ALLOWED_SERVICES " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+snapshot() {
+  local tag="$1"
+  local d="$SNAP_ROOT/$(date +%Y%m%d-%H%M%S)-$tag"
+  mkdir -p "$d" || return 1
+  cp -p "$CONF" "$d/supervisord.conf" 2>/dev/null || true
+  cp -p /etc/nginx/sites-available/dsh-tls "$d/dsh-tls" 2>/dev/null || true
+  cp -p /etc/nginx/conf.d/dsh-upstreams.conf "$d/dsh-upstreams.conf" 2>/dev/null || true
+  cp -p /root/server/bin/server-watch "$d/server-watch" 2>/dev/null || true
+  cp -a /root/server/etc/conf.d "$d/conf.d" 2>/dev/null || true
+  echo "$d"
+}
+
+wait_run() {
+  local svc="$1" out
+  for _ in $(seq 1 15); do
+    out=$($CTL status "$svc" 2>&1)
+    case "$out" in *RUNNING*) return 0 ;; esac
+    sleep 1
+  done
+  return 1
+}
+
+need_confirm() {
+  [ "${1:-}" = "--confirm" ] || { echo "需要 --confirm（写操作必须显式确认）" >&2; return 1; }
+  return 0
+}
+
+latest_backup() {
+  local f
+  f=$(ls -1t /sdcard/DSH/backups/server-*.tar.gz.enc 2>/dev/null | head -1)
+  [ -n "${f:-}" ] || f=$(ls -1t /root/server/backups/server-*.tar.gz.enc 2>/dev/null | head -1)
+  printf '%s' "${f:-}"
 }
 
 case "$CMD" in
   help|-h|--help) usage ;;
   status)
-    supervisorctl -c "$CONF" status 2>&1
-    echo '--- dsh ---'
-    /root/server/bin/server-dsh status 2>&1
-    ;;
-  services) supervisorctl -c "$CONF" status 2>&1 ;;
+    $CTL status 2>&1
+    echo '--- dsh ---'; /root/server/bin/server-dsh status 2>&1 ;;
+  services) $CTL status 2>&1 ;;
   health)
     LAN_IP=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+(\.[0-9]+){3}$' | head -1)
     for url in http://127.0.0.1:8080/health "https://${LAN_IP:-127.0.0.1}:8443/health" \
@@ -56,45 +107,82 @@ case "$CMD" in
     code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:3081/ 2>/dev/null); code=${code:-000}
     echo "dsh 3081 -> $code（401 属正常）"
     code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:3082/ 2>/dev/null); code=${code:-000}
-    echo "dsh-login 3082 -> $code"
-    ;;
+    echo "dsh-login 3082 -> $code" ;;
   logs)
-    name="${1:?用法: server-ops logs <name> [--lines N]}"
-    shift
+    name="${1:?用法: server-ops logs <name> [--lines N]}"; shift
     lines=200
     if [ "${1:-}" = "--lines" ]; then lines="${2:-200}"; elif [ -n "${1:-}" ]; then lines="$1"; fi
     path=$(log_path "$name") || { echo "不支持的日志: $name" >&2; exit 1; }
     [ -f "$path" ] || { echo "日志不存在: $path" >&2; exit 1; }
-    tail -n "$lines" "$path"
-    ;;
+    tail -n "$lines" "$path" ;;
   backups)
     for d in /root/server/backups /sdcard/DSH/backups; do
       [ -d "$d" ] && { echo "## $d"; ls -lah "$d" 2>/dev/null | tail -n +2 | tail -10; }
-    done
-    ;;
+    done ;;
   dsh)
     sub="${1:-status}"
     case "$sub" in
       status) /root/server/bin/server-dsh status 2>&1 ;;
       url) echo '敏感：仅在本地/管理终端使用，切勿外发'; /root/server/bin/server-dsh url 2>&1 ;;
       *) usage ;;
-    esac
-    ;;
+    esac ;;
   audit) tail -n "${1:-50}" "$AUDIT" 2>/dev/null || echo '暂无审计记录' ;;
-  version) echo 'server-ops v1.1（Tier1 只读）' ;;
+  backup-verify)
+    f=$(latest_backup); [ -n "${f:-}" ] || { echo '没有备份文件' >&2; exit 1; }
+    echo "latest=$f"
+    if [ -x /root/server/bin/server-restore ]; then
+      /root/server/bin/server-restore --verify "$f" 2>&1
+    else
+      openssl enc -d -aes-256-cbc -pbkdf2 -pass file:/root/server/etc/backup-pass -in "$f" 2>/dev/null | tar tzf - >/dev/null 2>&1 \
+        && echo '备份解密+tar 校验通过' || { echo '备份校验失败' >&2; exit 1; }
+    fi ;;
+  restart|start|stop)
+    svc="${1:-}"; shift || true
+    if ! svc_ok "$svc"; then echo "不允许的服务: $svc" >&2; exit 1; fi
+    if ! need_confirm "${1:-}"; then exit 2; fi
+    SNAP_DIR=$(snapshot "$svc-$CMD")
+    $CTL "$CMD" "$svc" 2>&1
+    rc=$?
+    if [ "$rc" = 0 ] && [ "$CMD" = restart ]; then
+      if wait_run "$svc"; then echo "· $svc 已 RUNNING"; else echo "· $svc 未在 15s 内 RUNNING" >&2; rc=1; fi
+    fi
+    echo "· 配置快照: ${SNAP_DIR:-无}" ;;
+  nginx)
+    sub="${1:-}"; shift || true
+    if ! need_confirm "${1:-}"; then exit 2; fi
+    SNAP_DIR=$(snapshot "nginx-$sub")
+    case "$sub" in
+      test) nginx -t 2>&1 ;;
+      reload) nginx -t 2>&1 && nginx -s reload 2>&1 ;;
+      *) usage; rc=1 ;;
+    esac
+    echo "· 配置快照: ${SNAP_DIR:-无}" ;;
+  backup)
+    if ! need_confirm "${1:-}"; then exit 2; fi
+    /root/server/bin/server-backup 5 2>&1
+    rc=$?
+    if [ "$rc" = 0 ]; then
+      f=$(latest_backup)
+      echo "· latest=$f"
+      [ -f "$f" ] && openssl enc -d -aes-256-cbc -pbkdf2 -pass file:/root/server/etc/backup-pass -in "$f" 2>/dev/null | tar tzf - >/dev/null 2>&1 \
+        && echo '· 备份解密+tar 自检通过'
+    fi ;;
+  rotate)
+    if ! need_confirm "${1:-}"; then exit 2; fi
+    /root/server/bin/server-rotate 2>&1 ;;
   *) usage; exit 1 ;;
 esac
-rc=$?
+rc=${rc:-$?}
 
-python3 - "$CMD" "$ARGS" "$rc" <<'PY' 2>/dev/null || true
+AUDIT_ARGS="$ARGS"
+[ -n "${SNAP_DIR:-}" ] && AUDIT_ARGS="$AUDIT_ARGS snapshot=$SNAP_DIR"
+python3 - "$CMD" "$AUDIT_ARGS" "$rc" <<'PY' 2>/dev/null || true
 import datetime, json, sys
 cmd, args, rc = sys.argv[1], sys.argv[2], sys.argv[3]
 if cmd == "dsh" and args.strip().startswith("url"):
     args = "url(redacted)"
-entry = {
-    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-    "cmd": cmd, "args": args, "rc": rc,
-}
+entry = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+         "cmd": cmd, "args": args, "rc": rc}
 with open("/root/server/logs/ops-audit.jsonl", "a", encoding="utf-8") as fh:
     fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 PY

@@ -114,4 +114,4 @@ rm -rf /root/server/ops
 - `scripts/server/patch-nginx-dsh-ratelimit.py`
 - `scripts/server/install-dsh-control-plane.sh`
 
-文档：docs/20（方案）→ 本文（落地）。
+文档：docs/20（方案）→ 本文（P0 落地）→ [docs/22](22-DSH-Tier2受控写落地.md)（Tier2 受控写）。
