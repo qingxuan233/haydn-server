@@ -61,6 +61,7 @@ VAULT_AUDIT = os.path.join(LOG_DIR, "vault-actions.jsonl")
 VAULT_MAX_ENTRIES = 500
 WATCH_METRICS = os.path.join(LOG_DIR, "metrics.jsonl")
 TERMUX_METRICS = "/hosthome/server-metrics.txt"
+TERMUX_STATUS = "/hosthome/termux-status.txt"
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 SERVICE_PORTS = {
@@ -140,8 +141,20 @@ def local_lan_ip():
     return None
 
 def termux_metrics():
-    """读取 Termux 侧采集的 uptime / top 数据（proot 内无法直接读 /proc/stat、/proc/uptime）。"""
-    text = read_text(TERMUX_METRICS) or ""
+    """读取 Termux 侧综合状态（优先 termux-status.txt，兼容旧 server-metrics.txt）。"""
+    text = ""
+    for path in (TERMUX_STATUS, TERMUX_METRICS):
+        if not os.path.isfile(path):
+            continue
+        try:
+            if time.time() - os.path.getmtime(path) > 120:
+                continue
+        except OSError:
+            continue
+        raw = read_text(path) or ""
+        if raw.strip():
+            text = raw
+            break
     if not text:
         return {}
     out = {}
@@ -150,11 +163,6 @@ def termux_metrics():
             continue
         k, v = line.split("=", 1)
         out[k.strip()] = v.strip()
-    try:
-        if os.path.isfile(TERMUX_METRICS) and time.time() - os.path.getmtime(TERMUX_METRICS) > 120:
-            return {}
-    except OSError:
-        return {}
     m = re.search(r"up\s+(\d+)\s+day[s]?,\s+(\d+):(\d+)", out.get("uptime_line", ""))
     if m:
         out["uptime_s"] = int(m.group(1)) * 86400 + int(m.group(2)) * 3600 + int(m.group(3)) * 60
@@ -169,6 +177,9 @@ def termux_metrics():
     m = re.search(r"up\s+(\d+)\s+hrs?,\s+(\d+)\s+min", out.get("uptime_line", ""))
     if m and "uptime_s" not in out:
         out["uptime_s"] = int(m.group(1)) * 3600 + int(m.group(2)) * 60
+    m = re.search(r"load average: ([0-9.]+), ([0-9.]+), ([0-9.]+)", out.get("uptime_line", ""))
+    if m:
+        out["load1"], out["load5"], out["load15"] = m.group(1), m.group(2), m.group(3)
     cpu_line = out.get("cpu_line", "")
     total = re.search(r"(\d+)%cpu", cpu_line)
     idle = re.search(r"(\d+)%idle", cpu_line)
@@ -300,9 +311,32 @@ def sysinfo():
         "disk_total_gb": round(du.total / 2**30, 1),
         "disk_free_gb": round(du.free / 2**30, 1),
         "disk_used_pct": round(du.used / du.total * 100, 1) if du.total else None,
-        "temperature_c": latest.get("temperature_c", temperature_c()),
-        "battery_level": latest.get("battery_level", level),
-        "battery_status": latest.get("battery_status", status),
+        "temperature_c": latest.get("temperature_c") if latest.get("temperature_c") is not None else (float(tm["thermal_max_c"]) if tm.get("thermal_max_c") else temperature_c()),
+        "battery_level": latest.get("battery_level") if latest.get("battery_level") is not None else (int(float(tm["battery_level"])) if tm.get("battery_level") else level),
+        "battery_status": latest.get("battery_status") if latest.get("battery_status") is not None else (tm.get("battery_status") or status),
+        "battery_health": tm.get("battery_health"),
+        "battery_plugged": tm.get("battery_plugged"),
+        "battery_temp_c": float(tm["battery_temp_c"]) if tm.get("battery_temp_c") else None,
+        "battery_voltage_mv": int(float(tm["battery_voltage_mv"])) if tm.get("battery_voltage_mv") else None,
+        "battery_current_ma": int(float(tm["battery_current_ma"])) if tm.get("battery_current_ma") else None,
+        "battery_cycle": int(float(tm["battery_cycle"])) if tm.get("battery_cycle") else None,
+        "device_model": tm.get("model"),
+        "device_name": tm.get("device"),
+        "android_version": tm.get("android"),
+        "android_sdk": tm.get("sdk"),
+        "build_id": tm.get("build"),
+        "package_count": int(float(tm["package_count"])) if tm.get("package_count") else None,
+        "swap_total_mb": int(round(int(tm["swap_total_kb"]) / 1024)) if tm.get("swap_total_kb") else None,
+        "swap_free_mb": int(round(int(tm["swap_free_kb"]) / 1024)) if tm.get("swap_free_kb") else None,
+        "thermal_max_c": float(tm["thermal_max_c"]) if tm.get("thermal_max_c") else None,
+        "thermal_cpu_c": float(tm["thermal_cpu_c"]) if tm.get("thermal_cpu_c") else None,
+        "thermal_battery_c": float(tm["thermal_battery_c"]) if tm.get("thermal_battery_c") else None,
+        "wifi_ssid": tm.get("wifi_ssid"),
+        "wifi_bssid": tm.get("wifi_bssid"),
+        "wifi_ip": tm.get("wifi_ip"),
+        "wifi_rssi": int(float(tm["wifi_rssi"])) if tm.get("wifi_rssi") else None,
+        "wifi_link_speed_mbps": int(float(tm["wifi_link_speed_mbps"])) if tm.get("wifi_link_speed_mbps") else None,
+        "wifi_frequency_mhz": int(float(tm["wifi_frequency_mhz"])) if tm.get("wifi_frequency_mhz") else None,
         "net_rx_kbps": latest.get("net_rx_kbps"),
         "net_tx_kbps": latest.get("net_tx_kbps"),
     }

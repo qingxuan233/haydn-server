@@ -432,6 +432,8 @@ html, body { max-width: 100%; }
       <div class="line"><span>电量 / 状态</span><span class="v" id="d-batt">—</span></div>
       <div class="line"><span>内核</span><span class="v" id="d-kernel">—</span></div>
       <div class="line"><span>主机 / 架构</span><span class="v" id="d-host">—</span></div>
+      <div class="line"><span>机型 / Android</span><span class="v" id="d-device">—</span></div>
+      <div class="line"><span>WiFi</span><span class="v" id="d-wifi">—</span></div>
     </div>
   </section>
 
@@ -844,7 +846,7 @@ function renderOverview(data) {
   $('m-disk').textContent = s.disk_free_gb == null ? '—' : `${s.disk_free_gb} GB`;
   $('m-disk-c').textContent = `已用 ${s.disk_used_pct ?? '—'}% · 共 ${s.disk_total_gb ?? '—'} GB`;
   $('m-temp').textContent = s.temperature_c == null ? '—' : `${s.temperature_c}°C`;
-  $('m-temp-c').textContent = s.battery_status ? `电池 ${s.battery_level ?? '—'}% · ${s.battery_status}` : '传感器温度 · 电池信息受限';
+  $('m-temp-c').textContent = s.battery_level != null ? `电池 ${s.battery_level}%${s.battery_temp_c != null ? ' · ' + s.battery_temp_c + '°C' : ''}` : '传感器温度 · 打开一次 Termux:API 可看电池';
   $('m-pub').textContent = c.public && c.public.code ? `${c.public.ms}ms` : '不通';
   $('m-pub-c').textContent = c.public_https && c.public_https.code ? `HTTPS ${c.public_https.ms}ms · 证书 ${c.cert_public_days ?? '—'} 天` : 'HTTPS 不可达';
 
@@ -860,7 +862,7 @@ function renderOverview(data) {
   setBar('bar-disk', s.disk_used_pct);
   const tempPct = s.temperature_c == null ? 0 : Math.min(100, Math.max(0, (s.temperature_c - 20) / 60 * 100));
   $('g-temp').textContent = s.temperature_c == null ? '—' : `${s.temperature_c}°C`;
-  $('g-temp-note').textContent = s.battery_level != null ? `电量 ${s.battery_level}% · ${s.battery_status || '—'}` : '电池信息受限（Android 权限）';
+  $('g-temp-note').textContent = s.battery_level != null ? `电量 ${s.battery_level}%${s.battery_plugged ? ' · ' + s.battery_plugged : ''}` : '电池信息受限（重启后打开一次 Termux:API）';
   setBar('bar-temp', tempPct);
   spark('sp-cpu', hist.map((p) => p.cpu_pct), '%');
   spark('sp-mem', hist.map((p) => p.mem_used_pct), '%');
@@ -868,9 +870,13 @@ function renderOverview(data) {
   $('d-uptime').textContent = fmtUptime(s.uptime_s);
   $('d-load').textContent = `${s.load1 ?? '—'} / ${s.load5 ?? '—'} / ${s.load15 ?? '—'}`;
   $('d-net').textContent = (s.net_rx_kbps == null && s.net_tx_kbps == null) ? '—（系统限制）' : `${fmtBytesRate(s.net_rx_kbps)} / ${fmtBytesRate(s.net_tx_kbps)}`;
-  $('d-batt').textContent = s.battery_level == null ? '—（系统限制）' : `${s.battery_level}% · ${s.battery_status || '—'}`;
+  const battParts = [s.battery_level != null ? `${s.battery_level}%` : null, s.battery_status, s.battery_plugged, s.battery_temp_c != null ? `${s.battery_temp_c}°C` : null].filter(Boolean);
+  $('d-batt').textContent = battParts.length ? battParts.join(' · ') : '—（重启后打开一次 Termux:API）';
   $('d-kernel').textContent = s.kernel || '—';
   $('d-host').textContent = `${s.host || '—'} · ${s.arch || '—'}`;
+  $('d-device').textContent = s.device_model ? `${s.device_model} · Android ${s.android_version || '?'} (${s.build_id || '?'})` : '—（未采集）';
+  const wifiText = (s.wifi_ssid && s.wifi_ssid !== '<unknown ssid>') ? `${s.wifi_ssid} · ${s.wifi_rssi ?? '—'} dBm · ${s.wifi_link_speed_mbps ?? '—'} Mbps` : (s.wifi_ip ? `IP ${s.wifi_ip} · SSID 隐藏 · ${s.wifi_rssi ?? '—'} dBm` : '—（系统限制）');
+  $('d-wifi').textContent = wifiText;
   const noteLan = $('note-lanip');
   if (noteLan) noteLan.textContent = s.lan_ip || LAN_IP || '—';
 

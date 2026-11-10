@@ -143,6 +143,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 17. **想看 DSH 蓝绿升级/切流/回滚演练** → [23-DSH蓝绿升级演练](docs/23-DSH蓝绿升级演练.md)
 18. **想看 DSH sessions 持久化补全** → [24-DSH-sessions持久化补全](docs/24-DSH-sessions持久化补全.md)
 19. **想看 ADB 资源优化与 Console ops 审计落地** → [25-ADB资源优化与Console审计落地](docs/25-ADB资源优化与Console审计落地.md)
+20. **想看 Console 手机状态补全（Termux:API/电池/WiFi）** → [26-Console手机状态补全](docs/26-Console手机状态补全.md)
 8. **想下载整个文件夹 / 了解文件管理器增强** → [09-文件管理-文件夹打包下载](docs/09-文件管理-文件夹打包下载.md)
 9. **想了解面板为什么去掉 CI Runner / 如何按需启用** → [10-面板治理-移除CI-Runner](docs/10-面板治理-移除CI-Runner.md)
 9. **打开 DSH 时提示 authentication required / 想免 token 登录** → [10-DSH登录入口优化](docs/10-DSH登录入口优化.md)
