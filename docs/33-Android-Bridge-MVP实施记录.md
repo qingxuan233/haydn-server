@@ -138,3 +138,40 @@ package_count=359 thermal_battery=25.0
 | Phase 2 | UsageStats/NetworkStats/Display/Keyguard、mTLS、证书轮换 |
 | 文档 | 更新 docs/28/30/README 状态；补充 OEM profile |
 | 安全 | 运行时证书、token 轮换、审计/限流加严 |
+
+
+---
+
+## 8. Release 加固与 Phase 2（2026-11-11 07:30–07:45）
+
+### 8.1 Release APK
+
+- `android:debuggable=false`，同签名 key 原地 `install -r`；
+- **token 保留**：升级后服务器 `/api/sysinfo` 仍 `source=bridge`；不再依赖 `run-as`；
+- 验证：release 包无 `application-debuggable`；`/v1/health` 200。
+
+### 8.2 Phase 2 新增字段
+
+Bridge：
+- `uptime_s`（elapsedRealtime）
+- `display`：interactive / locked / refresh_hz / brightness
+- `usage`：foreground / available（UsageStatsManager）
+- `network`：rx_bytes / tx_bytes（TrafficStats 累计，since_boot=true）
+- `capabilities` 增加 display/usage/network_bytes/uptime
+
+服务器 `/api/sysinfo`：
+- `bridge_uptime_s`、`display_*`、`usage_*`、`net_*_bytes`、`network_since_boot`、`bridge_capabilities`
+
+Console 详情新增：屏幕/锁屏、前台应用、网络累计。
+
+### 8.3 权限/自启现实
+
+- **MIUI 自启动**在 release 更新/重启后仍保留，release 重启 `BOOT_COMPLETED` 成功；
+- **POST_NOTIFICATION** 在 release 安装/重启后被 MIUI 重置为 ignore，但 FGS 仍工作（通知不可见）；
+- **GET_USAGE_STATS** 在重启后回到 default：`usage_foreground` 为空；需用户/ADB 再授权（Phase 2 可选字段，不影响主链路）；
+- 未实现“开机自动恢复 Usage 权限”；需要后续用 App 引导 Settings 或维护脚本。
+
+### 8.4 稳定性
+
+- 升级前 debug 版连续 **6h21m**：Bridge 无重启/错误，API source=bridge，服务器 12/12；
+- release 升级后 **1/1 重启通过**；24h soak 仍待完成。

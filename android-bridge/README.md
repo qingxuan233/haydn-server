@@ -34,7 +34,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File android-bridge\build.ps1
 
 输出：
 
-- `android-bridge/build/bridge.apk`（debug 签名，约 25KB）
+- `android-bridge/build/bridge.apk`（release 签名、debuggable=false，约 25KB）
 - `android-bridge/build/bridge.crt`（服务端 pin 证书）
 
 ## 安装/授权（MVP debug）
@@ -71,7 +71,7 @@ curl -sS --cacert /root/server/etc/bridge.crt \
 
 ## MVP 限制（必须知道）
 
-1. **debug 构建**（`android:debuggable=true`），token 通过 adb run-as 读取；正式版需 release + 配对流程。
+1. **release 构建**（`debuggable=false`）；首次安装需配对流程（当前用升级保留 token，尚未实现全新安装配对）。
 2. **TLS 私钥在 APK assets 中**（静态证书），仅适用于本机 MVP；Phase 2 改运行时生成/证书轮换/mTLS。
 3. **MIUI 自启动需人工开启**（本机已设置；其他 OEM 见 docs/32），Android 标准 `BOOT_COMPLETED + specialUse FGS` 已验证 5 次重启。
 4. **UsageStats/NetworkStats 未进 MVP**（Phase 2，需用户授权）；CPU/网络原始字节不可得。
