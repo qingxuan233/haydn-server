@@ -18,7 +18,7 @@
 | DSH | 127.0.0.1:3081 + dsh-login 3082 + dsh-guard；`/app-login` 302，公网入口可用 |
 | Console | 8080/8443；总览 + 详情双视图（[docs/34](docs/34-Console总览详情改版.md)）；Battery/WiFi 来自 Bridge |
 | 备份 | `server-backup` + `server-backup-sessions` 每日；加密；可校验恢复 |
-| Bridge APK | **MVP 已安装并运行（debug）**；5/5 重启通过；API `source=bridge`；待 release/24h |
+| Bridge APK | **release 版运行中**；5/5 debug 重启 + release 1/1 重启；Phase 2 字段已接入；24h 待完成 |
 | 构建工具 | JDK 17/21；Android SDK 35 已装；无 Gradle（手工 aapt2/d8 构建） |
 | 外部服务 | 未接 Uptime Kuma/异地备份/MFA/Tailscale；公网仅现有 frp 受控入口 |
 

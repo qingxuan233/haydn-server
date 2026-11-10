@@ -530,6 +530,9 @@ body.details-mode #detail-nav {
       <div class="line"><span>主机 / 架构</span><span class="v" id="d-host">—</span></div>
       <div class="line"><span>机型 / Android</span><span class="v" id="d-device">—</span></div>
       <div class="line"><span>WiFi</span><span class="v" id="d-wifi">—</span></div>
+      <div class="line"><span>屏幕 / 锁屏</span><span class="v" id="d-display">—</span></div>
+      <div class="line"><span>前台应用</span><span class="v" id="d-foreground">—</span></div>
+      <div class="line"><span>网络累计</span><span class="v" id="d-netbytes">—</span></div>
     </div>
   </section>
 
@@ -988,6 +991,11 @@ function renderOverview(data) {
   $('d-device').textContent = s.device_model ? `${s.device_model} · Android ${s.android_version || '?'} (${s.build_id || '?'})` : '—（未采集）';
   const wifiText = (s.wifi_ssid && s.wifi_ssid !== '<unknown ssid>') ? `${s.wifi_ssid} · ${s.wifi_rssi ?? '—'} dBm · ${s.wifi_link_speed_mbps ?? '—'} Mbps` : (s.wifi_ip ? `IP ${s.wifi_ip} · SSID 隐藏 · ${s.wifi_rssi ?? '—'} dBm` : '—（重启后打开一次 Termux:API）');
   $('d-wifi').textContent = wifiText;
+  const display = [s.display_interactive == null ? null : (s.display_interactive ? '亮屏' : '息屏'), s.display_locked == null ? null : (s.display_locked ? '锁定' : '未锁'), s.display_refresh_hz ? `${s.display_refresh_hz.toFixed(0)}Hz` : null, s.display_brightness != null ? `亮度 ${s.display_brightness}` : null].filter(Boolean);
+  $('d-display').textContent = display.length ? display.join(' · ') : '—';
+  $('d-foreground').textContent = s.usage_foreground || '—（需 Usage 权限）';
+  const fmtB = (n) => n == null ? '—' : (n >= 1e9 ? (n/1e9).toFixed(2)+' GB' : (n/1e6).toFixed(1)+' MB');
+  $('d-netbytes').textContent = (s.net_rx_bytes == null && s.net_tx_bytes == null) ? '—' : `${fmtB(s.net_rx_bytes)} ↓ / ${fmtB(s.net_tx_bytes)} ↑`;
 
   // 总览摘要（详细字段仍在详情视图）
   const bridgeSource = s.bridge_source === 'bridge' ? 'Bridge' : 'Termux 回退';

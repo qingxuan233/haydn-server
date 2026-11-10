@@ -1,16 +1,23 @@
 package com.qingxuan.bridge;
 
 import android.app.ActivityManager;
+import android.app.KeyguardManager;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.hardware.display.DisplayManager;
+import android.net.TrafficStats;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.PowerManager;
 import android.os.StatFs;
+import android.os.SystemClock;
+import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -36,9 +43,10 @@ final class BridgeStatus {
             root.put("version", VERSION);
             root.put("source", "android");
             root.put("ts", isoNow());
+            root.put("uptime_s", SystemClock.elapsedRealtime() / 1000L);
 
             JSONArray caps = new JSONArray();
-            for (String c : new String[]{"battery", "wifi", "build", "memory", "disk", "thermal", "packages"}) {
+            for (String c : new String[]{"battery", "wifi", "build", "memory", "disk", "thermal", "packages", "display", "usage", "network_bytes", "uptime"}) {
                 caps.put(c);
             }
             root.put("capabilities", caps);
@@ -51,14 +59,9 @@ final class BridgeStatus {
             root.put("thermal", thermal(context));
             root.put("packages", packages(context));
 
-            JSONObject network = new JSONObject();
-            putNullable(network, "rx_bytes", null);
-            putNullable(network, "tx_bytes", null);
-            root.put("network", network);
-
-            JSONObject usage = new JSONObject();
-            putNullable(usage, "foreground", null);
-            root.put("usage", usage);
+            root.put("display", display(context));
+            root.put("usage", usage(context));
+            root.put("network", network(context));
 
             JSONObject cpu = new JSONObject();
             putNullable(cpu, "approx_pct", null);
@@ -228,6 +231,67 @@ final class BridgeStatus {
         JSONObject p = new JSONObject();
         p.put("count", count);
         return p;
+    }
+
+    private static JSONObject display(Context context) throws Exception {
+        JSONObject d = new JSONObject();
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        putNullable(d, "interactive", pm == null ? null : pm.isInteractive());
+        KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+        putNullable(d, "locked", km == null ? null : km.isKeyguardLocked());
+        DisplayManager dm = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
+        if (dm != null) {
+            android.view.Display display = dm.getDisplay(android.view.Display.DEFAULT_DISPLAY);
+            if (display != null) {
+                android.view.Display.Mode mode = display.getMode();
+                putNullable(d, "refresh_hz", mode == null ? null : mode.getRefreshRate());
+            }
+        }
+        int brightness = -1;
+        try {
+            brightness = Settings.System.getInt(context.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, -1);
+        } catch (Exception ignored) {
+        }
+        putNullable(d, "brightness", brightness >= 0 ? brightness : null);
+        return d;
+    }
+
+    private static JSONObject usage(Context context) throws Exception {
+        JSONObject u = new JSONObject();
+        String foreground = null;
+        boolean available = false;
+        try {
+            UsageStatsManager usm = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
+            if (usm != null) {
+                long now = System.currentTimeMillis();
+                UsageEvents events = usm.queryEvents(now - 60 * 1000L, now);
+                if (events != null) {
+                    UsageEvents.Event e = new UsageEvents.Event();
+                    while (events.hasNextEvent()) {
+                        events.getNextEvent(e);
+                        if (e.getEventType() == UsageEvents.Event.ACTIVITY_RESUMED
+                                || e.getEventType() == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                            foreground = e.getPackageName();
+                        }
+                    }
+                    available = true;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        putNullable(u, "foreground", foreground);
+        putNullable(u, "available", available);
+        return u;
+    }
+
+    private static JSONObject network(Context context) throws Exception {
+        JSONObject n = new JSONObject();
+        long rx = TrafficStats.getTotalRxBytes();
+        long tx = TrafficStats.getTotalTxBytes();
+        putNullable(n, "rx_bytes", rx == TrafficStats.UNSUPPORTED ? null : rx);
+        putNullable(n, "tx_bytes", tx == TrafficStats.UNSUPPORTED ? null : tx);
+        n.put("since_boot", true);
+        return n;
     }
 
     private static String ipString(int ip) {

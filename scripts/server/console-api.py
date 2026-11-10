@@ -311,6 +311,9 @@ def sysinfo():
     bdisk = b.get("disk") or {}
     bth = b.get("thermal") or {}
     bpk = b.get("packages") or {}
+    bdisp = b.get("display") or {}
+    busage = b.get("usage") or {}
+    bnet = b.get("network") or {}
 
     def bnum(obj, key, cast=float):
         v = obj.get(key)
@@ -369,6 +372,17 @@ def sysinfo():
         "wifi_frequency_mhz": bnum(bw, "freq_mhz", int) if bnum(bw, "freq_mhz", int) is not None else (int(float(tm["wifi_frequency_mhz"])) if tm.get("wifi_frequency_mhz") else None),
         "net_rx_kbps": latest.get("net_rx_kbps"),
         "net_tx_kbps": latest.get("net_tx_kbps"),
+        "net_rx_bytes": bnum(bnet, "rx_bytes", int),
+        "net_tx_bytes": bnum(bnet, "tx_bytes", int),
+        "network_since_boot": bnet.get("since_boot"),
+        "display_interactive": bdisp.get("interactive"),
+        "display_locked": bdisp.get("locked"),
+        "display_refresh_hz": bnum(bdisp, "refresh_hz", float),
+        "display_brightness": bnum(bdisp, "brightness", int),
+        "usage_foreground": busage.get("foreground"),
+        "usage_available": busage.get("available"),
+        "bridge_uptime_s": int(float(b["uptime_s"])) if b.get("uptime_s") else None,
+        "bridge_capabilities": b.get("capabilities"),
         "bridge_source": "bridge" if bridge_ok else "termux",
         "bridge_available": bridge_ok,
         "bridge_age_s": bs.get("age_s"),
