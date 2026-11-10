@@ -80,7 +80,10 @@ $settingsChanges = @(
     @{ ns = 'system'; key = 'peak_refresh_rate';          value = '60';   why = '120Hz → 60Hz 省电（注：HyperOS 可能强制回 120）' },
     @{ ns = 'system'; key = 'user_refresh_rate';          value = '60';   why = '同上' },
     @{ ns = 'system'; key = 'screen_brightness_mode';     value = '0';    why = '关闭自动亮度，固定低亮度' },
-    @{ ns = 'system'; key = 'screen_brightness';          value = '10';   why = '最低亮度（息屏为主）' }
+    @{ ns = 'system'; key = 'screen_brightness';          value = '10';   why = '最低亮度（息屏为主）' },
+    @{ ns = 'secure'; key = 'location_mode';             value = '0';    why = '关闭定位（服务器不需要，省电）' },
+    @{ ns = 'global'; key = 'ble_scan_always_enabled';    value = '0';    why = '关闭常开蓝牙扫描' },
+    @{ ns = 'global'; key = 'wifi_scan_always_enabled';   value = '0';    why = '关闭常开 WiFi 扫描' }
 )
 
 # 保守 debloat 清单（均为可 pm enable 恢复；避开系统核心组件）

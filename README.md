@@ -4,7 +4,7 @@
 
 - 目标：SSH 远程登录、文件同步/备份、轻量 Web 与自托管服务、下载/定时任务
 - 原则：**先零风险上线（Termux + proot），再用运行数据决定是否解锁 Root 升级**
-- 状态：**P0 完成**；A 方案运行中（proot 内 9 个服务）；**B 路线因国行无法官方解锁而终止**，已转 **A+ 无 Root 优化**（8 项设置 + 10 个 debloat 已落地）
+- 状态：**P0 完成**；A 方案运行中（proot 内 9 个服务）；B 路线因国行无法官方解锁而终止；已转 **A+ 无 Root 优化**，并完成 **服务器模式深度清理（活跃包 390→252）**
 
 ---
 
@@ -33,6 +33,8 @@
 | 能解锁 Root 吗？ | ❌ **不行（已确认）**：国行为 CN 区域，小米社区 App 无解锁入口（2026 年国行官方解锁关闭）→ 走 **A+ 无 Root 优化**（[docs/06](docs/06-A+优化方案.md)） |
 | 解锁后 KernelSU 还是 Magisk？ | **Magisk 优先**（5.4 QGKI 非 GKI 2.0；KernelSU 需自编译内核） |
 | 长期插电电池怎么办？ | 系统"充电保护" / Root 后 ACC 限充 60–80% + 通风散热 |
+
+> **深度清理结果（2026-11-10）**：活跃包 **390 → 252**（-138）、禁用 17；MemAvailable **2.21 → 3.92 GiB**、/data 释放约 6GB；9 个服务器服务与 SSH 全程正常。详见 [docs/06](docs/06-A+优化方案.md)。
 
 ## 路线图
 
@@ -69,6 +71,10 @@
 │   ├── check-connection.ps1    ← 连接状态检查（退出码 0/2/3）
 │   ├── collect-device-info.ps1 ← 全量设备档案采集 → inventory/
 │   ├── probe-device.sh         ← 设备端能力探测脚本（内核/容器/充电）
+│   ├── apply-a-plus.ps1        ← A+ 设置优化/回滚（-Apply / -Restore）
+│   ├── debloat-server-mode.ps1 ← 服务器模式深度清理（-Tier safe|aggressive|all，-Restore）
+│   ├── phone-health.ps1       ← 温度/负载/磁盘/9 个服务健康检查
+│   ├── restart-termux-services.ps1 ← 远程恢复 Termux/proot 服务（run-as，不需解锁）
 │   └── probe-device.ps1        ← 推送并执行 probe-device.sh 的包装器
 ├── inventory/                 ← 采集产物（已 gitignore：含序列号/应用清单）
 └── tools/platform-tools/      ← adb / fastboot（已 gitignore）
