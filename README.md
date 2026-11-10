@@ -66,6 +66,7 @@
 │   ├── 06-A+优化方案.md        ← **当前主方案**：无 Root 优化、已执行项、待办与回滚
 │   ├── 07-DSH与Linux优化.md    ← 服务器 DSH 部署、Linux 优化、手机 ADB 第二轮分析
 │   ├── 08-事故复盘与重置重建报告.md ← ⚠️ bootloop 事故、恢复出厂、服务器重建与开机自启验证
+│   ├── 09-文件管理-文件夹打包下载.md ← /files/ 文件夹 zip 打包下载（API + UI + 安全边界）
 │   └── research/
 │       ├── raw-notes.md        ← 研究原始笔记与 33 条来源链接
 │       └── ...
@@ -79,7 +80,8 @@
 │   ├── setup-dsh-server.ps1   ← 一键部署 DSH + Node24 到手机服务器（幂等）
 │   ├── optimize-server-profile.ps1 ← 重置后安全优化（第三方移除 + 系统 disable，带保护名单）
 │   ├── finalize-dsh-server.sh ← 服务器端 DSH 收尾（原生模块/包装器/supervisor/nginx）
-│   └── server/ubuntu.sh, 00-server.sh ← Termux 侧容器启动与开机脚本（重建用）
+│   ├── server/ubuntu.sh, 00-server.sh ← Termux 侧容器启动与开机脚本（重建用）
+│   └── server/webui/            ← 文件管理器源码（含"下载整个文件夹"增强，见 docs/09）
 │   ├── debloat-server-mode.ps1 ← 服务器模式深度清理（-Tier safe|aggressive|all，-Restore）
 │   ├── phone-health.ps1       ← 温度/负载/磁盘/9 个服务健康检查
 │   ├── restart-termux-services.ps1 ← 远程恢复 Termux/proot 服务（run-as，不需解锁）
@@ -112,6 +114,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 5. **动手前必读** → [04-风险与回滚](docs/04-风险与回滚.md)
 6. **想在服务器里跑 DSH / 看 Linux 优化与 ADB 分析** → [07-DSH与Linux优化](docs/07-DSH与Linux优化.md)
 7. **想了解 bootloop 事故与重置后重建过程** → [08-事故复盘与重置重建报告](docs/08-事故复盘与重置重建报告.md)
+8. **想下载整个文件夹 / 了解文件管理器增强** → [09-文件管理-文件夹打包下载](docs/09-文件管理-文件夹打包下载.md)
 
 ## 重要警告
 
