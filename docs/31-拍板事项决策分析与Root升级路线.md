@@ -13,7 +13,7 @@
 | D1 | Bridge MVP 是否含 UsageStats/NetworkStats | 含 / 不含 | **不含，Phase 2** |
 | D2 | 传输安全 | TLS+token+pin / 直接 mTLS | **TLS+token+pin；mTLS Phase 2** |
 | D3 | 是否安装 Android SDK/Gradle | 允许 / 不允许 | **允许（一次性构建环境）** |
-| D4 | Bridge 包名 | `com.qingxuan.bridge` / `com.qingxuan.bridge` 等 | **`com.qingxuan.bridge`** |
+| D4 | Bridge 包名 | `com.qingxuan.bridge` / `io.qingxuan.bridge` | **`com.qingxuan.bridge`（厂商无关）** |
 | D5 | 是否现在接 Shizuku 特权 | 现在 / 延后 | **延后；Root 手机后做** |
 | D6 | DSH 集成深度 | 最小 AGENTS / 正式技能 | **先最小；Bridge 稳定后再技能** |
 | D7 | 公网入口 | 保留 frp / 仅局域网 | **保留现有 frp，不新增端口** |
@@ -65,13 +65,13 @@
 ### D4 · Bridge 包名
 
 **选项 A：`com.qingxuan.bridge`（推荐）**
-- 优点：包含项目/设备语义，唯一、清晰；不占用 Shizuku/Termux 保留包名；侧载无域名要求；
+- 优点：厂商无关、项目语义清晰、唯一；不占用 Shizuku/Termux 保留包名；不占用 Shizuku/Termux 保留包名；侧载无域名要求；
 - 缺点：一旦安装/签名后基本不可改（改包名=新应用，token/权限需迁移）；名字较长；
 - 限制：不能使用 `moe.shizuku.privileged.api`、`com.termux*` 或冒充官方；release 签名一旦确定需长期保管。
 
-**选项 B：`com.qingxuan.bridge`**
-- 优点：短；
-- 缺点：语义弱、未来多设备时不够清晰；
+**选项 B：`io.qingxuan.bridge`**
+- 优点：域名风格、简短；
+- 缺点：与现有 `com` 风格不一致，个人项目无域名强绑定；
 - 推荐：A。
 
 ### D5 · 现在是否接 Shizuku 特权
