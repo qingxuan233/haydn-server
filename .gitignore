@@ -30,3 +30,4 @@ Desktop.ini
 /scripts/server/recon-dsh-config*.sh
 __pycache__/
 /tools/apks/
+/tools/uad_lists.json
