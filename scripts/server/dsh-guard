@@ -1,0 +1,33 @@
+#!/bin/bash
+# DSH 看门狗 v1.1：修复 code 拼接；DSH/dsh-login 连续 2 次失败重启
+set -u
+CONF=/root/server/etc/supervisord.conf
+CTL="supervisorctl -c $CONF"
+LOG=/root/server/logs/dsh-guard.log
+say() { printf '%s %s\n' "$(date '+%m-%d %H:%M:%S')" "$*" >>"$LOG"; }
+fails_dsh=0
+fails_login=0
+say "看门狗启动 pid=$$"
+while true; do
+  sleep 30
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:3081/ 2>/dev/null)
+  code=${code:-000}
+  case "$code" in
+    200|302|401|403) fails_dsh=0 ;;
+    *)
+      fails_dsh=$((fails_dsh+1)); say "dsh 健康检查失败 code=$code（第 $fails_dsh 次）"
+      if [ "$fails_dsh" -ge 2 ]; then
+        $CTL restart dsh >>"$LOG" 2>&1; say "已重启 dsh（连续失败）"; fails_dsh=0
+      fi ;;
+  esac
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:3082/ 2>/dev/null)
+  code=${code:-000}
+  case "$code" in
+    200|302|401|403) fails_login=0 ;;
+    *)
+      fails_login=$((fails_login+1)); say "dsh-login 健康检查失败 code=$code（第 $fails_login 次）"
+      if [ "$fails_login" -ge 2 ]; then
+        $CTL restart dsh-login >>"$LOG" 2>&1; say "已重启 dsh-login（连续失败）"; fails_login=0
+      fi ;;
+  esac
+done

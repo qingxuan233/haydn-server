@@ -138,6 +138,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 12. **想看控制台/持久化/容器优化的下一步方案** → [18-控制台持久化与容器优化方案](docs/18-控制台持久化与容器优化方案.md)
 13. **想看用 ADB 给服务器让资源的方案** → [19-ADB为服务器让资源方案](docs/19-ADB为服务器让资源方案.md)
 14. **想看 DSH 作为服务器控制平面（管理/执行大脑）的方案** → [20-DSH控制平面方案](docs/20-DSH控制平面方案.md)
+15. **想看 DSH 控制平面 P0 的落地/复用手册** → [21-DSH控制平面落地手册](docs/21-DSH控制平面落地手册.md)
 8. **想下载整个文件夹 / 了解文件管理器增强** → [09-文件管理-文件夹打包下载](docs/09-文件管理-文件夹打包下载.md)
 9. **想了解面板为什么去掉 CI Runner / 如何按需启用** → [10-面板治理-移除CI-Runner](docs/10-面板治理-移除CI-Runner.md)
 9. **打开 DSH 时提示 authentication required / 想免 token 登录** → [10-DSH登录入口优化](docs/10-DSH登录入口优化.md)

@@ -1,0 +1,101 @@
+#!/bin/bash
+# server-ops v1.1：DSH 只读执行层（Tier1），每条命令写审计
+set -u
+CONF=/root/server/etc/supervisord.conf
+LOG_DIR=/root/server/logs
+AUDIT=$LOG_DIR/ops-audit.jsonl
+CMD="${1:-help}"
+[ $# -gt 0 ] && shift
+ARGS="$*"
+
+usage() {
+  cat <<EOF
+用法: server-ops <command> [args]
+只读命令：
+  status                 服务 + dsh 状态摘要
+  services               supervisorctl 状态列表
+  health                 本机/公网/DSH 健康码
+  logs <name> [--lines N] 白名单日志尾
+  backups                最近加密备份列表
+  dsh [status|url]       dsh 状态 / 当前 token 入口（敏感，勿外发）
+  audit [lines]          最近 server-ops 审计
+  version                版本信息
+写操作（Tier2）暂未开放，需人工 SSH + 确认。
+EOF
+}
+
+log_path() {
+  case "$1" in
+    supervisord) echo "$LOG_DIR/supervisord.log" ;;
+    watch) echo "$LOG_DIR/watch.log" ;;
+    boot) echo "$LOG_DIR/boot.log" ;;
+    dsh) echo "$LOG_DIR/dsh.log" ;;
+    dsh-login) echo "$LOG_DIR/dsh-login.log" ;;
+    dsh-guard) echo "$LOG_DIR/dsh-guard.log" ;;
+    nginx-access) echo "$LOG_DIR/nginx_access.log" ;;
+    nginx-error) echo "$LOG_DIR/nginx_site_error.log" ;;
+    *) return 1 ;;
+  esac
+}
+
+case "$CMD" in
+  help|-h|--help) usage ;;
+  status)
+    supervisorctl -c "$CONF" status 2>&1
+    echo '--- dsh ---'
+    /root/server/bin/server-dsh status 2>&1
+    ;;
+  services) supervisorctl -c "$CONF" status 2>&1 ;;
+  health)
+    LAN_IP=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+(\.[0-9]+){3}$' | head -1)
+    for url in http://127.0.0.1:8080/health "https://${LAN_IP:-127.0.0.1}:8443/health" \
+               http://47.97.70.99:48108/health https://47.97.70.99:44904/health; do
+      code=$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 6 "$url" 2>/dev/null); code=${code:-000}
+      echo "$url -> $code"
+    done
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:3081/ 2>/dev/null); code=${code:-000}
+    echo "dsh 3081 -> $code（401 属正常）"
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://127.0.0.1:3082/ 2>/dev/null); code=${code:-000}
+    echo "dsh-login 3082 -> $code"
+    ;;
+  logs)
+    name="${1:?用法: server-ops logs <name> [--lines N]}"
+    shift
+    lines=200
+    if [ "${1:-}" = "--lines" ]; then lines="${2:-200}"; elif [ -n "${1:-}" ]; then lines="$1"; fi
+    path=$(log_path "$name") || { echo "不支持的日志: $name" >&2; exit 1; }
+    [ -f "$path" ] || { echo "日志不存在: $path" >&2; exit 1; }
+    tail -n "$lines" "$path"
+    ;;
+  backups)
+    for d in /root/server/backups /sdcard/DSH/backups; do
+      [ -d "$d" ] && { echo "## $d"; ls -lah "$d" 2>/dev/null | tail -n +2 | tail -10; }
+    done
+    ;;
+  dsh)
+    sub="${1:-status}"
+    case "$sub" in
+      status) /root/server/bin/server-dsh status 2>&1 ;;
+      url) echo '敏感：仅在本地/管理终端使用，切勿外发'; /root/server/bin/server-dsh url 2>&1 ;;
+      *) usage ;;
+    esac
+    ;;
+  audit) tail -n "${1:-50}" "$AUDIT" 2>/dev/null || echo '暂无审计记录' ;;
+  version) echo 'server-ops v1.1（Tier1 只读）' ;;
+  *) usage; exit 1 ;;
+esac
+rc=$?
+
+python3 - "$CMD" "$ARGS" "$rc" <<'PY' 2>/dev/null || true
+import datetime, json, sys
+cmd, args, rc = sys.argv[1], sys.argv[2], sys.argv[3]
+if cmd == "dsh" and args.strip().startswith("url"):
+    args = "url(redacted)"
+entry = {
+    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+    "cmd": cmd, "args": args, "rc": rc,
+}
+with open("/root/server/logs/ops-audit.jsonl", "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+PY
+exit "$rc"
