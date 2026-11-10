@@ -10,7 +10,7 @@
 
 | 视图 | URL | 内容 |
 |---|---|---|
-| **总览** | `/` | 6 个核心指标（服务/CPU/内存/磁盘/温度/公网延迟）、设备/Bridge 摘要、服务概览、详情入口 |
+| **总览** | `/` | 6 个核心指标（服务/CPU/内存/磁盘/温度/公网延迟）、设备/Bridge 摘要、服务概览、**快捷入口**（文件/Gitea/DSH/访问入口/服务/检查/备份/账号/运维） |
 | **详情** | `/?view=details` | 访问入口、完整实时状态（趋势+明细）、全部服务、检查项、DSH/ops 审计、账号密码、备份、外部入口、快捷运维 |
 
 - 总览不再渲染长列表；
@@ -36,7 +36,7 @@
 - 单文件 `index.html` 双视图：
   - `body.main-mode` / `body.details-mode` 由 `?view=details` 切换；
   - CSS：`body.main-mode .detail-only { display:none }`，`body.details-mode .main-only { display:none }`；
-  - 新增总览组件：`#device-card`（运行时长/电池/WiFi/机型 + Bridge 来源）、`#service-summary`（运行数/异常服务/详情入口）；
+  - 新增总览组件：`#device-card`（运行时长/电池/WiFi/机型 + Bridge 来源）、`#service-summary`（运行数/异常服务）、`#main-links`（主要功能快捷入口）；
   - 详情组件保留原 `#access-card`、`#live-card`（趋势/明细）、`#services-group`、`#checks-group`、`#ops-audit-group`、`#vault-group`、`#bak-card`、`#ops-group`、入口卡片与提示。
 - JS 改动：
   - `DETAIL_MODE` 常量 + body class 切换 + 详情页标题；
