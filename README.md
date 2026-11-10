@@ -36,7 +36,7 @@
 
 > **深度清理结果（2026-11-10）**：活跃包 **390 → 252 → 248**（二轮清理后）、禁用 10；MemAvailable **2.21 → 约 4.1 GiB**、/data 释放约 6GB；10 个服务器服务与 SSH 全程正常。详见 [docs/06](docs/06-A+优化方案.md)。
 
-> **DSH 已重新部署于手机服务器（2026-11-10）**：Node 24 + @deepseek-ai/dsh 0.2.2-rc.1，127.0.0.1:3081，supervisord 托管；通过 SSH 隧道访问，详见 [docs/07](docs/07-DSH与Linux优化.md)。
+> **DSH 已重新部署于手机服务器（2026-11-10）**：Node 24 + @deepseek-ai/dsh 0.2.2-rc.1，127.0.0.1:3081，supervisord 托管；复用原 `https://<手机IP>:8443/app/` 入口（公网 `https://47.97.70.99:44904/app/`，Basic Auth），详见 [docs/07](docs/07-DSH与Linux优化.md)。
 
 ## 路线图
 

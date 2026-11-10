@@ -60,21 +60,18 @@ autorestart=true
 | 带 token + cookie 访问 | **`HTTP 200`** |
 | `server-doctor` | 33 项通过 / 0 失败（原有服务不受影响） |
 
-### 2.4 如何访问（电脑端）
+### 2.4 如何访问（复用原 8443 /app/ 公网入口）
 
 ```powershell
-# 1) 建立 SSH 隧道（把服务器 3081 映射到本机 3081）
-ssh -i backup\ssh\id_haydn -p 2222 -L 3081:127.0.0.1:3081 root@192.168.10.143
-
-# 2) 在服务器上取最新带 token 地址（注意：每次重启 token 会变）
+# 取最新带 token 的入口地址（重启后 token 会变）
 ssh -i backup\ssh\id_haydn -p 2222 root@192.168.10.143 "server-dsh url"
-
-# 3) 浏览器打开该地址（本机 3081 -> 服务器 3081）
-#    http://127.0.0.1:3081/?token=<token>
+# 输出形如：https://47.97.70.99:44904/app/?token=<token>
 ```
 
-> **首次打开需要在 DSH 网页里配置模型/凭据**（profile=server 与手机 App 的 DSH 完全隔离）。
-> Token 是敏感凭据，不要发到公开渠道；日志轮转后旧 token 失效，用 `server-dsh url` 取最新的。
+- **浏览器直接打开** `server-dsh url` 给出的地址即可（会先弹 Basic Auth：用户名 `dsh`，密码见服务器 `/root/server/etc/dsh-web-creds.txt`）。
+- 局域网也可用：`https://192.168.10.143:8443/app/?token=<同一 token>`。
+- 原入口、公网 frp（`47.97.70.99:44904`）、一键下线开关均已复用，详见 §2.7。
+- **首次打开需要在 DSH 网页里配置模型/凭据**（profile=server 与 App 完全隔离）；Token 是敏感凭据，不要公开。
 
 ### 2.5 安全边界
 
@@ -94,6 +91,41 @@ ssh -i backup\ssh\id_haydn -p 2222 root@192.168.10.143 "server-dsh url"
 
 ---
 
+### 2.7 复用原 8443 `/app/` 公网入口（2026-11-10 12:21–12:27）
+
+**目标**：沿用原访问方式 `https://<手机IP>:8443/app/`（公网经 frp：`https://47.97.70.99:44904/app/`），把反代后端从已卸载的 App 引擎（3080）切到自托管 DSH（3081），保留原 Basic Auth 与一键下线开关。
+
+| 位置 | 改动 |
+|---|---|
+| nginx `dsh-upstreams.conf` | 新增 `upstream dsh_upstream { server 127.0.0.1:3081; keepalive 16; ... }` |
+| nginx `sites-available/dsh-tls` `/app/` | `proxy_pass http://dsh_upstream/`（前缀剥离）；**`Host $http_host`**（必须保留端口，否则 trusted-host 不匹配 → API 403）；`X-Forwarded-Proto https` / `X-Forwarded-Host`；WebSocket upgrade；`proxy_cookie_flags ~ secure` |
+| nginx `/app-login` | 移除旧 App 引擎的签名 Cookie 注入；Basic Auth 后 302 到 `/app/` |
+| DSH 启动参数 | `--public-url https://47.97.70.99:44904/app/ --trusted-host 47.97.70.99:44904 --trusted-host 192.168.10.143:8443`（并补无端口形式） |
+| 保留 | Basic Auth（`dsh-web.htpasswd`）、`/sdcard/DSH/dsh-app-public.off` 一键下线、原 TLS 证书 |
+
+**验证（公网入口实测）**：
+
+| 检查 | 结果 |
+|---|---|
+| `server-dsh url` | 返回 `https://47.97.70.99:44904/app/?token=…` |
+| 带 Basic Auth + token 打开 `/app/` | **HTTP 200**（公网与局域网均 200） |
+| 无 Basic Auth | 401 |
+| `/app-login` | 302 → `/app/` |
+| 页面资源 `/app/assets/*.js` | **HTTP 200**（948KB 主 JS 正常） |
+| 会话 Cookie | 303 响应下发 `dsh-auth-…`，authority=`47.97.70.99:44904`，HttpOnly + SameSite=Strict + **Secure** |
+| `/app/api/` 无 cookie | 401（浏览器信任栅栏通过、待鉴权） |
+| `/app/api/` 带 cookie | 404（鉴权通过，路径不存在属正常） |
+
+**关键坑**：nginx 的 `$host` 会丢掉端口 → DSH 看到的 authority 是 `47.97.70.99`，与 `--trusted-host` 的 `47.97.70.99:44904` 不匹配，`/api` 全部 403。改用 **`$http_host`** 后才恢复正常。
+
+**备份与回滚**：
+
+```bash
+ls /etc/nginx/sites-available/dsh-tls.bak-dsh-* /root/server/etc/supervisord.conf.bak-dsh-* /etc/nginx/conf.d/dsh-upstreams.conf.bak-dsh-*
+# 回滚：用对应 .bak 覆盖后
+nginx -t && nginx -s reload
+supervisorctl -c /root/server/etc/supervisord.conf restart dsh
+```
 ## 3. Linux 环境优化（proot Ubuntu 24.04）
 
 | 优化项 | 优化前 | 优化后 | 说明 |
@@ -213,3 +245,4 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-dsh-server.ps1 -NodeVersi
 | 11:51–12:12 | 修复 bin.js 被软链穿透覆盖 / arm64 原生模块缺失 / 服务 FATAL | 全部修复，稳定 RUNNING |
 | 12:09–12:12 | Linux 清理：apt/npm 缓存、`.dsh` 权限、DSH 内存上限 | 释放约 640MB 缓存 |
 | 11:49–12:14 | 手机 ADB 第二轮清理 + T5 分析 | 活跃包 252→248，无 FATAL/ANR |
+| 12:21–12:27 | 适配原 8443 `/app/` 公网入口：nginx 前缀剥离反代切到 3081、DSH 加 `--public-url/--trusted-host`、修复 `$http_host` 端口丢失导致的 403 | 公网/局域网 `/app/`、资源、API 鉴权全部验证通过 |
