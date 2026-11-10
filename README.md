@@ -4,7 +4,7 @@
 
 - 目标：SSH 远程登录、文件同步/备份、轻量 Web 与自托管服务、下载/定时任务
 - 原则：**先零风险上线（Termux + proot），再用运行数据决定是否解锁 Root 升级**
-- 状态：**P0 完成**；2026-11-10 发生过一次「误删系统必需包导致 bootloop」，已恢复出厂并**从备份重建服务器**（复盘见 [docs/08](docs/08-事故复盘与重置重建报告.md)）；当前 **10/10 服务 RUNNING**、**重启自动拉起（实测 43s 就绪）**、公网入口恢复
+- 状态：**P0 完成**；2026-11-10 发生过一次「误删系统必需包导致 bootloop」，已恢复出厂并**从备份重建服务器**（复盘见 [docs/08](docs/08-事故复盘与重置重建报告.md)）；当前 **11/11 服务 RUNNING**（含 dsh / dsh-login），**控制台 v2 已上线**（实时指标/趋势/服务健康/日志/备份，见 [docs/13](docs/13-控制台功能分析与完善.md)）、**重启自动拉起（实测 43s 就绪）**、公网入口恢复
 
 ---
 
@@ -71,6 +71,7 @@
 │   ├── 10-DSH登录入口优化.md  ← /app/ 免 token 自动登录（dsh-login + nginx 入口标记）
 │   ├── 11-DSH服务器配置与模型.md ← DSH server/web profile、desktop 模型配置迁移、凭据与环境
 │   ├── 12-DSH性能优化.md   ← 运行环境分析、gzip/缓存/插件精简、优化前后对比
+│   ├── 13-控制台功能分析与完善.md ← 控制台 v2：指标/趋势/服务/日志/操作/备份（参考成熟项目）
 │   └── 11-移除DSH-GO-App环境SSH.md ← 删除旧 DSH-GO 的 App 环境 SSH（2224/57166）
 │   └── research/
 │       ├── raw-notes.md        ← 研究原始笔记与 33 条来源链接
@@ -86,6 +87,9 @@
 │   ├── optimize-server-profile.ps1 ← 重置后安全优化（第三方移除 + 系统 disable，带保护名单）
 │   ├── finalize-dsh-server.sh ← 服务器端 DSH 收尾（原生模块/包装器/supervisor/nginx）
 │   ├── server/ubuntu.sh, 00-server.sh ← Termux 侧容器启动与开机脚本（重建用）
+│   ├── server/termux-metrics.sh ← Termux 侧 CPU/uptime 采集器（供控制台）
+│   ├── server/console-api.py    ← 控制台 API v2 源码（部署到 /root/server/api/app.py）
+│   ├── server/console/          ← 控制台页面源码（部署到 /root/server/www/index.html）
 │   └── server/webui/            ← 文件管理器源码（含"下载整个文件夹"增强，见 docs/09）
 │   ├── debloat-server-mode.ps1 ← 服务器模式深度清理（-Tier safe|aggressive|all，-Restore）
 │   ├── phone-health.ps1       ← 温度/负载/磁盘/9 个服务健康检查
@@ -125,6 +129,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 10. **想了解 DSH 服务器 profile / 模型配置 / 凭据** → [11-DSH服务器配置与模型](docs/11-DSH服务器配置与模型.md)
 11. **DSH 有点卡 / 想做性能优化** → [12-DSH性能优化](docs/12-DSH性能优化.md)
 10. **想清理旧 DSH-GO 的 App 环境 SSH / 2224 端口** → [11-移除DSH-GO-App环境SSH](docs/11-移除DSH-GO-App环境SSH.md)
+12. **想了解控制台 v2 的功能分析与改进参考** → [13-控制台功能分析与完善](docs/13-控制台功能分析与完善.md)
 
 ## 重要警告
 
