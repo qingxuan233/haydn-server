@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0d1117">
+<title>手机服务器 · 控制台</title>
+<style>
+:root {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --panel: #161b24;
+    --panel-2: #1b212c;
+    --line: #232b37;
+    --line-2: #2b3442;
+    --text: #e6e9ef;
+    --muted: #8b93a7;
+    --dim: #6f7788;
+    --accent: #2dd4bf;
+    --accent-soft: rgba(45, 212, 191, .12);
+    --good: #46d18f;
+    --bad: #f0616d;
+    --warn: #e8b34b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 12px; }
+  body {
+    margin: 0;
+    padding: 18px 14px 34px;
+    padding: max(18px, env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(34px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
+    font: 15px/1.6 system-ui, -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    color: var(--text); background: var(--bg);
+    background-image: radial-gradient(900px 500px at 15% -10%, #1d2a3a 0%, transparent 60%),
+                      radial-gradient(700px 400px at 100% 0%, #232536 0%, transparent 55%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  /* ---------- 头部 ---------- */
+  header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+    font-size: 19px; color: var(--accent); flex: 0 0 auto;
+    background: linear-gradient(160deg, #0f3d3c, #12646a);
+    border: 1px solid rgba(45, 212, 191, .25);
+  }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 2px; word-break: break-word; }
+  .sub .ip { color: var(--accent); }
+  .overall {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 12px; border-radius: 999px; font-size: 12.5px; color: var(--muted);
+    background: var(--panel); border: 1px solid var(--line); max-width: 100%;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #3d4657; display: inline-block; flex: 0 0 auto; }
+  .dot.ok { background: var(--good); box-shadow: 0 0 8px rgba(70, 209, 143, .7); }
+  .dot.bad { background: var(--bad); box-shadow: 0 0 8px rgba(240, 97, 109, .6); }
+  .dot.warn { background: var(--warn); }
+
+  /* ---------- 指标 ---------- */
+  .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+  .metric {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 11px 12px; min-width: 0;
+  }
+  .metric .k { color: var(--muted); font-size: 12px; }
+  .metric .v { font-size: 18px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; line-height: 1.25; }
+  .metric .c { color: var(--dim); font-size: 11.5px; margin-top: 1px; overflow-wrap: anywhere; }
+
+  /* ---------- 分组 ---------- */
+  .group { margin-bottom: 20px; }
+  .group h2 {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 12px; letter-spacing: 1.2px; color: var(--muted);
+    margin: 0 0 9px; font-weight: 600; text-transform: uppercase;
+  }
+  .group h2 .count {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 1px 8px; font-size: 11px; color: var(--dim); letter-spacing: 0;
+  }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+
+  .card {
+    display: flex; flex-direction: column; gap: 5px; min-width: 0;
+    padding: 12px 12px 11px; border-radius: var(--radius);
+    background: var(--panel); border: 1px solid var(--line);
+    color: inherit; text-decoration: none;
+    transition: border-color .15s, transform .12s, background .15s;
+    touch-action: manipulation;
+  }
+  .card:active { transform: scale(.985); border-color: #38455c; }
+  .card-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .ico {
+    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+    font-size: 15px; background: #222a36; color: #cfe0ff; flex: 0 0 auto;
+  }
+  .ico.teal { background: var(--accent-soft); color: var(--accent); }
+  .ico.blue { background: rgba(96, 165, 250, .14); color: #93c5fd; }
+  .ico.violet { background: rgba(167, 139, 250, .14); color: #c4b5fd; }
+  .ico.amber { background: rgba(251, 191, 36, .13); color: #fcd34d; }
+  .ico.gray { background: rgba(148, 163, 184, .12); color: #cbd5e1; }
+  .state {
+    margin-left: auto; font-size: 11.5px; color: var(--dim);
+    display: inline-flex; align-items: center; gap: 5px; flex-shrink: 1; min-width: 0;
+    overflow-wrap: anywhere; text-align: right;
+  }
+  .state .dot { width: 6px; height: 6px; }
+  .t { font-weight: 600; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+  .d { color: var(--muted); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+  .d code { overflow-wrap: anywhere; }
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+  .tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid rgba(45, 212, 191, .2);
+    max-width: 100%; overflow-wrap: anywhere;
+  }
+  .tag.dim { color: var(--dim); background: transparent; border-color: var(--line); }
+  .tag.amber { color: var(--warn); background: rgba(232, 179, 75, .1); border-color: rgba(232, 179, 75, .25); }
+
+  .card.cmd { cursor: default; }
+  .cmd-line {
+    display: flex; align-items: center; gap: 8px; margin-top: 5px;
+    background: #0e131a; border: 1px solid var(--line); border-radius: 9px;
+    padding: 6px 8px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    color: #9fb0c9; min-width: 0;
+  }
+  .cmd-line span {
+    flex: 1 1 auto; min-width: 0; overflow-x: auto; white-space: nowrap;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 1px;
+  }
+  .cmd-line span::-webkit-scrollbar { display: none; }
+  .copy {
+    flex: 0 0 auto; border: 1px solid var(--line-2); background: #1b2431; color: var(--muted);
+    border-radius: 8px; padding: 0 10px; min-height: 32px; min-width: 48px;
+    font-family: inherit; font-size: 12px; cursor: pointer; touch-action: manipulation;
+  }
+  .copy:hover { color: var(--text); border-color: #3a475d; }
+
+  /* ---------- 运维行 ---------- */
+  .ops { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .op-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #1c222c; min-width: 0; }
+  .op-row:last-child { border-bottom: 0; }
+  .op-row .n { color: var(--muted); font-size: 12.5px; width: 96px; flex: 0 0 auto; }
+  .op-row code {
+    flex: 1 1 auto; min-width: 0; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    color: #cfe0ff; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .op-row code::-webkit-scrollbar { display: none; }
+  .op-row .copy { padding: 0 10px; }
+
+  /* ---------- 趋势 / 备份 ---------- */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 14px; margin-bottom: 14px; }
+  .panel h2 { font-size: 12px; letter-spacing: 1.2px; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .chart { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin: 4px 0 10px; }
+  .chart i { flex: 1 1 0; min-height: 2px; border-radius: 2px 2px 0 0; background: linear-gradient(180deg, #4c8bff, #29527f); opacity: .85; }
+  .chart i.low { background: linear-gradient(180deg, var(--bad), #7f2b32); }
+  .row2 { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 13px; flex-wrap: wrap; }
+  .row2 + .row2 { border-top: 1px solid #1e242f; }
+  .row2 .k { color: var(--muted); }
+  .row2 .v { font-variant-numeric: tabular-nums; }
+  .bak { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; font-size: 13px; border-top: 1px solid #1e242f; flex-wrap: wrap; }
+  .bak:first-child { border-top: 0; }
+  .hint { color: var(--dim); font-size: 12px; margin-top: 8px; line-height: 1.6; overflow-wrap: anywhere; }
+
+  .note {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: rgba(45, 212, 191, .05); padding: 12px 14px; color: var(--muted); font-size: 12.5px;
+    line-height: 1.65; overflow-wrap: anywhere;
+  }
+  .note b { color: var(--text); font-weight: 600; }
+  code { overflow-wrap: anywhere; }
+  a, button { touch-action: manipulation; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  /* ---------- 断点 ---------- */
+  /* 手机：默认 2 列卡片、2 列指标；极窄屏 1 列 */
+  @media (max-width: 359px) {
+    .grid { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: 1fr 1fr; gap: 7px; }
+    body { padding-left: 11px; padding-right: 11px; }
+  }
+  /* 窄屏卡片描述截断，避免两列时文字过长 */
+  @media (max-width: 479px) {
+    .d { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .overall { margin-left: 0; width: 100%; justify-content: center; }
+  }
+  /* 平板/桌面：指标 4 列、卡片自适应多列、运维行单行 */
+  @media (min-width: 720px) {
+    .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .chart { height: 64px; }
+    body { padding: 22px 16px 48px; }
+  }
+  /* 触屏设备：加大复制按钮热区 */
+  @media (hover: none) {
+    .copy { min-height: 40px; min-width: 56px; font-size: 12.5px; }
+    .op-row { padding: 11px 12px; }
+  }
+  /* 超窄屏运维行换行：标签一行、命令一行、复制按钮靠右 */
+  @media (max-width: 559px) {
+    .op-row { flex-wrap: wrap; gap: 6px; }
+    .op-row .n { width: 100%; }
+    .op-row code { flex: 1 1 100%; white-space: normal; overflow-wrap: anywhere; }
+    .op-row .copy { margin-left: auto; min-height: 40px; min-width: 64px; }
+  }
+  @media (hover: hover) {
+    .card:hover { border-color: #38455c; transform: translateY(-2px); background: var(--panel-2); }
+    .card.cmd:hover { transform: none; border-color: var(--line); background: var(--panel); }
+    .copy:hover { color: var(--text); border-color: #3a475d; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">▤</div>
+    <div>
+      <h1>手机服务器</h1>
+      <div class="sub">Termux · proot Ubuntu 24.04 · <span class="ip" id="hostip">…</span></div>
+    </div>
+    <div class="overall" id="overall"><span class="dot"></span>检测中…</div>
+  </header>
+
+  <div class="metrics">
+    <div class="metric"><div class="k">在线服务</div><div class="v" id="m-svc">—</div><div class="c" id="m-svc-c">检测中</div></div>
+    <div class="metric"><div class="k">内存可用</div><div class="v" id="m-mem">—</div><div class="c" id="m-mem-c">—</div></div>
+    <div class="metric"><div class="k">磁盘剩余</div><div class="v" id="m-disk">—</div><div class="c" id="m-disk-c">—</div></div>
+    <div class="metric"><div class="k">公网延迟</div><div class="v" id="m-pub">—</div><div class="c" id="m-pub-c">—</div></div>
+  </div>
+
+  <section class="group">
+    <h2>文件与同步 <span class="count">2 项</span></h2>
+    <div class="grid">
+      <a class="card" href="/files/">
+        <div class="card-top"><span class="ico teal">▤</span><span class="state" data-dot="fileui"></span></div>
+        <div class="t">文件管理</div>
+        <div class="d">浏览、上传、下载、在线预览与编辑；网盘 + 项目两个根（网盘也支持 WebDAV 挂载）</div>
+        <div class="tags"><span class="tag">中文界面</span><span class="tag dim">需登录</span><span class="tag dim">WebDAV 可挂载</span></div>
+      </a>
+      <a class="card" data-ext="8384" data-scheme="http" href="#" id="link-sync" title="Syncthing 管理界面只在局域网开放">
+        <div class="card-top"><span class="ico violet">⇄</span><span class="state" data-dot="syncthing"></span></div>
+        <div class="t">Syncthing</div>
+        <div class="d">手机 ↔ 电脑双向同步，支持公网中继；相册也能同步</div>
+        <div class="tags"><span class="tag">同步</span><span class="tag dim">:8384 · 仅局域网</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>代码与 CI <span class="count">3 项</span></h2>
+    <div class="grid">
+      <a class="card" href="/git/">
+        <div class="card-top"><span class="ico teal">⎇</span><span class="state" data-dot="gitea"></span></div>
+        <div class="t">Gitea</div>
+        <div class="d">私有 Git 仓库：代码托管、Issues、Pull Request、Actions</div>
+        <div class="tags"><span class="tag">Git</span><span class="tag dim">/git/</span></div>
+      </a>
+      <a class="card" href="/git/">
+        <div class="card-top"><span class="ico gray">⚙</span><span class="state"><span class="dot ok"></span>已启用</span></div>
+        <div class="t">CI Runner</div>
+        <div class="d">容器内 Gitea Actions 执行器，推送后自动跑构建</div>
+        <div class="tags"><span class="tag dim">Actions</span></div>
+      </a>
+      <div class="card cmd">
+        <div class="card-top"><span class="ico blue">⌘</span><span class="state">密钥登录</span></div>
+        <div class="t">Git SSH 克隆</div>
+        <div class="d">公网走域名，端口 26249；用户名必须是 <code>root</code></div>
+        <div class="cmd-line"><span id="cmd-git">ssh://root@qx.qingxuan.bbs0.cc:26249/…</span><button class="copy" data-cmd-id="cmd-git">复制</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>接口与数据 <span class="count">4 项</span></h2>
+    <div class="grid">
+      <a class="card" href="/api/health">
+        <div class="card-top"><span class="ico amber">◎</span><span class="state" data-dot="api"></span></div>
+        <div class="t">API 健康检查</div>
+        <div class="d">返回 ok / 运行时长 / 服务器时间</div>
+        <div class="tags"><span class="tag dim">/api/health</span></div>
+      </a>
+      <a class="card" href="/api/sysinfo">
+        <div class="card-top"><span class="ico amber">◔</span><span class="state" data-dot="api"></span></div>
+        <div class="t">系统信息</div>
+        <div class="d">CPU / 负载 / 内存 / 磁盘</div>
+        <div class="tags"><span class="tag dim">/api/sysinfo</span></div>
+      </a>
+      <a class="card" href="/api/metrics?n=60">
+        <div class="card-top"><span class="ico amber">▥</span><span class="state" data-dot="api"></span></div>
+        <div class="t">监控数据</div>
+        <div class="d">每分钟采样，保留最近 288 个点</div>
+        <div class="tags"><span class="tag dim">/api/metrics</span></div>
+      </a>
+      <a class="card" href="#bak-card">
+        <div class="card-top"><span class="ico amber">⛁</span><span class="state" data-dot="api"></span></div>
+        <div class="t">加密备份</div>
+        <div class="d">每日自动备份 Gitea + 配置，AES 加密，可校验恢复</div>
+        <div class="tags"><span class="tag dim">/api/backups</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>远程访问 <span class="count">3 项</span></h2>
+    <div class="grid">
+      <div class="card cmd">
+        <div class="card-top"><span class="ico teal">⌨</span><span class="state"><span class="dot ok"></span>容器</span></div>
+        <div class="t">容器 SSH</div>
+        <div class="d">进服务器栈（nginx / Gitea / WebDAV 都在这层）</div>
+        <div class="cmd-line"><span id="cmd-ssh-lan">ssh -p 2222 root@…</span><button class="copy" data-cmd-id="cmd-ssh-lan">局域网</button></div>
+        <div class="cmd-line"><span id="cmd-ssh-pub">ssh -p 13872 root@47.97.70.99</span><button class="copy" data-cmd-id="cmd-ssh-pub">公网</button></div>
+      </div>
+
+      <a class="card" id="link-dsh" href="#">
+        <div class="card-top"><span class="ico violet">◈</span><span class="state" data-dot="https"></span></div>
+        <div class="t">DSH App 网页版</div>
+        <div class="d">在电脑浏览器里用同一个 DSH，登录后进 /app/</div>
+        <div class="tags"><span class="tag amber">需 Basic Auth</span><span class="tag dim">/app-login</span></div>
+      </a>
+      <a class="card" id="link-public" href="#">
+        <div class="card-top"><span class="ico gray">🌐</span><span class="state" data-dot="public"></span></div>
+        <div class="t">公网入口</div>
+        <div class="d">frp 隧道：HTTP 48108、HTTPS 44904（自签证书，浏览器需点继续）</div>
+        <div class="tags"><span class="tag">47.97.70.99</span><span class="tag amber">自签证书</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>常用运维 <span class="count">6 条</span></h2>
+    <div class="ops">
+      <div class="op-row"><span class="n">看状态</span><code>server-status</code><button class="copy" data-cmd="server-status">复制</button></div>
+      <div class="op-row"><span class="n">体检</span><code>server-doctor</code><button class="copy" data-cmd="server-doctor">复制</button></div>
+      <div class="op-row"><span class="n">看日志</span><code>server-logs gitea</code><button class="copy" data-cmd="server-logs gitea">复制</button></div>
+      <div class="op-row"><span class="n">手动备份</span><code>server-backup</code><button class="copy" data-cmd="server-backup">复制</button></div>
+      <div class="op-row"><span class="n">重启服务</span><code>supervisorctl -c /root/server/etc/supervisord.conf restart all</code><button class="copy" data-cmd="supervisorctl -c /root/server/etc/supervisord.conf restart all">复制</button></div>
+      <div class="op-row"><span class="n">启停</span><code>server-up / server-down</code><button class="copy" data-cmd="server-up">复制</button></div>
+    </div>
+  </section>
+
+  <section class="panel" id="trend-card" hidden>
+    <h2>可用内存 · 最近采样</h2>
+    <div class="chart" id="chart"></div>
+    <div class="row2"><span class="k">区间</span><span class="v" id="trend-range">—</span></div>
+    <div class="row2"><span class="k">公网探测</span><span class="v" id="trend-pub">—</span></div>
+  </section>
+
+  <section class="panel" id="bak-card" hidden>
+    <h2>最近备份</h2>
+    <div id="bak-list"></div>
+    <div class="hint">AES 加密快照，恢复用 <code>server-restore</code>；备份文件同时留在手机存储 <code>/sdcard/DSH/backups</code>。</div>
+  </section>
+
+  <div class="note">
+    <b>自动运行：</b>Termux:Boot 开机自启 → <code>server-up</code> → supervisord 托管 9 个服务；看门狗每 45 秒巡检，supervisord 掉了会被重新拉起。手机息屏前请确认 Termux 未被系统清理，否则整条链会停。
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const HOST = location.hostname || '127.0.0.1';
+const LAN = /^(192\.168\.|10\.|127\.|172\.(1[6-9]|2\d|3[01])\.)/.test(HOST);
+
+function setDot(name, check) {
+  document.querySelectorAll(`[data-dot="${name}"]`).forEach((el) => {
+    if (!check) { el.innerHTML = '<span class="dot"></span>未知'; return; }
+    const ok = check.code > 0;
+    const ms = check.ms;
+    el.innerHTML = `<span class="dot ${ok ? 'ok' : 'bad'}"></span>${ok ? ms + 'ms' : '不通'}`;
+  });
+}
+
+function fillLinks() {
+  const PUB = '47.97.70.99';
+  document.querySelectorAll('[data-ext]').forEach((a) => {
+    const scheme = a.dataset.scheme || 'http';
+    a.href = `${scheme}://${HOST}:${a.dataset.ext}/`;
+  });
+  // Syncthing 管理界面只在局域网开放
+  const sync = $('link-sync');
+  if (sync && !LAN) {
+    sync.href = '#';
+    sync.querySelector('.d').textContent = '管理界面仅局域网可用；公网只开放同步端口 50278/32829';
+  }
+  // DSH 网页版：局域网走本机 8443（自签），外网走 frp 44904
+  const dsh = $('link-dsh');
+  if (dsh) dsh.href = LAN ? `https://${HOST}:8443/app-login` : `https://${PUB}:44904/app-login`;
+  // 公网入口：frp 是在公网那台机器上，地址固定
+  const pub = $('link-public');
+  if (pub) pub.href = `https://${PUB}:44904/`;
+  $('hostip').textContent = HOST;
+  $('cmd-ssh-lan').textContent = `ssh -p 2222 root@${HOST}`;
+  $('cmd-ssh-pub').textContent = 'ssh -i ~/.ssh/phone_server_ed25519 -p 13872 root@47.97.70.99';
+  $('cmd-git').textContent = `ssh://root@qx.qingxuan.bbs0.cc:26249/${LAN ? 'gitadmin' : '<用户名>'}/<仓库>.git`;
+}
+
+async function timed(url, opts) {
+  const t = performance.now();
+  try {
+    const r = await fetch(url, { cache: 'no-store', ...opts });
+    return { ok: r.ok, code: r.status, ms: Math.round(performance.now() - t), res: r };
+  } catch {
+    return { ok: false, code: 0, ms: Math.round(performance.now() - t) };
+  }
+}
+
+async function copyText(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  if (btn) {
+    const old = btn.textContent;
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  }
+}
+
+document.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button.copy');
+  if (!btn) return;
+  ev.preventDefault();
+  const id = btn.dataset.cmdId;
+  const text = id ? $(id)?.textContent : btn.dataset.cmd;
+  if (text) copyText(text, btn);
+});
+
+(async () => {
+  fillLinks();
+
+  // 全服务探活（服务端统一跑，避免浏览器跨端口/证书问题）
+  let checks = null;
+  try {
+    checks = await (await fetch('/api/checks', { cache: 'no-store' })).json();
+  } catch {}
+
+  if (checks) {
+    ['fileui', 'webdav', 'syncthing', 'gitea', 'api', 'https', 'public'].forEach((k) => setDot(k, checks[k]));
+    const keys = ['api', 'nginx', 'gitea', 'fileui', 'webdav', 'syncthing', 'https', 'public', 'public_https'];
+    const online = keys.filter((k) => checks[k] && checks[k].code > 0).length;
+    $('m-svc').textContent = `${online}/${keys.length}`;
+    $('m-svc-c').textContent = online === keys.length ? '全部正常' : (keys.length - online) + ' 项异常';
+    $('overall').innerHTML = `<span class="dot ${online === keys.length ? 'ok' : 'bad'}"></span>${online === keys.length ? '全部服务正常' : online + '/' + keys.length + ' 在线'}`;
+    $('m-pub').textContent = checks.public && checks.public.code ? checks.public.ms + 'ms' : '不通';
+    $('m-pub-c').textContent = checks.public_https && checks.public_https.code ? `HTTPS ${checks.public_https.ms}ms` : 'HTTPS 不可达';
+  } else {
+    $('overall').innerHTML = '<span class="dot bad"></span>状态接口不可用';
+  }
+
+  // 系统信息
+  try {
+    const s = await (await fetch('/api/sysinfo', { cache: 'no-store' })).json();
+    $('m-mem').textContent = `${s.mem_available_mb} MB`;
+    $('m-mem-c').textContent = `共 ${s.mem_total_mb} MB · 负载 ${s.load1}`;
+    $('m-disk').textContent = `${s.disk_free_gb} GB`;
+    $('m-disk-c').textContent = `共 ${s.disk_total_gb} GB`;
+  } catch {}
+
+  // 内存趋势
+  try {
+    const { points } = await (await fetch('/api/metrics?n=60', { cache: 'no-store' })).json();
+    if (points && points.length > 1) {
+      const vals = points.map((p) => p.mem_avail_mb ?? 0);
+      const lo = Math.min(...vals), hi = Math.max(...vals), span = Math.max(hi - lo, 1);
+      $('chart').innerHTML = points.map((p, i) => {
+        const h = 8 + Math.round((vals[i] - lo) / span * 88);
+        const cls = vals[i] < 600 ? ' class="low"' : '';
+        return `<i${cls} style="height:${h}%" title="${(p.ts || '').slice(11, 16)} · ${vals[i]} MB"></i>`;
+      }).join('');
+      $('trend-range').textContent = `${lo} – ${hi} MB`;
+      const ok = points.filter((p) => String(p.public_health) === '200').length;
+      $('trend-pub').innerHTML = `<span class="dot ${ok === points.length ? 'ok' : 'bad'}"></span>${ok}/${points.length} 次正常`;
+      $('trend-card').hidden = false;
+    }
+  } catch {}
+
+  // 备份列表
+  try {
+    const { items } = await (await fetch('/api/backups', { cache: 'no-store' })).json();
+    if (items && items.length) {
+      $('bak-list').innerHTML = items.slice(0, 5).map((b) => {
+        const d = new Date(b.at.replace('+00:00', 'Z'));
+        const when = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return `<div class="bak"><span>${esc(when)}</span><span>${esc(b.mb)} MB</span></div>`;
+      }).join('');
+      $('bak-card').hidden = false;
+    }
+  } catch {}
+})();
+</script>
+</body>
+</html>
