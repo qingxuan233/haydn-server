@@ -78,3 +78,45 @@ cp -p /root/server/www/index.html.bak-console-ops-20261110-2132 /root/server/www
 
 - DSH 有新版本后按 docs/23 做真实升级；
 - 外部告警/异地备份/MFA 按用户要求暂不接入。
+
+---
+
+## Part 3：重启验证（含 guard v1.2 修复）
+
+### 3.1 两次重启对比
+
+| 项目 | 第一次（旧 dsh-guard） | 第二次（guard v1.2） |
+|---|---|---|
+| ADB 在线 | 32s | **32s** |
+| 8080 服务就绪 | 44s | **45s** |
+| 12 服务 + DSH 登录完整就绪 | DSH 初始启动被 guard 误重启，约 2 分钟+ | **111s** |
+| `/app-login` | 中途 503，恢复后 302 | **302** |
+| dsh-guard 开机重启 | 有（STARTING 阶段被判定失败） | **无**（仅记录 1 次瞬时失败，未重启） |
+| 12/12 RUNNING | 最终达成 | **达成** |
+
+### 3.2 修复内容
+
+`dsh-guard` v1.2：只有 `supervisorctl status` 为 **RUNNING** 时才做 HTTP 健康检查；
+`STARTING/BACKOFF` 阶段不计数、不重启，避免开机时 DSH 还在启动就被误杀。
+
+### 3.3 重启后 Android 优化项状态
+
+| 项 | 重启后默认 | 处理 |
+|---|---|---|
+| `cached_apps_freezer` | **disabled**（MIUI 重置） | `adb-server-resource.ps1 -Quiet` 重放为 enabled |
+| logcat | **2MiB**（重置） | 重放 `-G 1M` |
+| netpolicy 白名单 | **持久**（含 Termux UID 10250） | 无需重做 |
+| deviceidle 白名单 | **持久**（com.termux / Termux:Boot） | 无需重做 |
+| 研究 App（Hail/Canta/Shizuku UI/AppManager） | **未自启** | 保持静默 |
+| `shizuku_server` | **未自启**（需 ADB 启动） | 预期行为；需要研究工具时手动启动 |
+| MemAvailable | 5.00GB（研究 App 未自启） | 重放 Quiet 后 ~4.99–5.22GB（视缓存） |
+
+### 3.4 结论
+
+- **开机自启链路稳定**：ADB 32s、8080 45s、完整服务+DSH 111s；
+- **guard v1.2 消除了开机误重启**，DSH 启动更平稳；
+- ADB 资源优化收益明显：研究 App 静默后 MemAvailable 从 3.76 → 5.0GB 级；
+- DSH token 随重启变化，统一走 `/app-login`（302）即可；
+- Console `/api/ops` 与 Ops 卡片重启后正常（公共入口 200）。
+
+> 外部告警/异地备份/MFA 仍未接入（按用户要求）。
