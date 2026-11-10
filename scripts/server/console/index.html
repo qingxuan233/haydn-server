@@ -661,16 +661,13 @@ function renderOverview(data) {
   const c = data.checks || {};
   const services = data.services || [];
   const hist = data.history || [];
-  const OPTIONAL = new Set(['runner']);
-  const required = services.filter((x) => !OPTIONAL.has(x.name));
-  const run = required.filter((x) => x.state === 'RUNNING').length;
-  const optionalDown = services.filter((x) => OPTIONAL.has(x.name) && x.state !== 'RUNNING');
+  const run = services.filter((x) => x.state === 'RUNNING').length;
   const critical = ['api', 'nginx', 'gitea', 'fileui', 'webdav', 'syncthing', 'https', 'public', 'public_https', 'dsh', 'dsh_login', 'sshd'];
   const checksOk = critical.filter((k) => c[k] && c[k].code > 0).length;
-  const overallOk = required.length && run === required.length && checksOk === critical.length;
-  $('m-svc').textContent = `${run}/${required.length}`;
-  $('m-svc-c').textContent = required.length ? (run === required.length ? ('必需正常' + (optionalDown.length ? ' · runner 按需停用' : '')) : `${required.length - run} 项异常`) : '—';
-  $('overall').innerHTML = `<span class="dot ${overallOk ? 'ok' : (required.length ? 'bad' : 'warn')}"></span>${required.length ? (overallOk ? ('全部必需服务正常' + (optionalDown.length ? ' · runner 按需停用' : '')) : `${run}/${required.length} 在线 · 检查 ${checksOk}/${critical.length}`) : '检测中…'}`;
+  const overallOk = services.length && run === services.length && checksOk === critical.length;
+  $('m-svc').textContent = `${run}/${services.length}`;
+  $('m-svc-c').textContent = services.length ? (run === services.length ? '全部正常' : `${services.length - run} 项异常`) : '—';
+  $('overall').innerHTML = `<span class="dot ${overallOk ? 'ok' : (services.length ? 'bad' : 'warn')}"></span>${services.length ? (overallOk ? '全部服务正常' : `${run}/${services.length} 在线 · 检查 ${checksOk}/${critical.length}`) : '检测中…'}`;
   $('m-cpu').textContent = s.cpu_pct == null ? '—' : `${s.cpu_pct}%`;
   $('m-cpu-c').textContent = `负载 ${s.load1 ?? '—'} · ${s.cpus ?? '—'} 核`;
   const memUsed = (s.mem_total_mb && s.mem_available_mb != null) ? ((s.mem_total_mb - s.mem_available_mb) / s.mem_total_mb * 100) : null;
@@ -729,7 +726,7 @@ function renderServices(items) {
     const h = x.health;
     const lat = h ? (h.code > 0 ? `${h.ms}ms` : '不通') : '—';
     return `<div class="svc-row" data-name="${esc(x.name)}">
-      <div class="svc-name"><span class="n">${esc(x.name)}</span><span class="p">${x.name === 'runner' ? '按需' : (x.port ? ':' + x.port : '')}</span></div>
+      <div class="svc-name"><span class="n">${esc(x.name)}</span><span class="p">${x.port ? ':' + x.port : ''}</span></div>
       ${stateBadge(x.state)}
       <div class="svc-meta">${x.uptime ? '运行 ' + esc(x.uptime) : '—'} ${x.log ? '' : '<br>无日志'}</div>
       <div class="svc-health">${lat}</div>
