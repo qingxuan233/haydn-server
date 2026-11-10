@@ -17,8 +17,11 @@ cp "$BASE/AGENTS.md" /root/AGENTS.md
 cp "$BASE/AGENTS.md" /root/server/ops/AGENTS.md
 cp "$BASE/dsh-guard.conf" /root/server/etc/conf.d/dsh-guard.conf
 
-echo "=== 2) server-backup 补丁（DSH storages/profiles + ops/bin） ==="
+echo "=== 2) server-backup 补丁（DSH storages/profiles + ops/bin + sessions） ==="
 python3 "$BASE/patch-server-backup-dsh.py"
+cp "$BASE/server-backup-sessions" /root/server/bin/server-backup-sessions
+chmod 755 /root/server/bin/server-backup-sessions
+python3 "$BASE/patch-server-backup-sessions.py"
 bash -n /root/server/bin/server-backup && echo 'server-backup syntax OK'
 
 echo "=== 3) nginx 限流 ==="

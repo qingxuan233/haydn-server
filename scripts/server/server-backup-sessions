@@ -1,0 +1,42 @@
+#!/bin/bash
+# 备份 DSH sessions（仅普通文件，排除 proot link2symlink 的 .l2s.* 伪链接）
+# 用法: server-backup-sessions [保留份数]
+set -u
+KEEP=${1:-5}
+case "$KEEP" in ''|*[!0-9]*) KEEP=5 ;; esac
+DEST=/sdcard/DSH/backups
+PASSFILE=/root/server/etc/backup-pass
+STAMP=$(date +%Y%m%d-%H%M)
+TMP=$(mktemp -d) || exit 1
+cleanup() { rm -rf "$TMP"; }
+trap cleanup EXIT
+
+[ -d /root/.dsh/sessions ] || { echo 'sessions 目录不存在，跳过'; exit 0; }
+
+mkdir -p "$DEST" 2>/dev/null
+if [ ! -w "$DEST" ]; then
+  DEST=/root/server/backups
+  mkdir -p "$DEST" || { echo '备份目录不可用' >&2; exit 1; }
+fi
+[ -s "$PASSFILE" ] || { echo '缺少备份口令' >&2; exit 1; }
+
+LIST="$TMP/list.txt"
+find /root/.dsh/sessions -type f -printf '%P\n' 2>/dev/null > "$LIST"
+if [ ! -s "$LIST" ]; then
+  echo '没有 sessions 文件，跳过'
+  exit 0
+fi
+
+tar czf "$TMP/sessions.tar.gz" --verbatim-files-from -C /root/.dsh/sessions -T "$LIST" 2>"$TMP/tar.err" \
+  || { echo "sessions tar 失败：$(tail -2 "$TMP/tar.err" | tr '\n' ' ')" >&2; exit 1; }
+tar tzf "$TMP/sessions.tar.gz" >/dev/null 2>&1 || { echo 'sessions tar 自检失败' >&2; exit 1; }
+
+FILE="$DEST/sessions-$STAMP.tar.gz.enc"
+openssl enc -aes-256-cbc -pbkdf2 -salt -pass "file:$PASSFILE" -in "$TMP/sessions.tar.gz" -out "$FILE" 2>/dev/null \
+  || { echo 'sessions 加密失败' >&2; exit 1; }
+openssl enc -d -aes-256-cbc -pbkdf2 -pass "file:$PASSFILE" -in "$FILE" 2>/dev/null | tar tzf - >/dev/null 2>&1 \
+  || { echo 'sessions 解密自检失败' >&2; exit 1; }
+sha256sum "$FILE" > "$FILE.sha256" || true
+
+ls -1t "$DEST"/sessions-*.tar.gz.enc 2>/dev/null | tail -n +$((KEEP+1)) | while read -r old; do rm -f "$old" "$old.sha256"; done
+echo "已备份 sessions $(du -h "$FILE" | cut -f1) -> $FILE"
