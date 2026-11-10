@@ -335,9 +335,44 @@ html, body { max-width: 100%; }
   .detail-grid { grid-template-columns: 1fr; }
 }
 
+
+/* ---------- 总览 / 详情双视图 ---------- */
+body.main-mode .detail-only { display: none; }
+body.details-mode .main-only { display: none; }
+.detail-hero { margin-bottom: 12px; }
+.jump a {
+  flex: 0 0 auto; border: 1px solid var(--line-2); background: var(--panel);
+  color: var(--muted); border-radius: 999px; padding: 6px 11px;
+  font: inherit; font-size: 13px; text-decoration: none; white-space: nowrap;
+}
+.device-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.device-strip > div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.device-strip .k { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.device-strip .v { display: block; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) {
+  .device-strip { grid-template-columns: 1fr 1fr; }
+}
+#detail-nav {
+  display: none;
+}
+body.details-mode #detail-nav {
+  display: flex; position: sticky; top: 0; z-index: 40; gap: 5px;
+  overflow-x: auto; padding: 7px 0 8px; margin: 0 -2px 10px;
+  background: rgba(13,17,23,.94); backdrop-filter: blur(8px); scrollbar-width: none;
+}
+#detail-nav::-webkit-scrollbar { display: none; }
+#detail-nav button {
+  flex: 0 0 auto; border: 1px solid var(--line-2); background: var(--panel);
+  color: var(--muted); border-radius: 999px; padding: 6px 11px; font: inherit;
+  font-size: 13px; min-height: 34px; cursor: pointer;
+}
+#detail-nav button.active {
+  color: var(--accent); border-color: rgba(45,212,191,.4); background: var(--accent-soft);
+}
+
 </style>
 </head>
-<body>
+<body class="main-mode">
 <div class="wrap">
 
   <header>
@@ -358,20 +393,36 @@ html, body { max-width: 100%; }
           <option value="0">停止</option>
         </select>
       </label>
+      <a class="tool main-only" href="?view=details" title="全部详情">详情</a>
       <button class="tool" id="btn-admin" type="button" title="解锁管理操作">🔒 解锁管理</button>
     </div>
   </header>
 
-  <nav class="jump" id="jump" aria-label="页面快速导航">
+  <nav class="jump main-only" id="jump" aria-label="总览快速导航">
+    <button type="button" data-jump="metrics">总览</button>
+    <button type="button" data-jump="device-card">设备</button>
+    <button type="button" data-jump="service-summary">服务</button>
+    <a href="?view=details">全部详情 →</a>
+  </nav>
+
+  <nav class="jump detail-only" id="detail-nav" aria-label="详情快速导航">
+    <a href="./">← 总览</a>
     <button type="button" data-jump="live-card">状态</button>
     <button type="button" data-jump="services-group">服务</button>
     <button type="button" data-jump="checks-group">检查</button>
+    <button type="button" data-jump="ops-audit-group">审计</button>
     <button type="button" data-jump="vault-group">账号</button>
-    <button type="button" data-jump="ops-group">运维</button>
     <button type="button" data-jump="bak-card">备份</button>
+    <button type="button" data-jump="ops-group">运维</button>
+    <button type="button" data-jump="access-card">入口</button>
   </nav>
 
-  <section class="panel" id="access-card">
+  <section class="panel detail-hero detail-only" id="detail-hero">
+    <div class="panel-head"><h2>全部详情</h2><span class="right"><a class="tool small" href="./">← 返回总览</a></span></div>
+    <div class="hint">设备与服务、检查项、DSH/ops 审计、账号密码、加密备份、访问入口与运维操作。</div>
+  </section>
+
+  <section class="panel detail-only" id="access-card">
     <div class="panel-head">
       <h2>访问入口</h2>
       <span class="right" id="access-mode">检测中…</span>
@@ -384,7 +435,7 @@ html, body { max-width: 100%; }
     <div class="hint" id="access-hint">公网访问时点「局域网 HTTP」可在同一 WiFi 下切到本地；公网 HTTP 只读，管理请用 HTTPS 或局域网。</div>
   </section>
 
-  <div class="metrics" aria-live="polite">
+  <div class="metrics main-only" id="metrics" aria-live="polite">
     <div class="metric"><div class="k">在线服务</div><div class="v" id="m-svc">—</div><div class="c" id="m-svc-c">检测中</div></div>
     <div class="metric"><div class="k">CPU 使用</div><div class="v" id="m-cpu">—</div><div class="c" id="m-cpu-c">—</div></div>
     <div class="metric"><div class="k">内存使用</div><div class="v" id="m-mem">—</div><div class="c" id="m-mem-c">—</div></div>
@@ -393,7 +444,28 @@ html, body { max-width: 100%; }
     <div class="metric"><div class="k">公网延迟</div><div class="v" id="m-pub">—</div><div class="c" id="m-pub-c">—</div></div>
   </div>
 
-  <section class="panel" id="live-card">
+  <section class="panel main-only" id="device-card">
+    <div class="panel-head"><h2>设备 / Bridge</h2><span class="right" id="bridge-badge">—</span></div>
+    <div class="device-strip">
+      <div><span class="k">运行时长</span><strong class="v" id="s-uptime">—</strong></div>
+      <div><span class="k">电池</span><strong class="v" id="s-batt">—</strong></div>
+      <div><span class="k">WiFi</span><strong class="v" id="s-wifi">—</strong></div>
+      <div><span class="k">机型 / Android</span><strong class="v" id="s-device">—</strong></div>
+    </div>
+    <div class="hint" id="bridge-hint">—</div>
+  </section>
+
+  <section class="panel main-only" id="service-summary">
+    <div class="panel-head"><h2>服务概览</h2><span class="right" id="svc-summary-badge">—</span></div>
+    <div class="hint" id="svc-summary-body">—</div>
+    <div class="access-actions">
+      <a class="tool small" href="?view=details#services-group">全部服务 →</a>
+      <a class="tool small" href="?view=details#checks-group">检查项 →</a>
+      <a class="tool small" href="?view=details">全部详情 →</a>
+    </div>
+  </section>
+
+  <section class="panel detail-only" id="live-card">
     <div class="panel-head">
       <h2>实时状态</h2>
       <span class="right" id="live-updated">—</span>
@@ -437,25 +509,25 @@ html, body { max-width: 100%; }
     </div>
   </section>
 
-  <section class="group" id="services-group">
+  <section class="group detail-only" id="services-group">
     <h2>服务健康 <span class="count" id="svc-count">—</span>
       <span class="svc-tools"><span class="search">🔎<input id="svc-search" type="search" placeholder="筛选服务" aria-label="筛选服务"></span></span>
     </h2>
     <div class="svc-list" id="svc-list"><div class="empty">加载中…</div></div>
   </section>
 
-  <section class="group" id="ops-audit-group">
+  <section class="group detail-only" id="ops-audit-group">
     <h2>DSH 控制平面 / Ops 审计 <span class="count" id="ops-audit-count">—</span></h2>
     <div class="vault-list" id="ops-audit-list"><div class="empty">加载中…</div></div>
     <div class="hint">来自 server-ops 审计（Tier1 只读 / Tier2 受控写）；DSH 状态见上方“服务健康”。</div>
   </section>
 
-  <section class="group" id="checks-group">
+  <section class="group detail-only" id="checks-group">
     <h2>检查项 <span class="count" id="check-count">—</span></h2>
     <div class="check-list" id="check-list"><div class="empty">加载中…</div></div>
   </section>
 
-  <section class="group" id="vault-group">
+  <section class="group detail-only" id="vault-group">
     <h2>账号密码 <span class="count" id="vault-count">—</span>
       <span class="svc-tools">
         <span class="search">🔎<input id="vault-search" type="search" placeholder="搜索账号 / 用户名 / 标签" aria-label="搜索账号密码"></span>
@@ -470,7 +542,7 @@ html, body { max-width: 100%; }
     <div class="hint" id="vault-hint">AES-256-CBC + HMAC 加密存储；管理 token 解锁后可查看/复制/编辑；仅 HTTPS 或局域网可读；导出文件为明文，请妥善保管。</div>
   </section>
 
-  <section class="group" id="files-group">
+  <section class="group detail-only" id="files-group">
     <h2>文件与同步 <span class="count">2 项</span></h2>
     <div class="grid">
       <a class="card" href="/files/">
@@ -488,7 +560,7 @@ html, body { max-width: 100%; }
     </div>
   </section>
 
-  <section class="group" id="code-group">
+  <section class="group detail-only" id="code-group">
     <h2>代码与 CI <span class="count">2 项</span></h2>
     <div class="grid">
       <a class="card" href="/git/">
@@ -506,7 +578,7 @@ html, body { max-width: 100%; }
     </div>
   </section>
 
-  <section class="group" id="api-group">
+  <section class="group detail-only" id="api-group">
     <h2>接口与数据 <span class="count">4 项</span></h2>
     <div class="grid">
       <a class="card" href="/api/health">
@@ -536,7 +608,7 @@ html, body { max-width: 100%; }
     </div>
   </section>
 
-  <section class="group" id="remote-group">
+  <section class="group detail-only" id="remote-group">
     <h2>远程访问 <span class="count">3 项</span></h2>
     <div class="grid">
       <div class="card cmd">
@@ -561,7 +633,7 @@ html, body { max-width: 100%; }
     </div>
   </section>
 
-  <section class="group" id="ops-group">
+  <section class="group detail-only" id="ops-group">
     <h2>快捷操作 <span class="count">受管理 token 保护</span></h2>
     <div class="actions-bar">
       <button class="tool primary" id="btn-doctor" type="button">🩺 一键体检</button>
@@ -579,13 +651,13 @@ html, body { max-width: 100%; }
     </div>
   </section>
 
-  <section class="panel" id="bak-card">
+  <section class="panel detail-only" id="bak-card">
     <div class="panel-head"><h2>最近备份</h2><span class="right"><button class="tool small" id="btn-backup2" type="button">立即备份</button></span></div>
     <div id="bak-list"><div class="empty">加载中…</div></div>
     <div class="hint">AES 加密快照，恢复用 <code>server-restore</code>；备份文件同时留在手机存储 <code>/sdcard/DSH/backups</code>。</div>
   </section>
 
-  <div class="note">
+  <div class="note detail-only">
     <b>WiFi 动态 IP：</b>局域网 IP 由 API 自动检测（当前 <span class="ip" id="note-lanip">—</span>）。IP 变化后请用固定公网入口 <code>http://47.97.70.99:48108/</code> 或 <code>https://47.97.70.99:44904/</code>；建议在路由器按 MAC 做静态租约并关闭随机 MAC，局域网入口就长期稳定。<br>
     <b>自动运行：</b>Termux:Boot 开机自启 → <code>server-up</code> → supervisord 托管 11 个服务；看门狗定期巡检，supervisord 掉了会被重新拉起。手机息屏前请确认 Termux 未被系统清理，否则整条链会停。
   </div>
@@ -679,6 +751,10 @@ const HOST = location.hostname || '127.0.0.1';
 const LAN = /^(192\.168\.|10\.|127\.|172\.(1[6-9]|2\d|3[01])\.)/.test(HOST);
 const PUB = '47.97.70.99';
 const PUBLIC_HTTPS = 'https://47.97.70.99:44904/';
+const DETAIL_MODE = new URLSearchParams(location.search).get('view') === 'details';
+document.body.classList.toggle('details-mode', DETAIL_MODE);
+document.body.classList.toggle('main-mode', !DETAIL_MODE);
+if (DETAIL_MODE) document.title = '全部详情 · 手机服务器';
 const PUBLIC_HTTP = 'http://47.97.70.99:48108/';
 const TOKEN_KEY = 'dsh-console-admin-token';
 let OVERVIEW = null;
@@ -825,6 +901,14 @@ function spark(id, values, unit = '') {
   const lbl = $('sp-' + id.split('-')[1] + '-v');
   if (lbl) lbl.textContent = `${vals[vals.length - 1].toFixed(1)}${unit}`;
 }
+let hashScrolled = false;
+function scrollCurrentHash() {
+  if (!DETAIL_MODE || !location.hash || hashScrolled) return;
+  hashScrolled = true;
+  const el = document.getElementById(location.hash.slice(1));
+  if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+}
+
 function renderOverview(data) {
   OVERVIEW = data;
   const s = data.sysinfo || {};
@@ -877,6 +961,22 @@ function renderOverview(data) {
   $('d-device').textContent = s.device_model ? `${s.device_model} · Android ${s.android_version || '?'} (${s.build_id || '?'})` : '—（未采集）';
   const wifiText = (s.wifi_ssid && s.wifi_ssid !== '<unknown ssid>') ? `${s.wifi_ssid} · ${s.wifi_rssi ?? '—'} dBm · ${s.wifi_link_speed_mbps ?? '—'} Mbps` : (s.wifi_ip ? `IP ${s.wifi_ip} · SSID 隐藏 · ${s.wifi_rssi ?? '—'} dBm` : '—（重启后打开一次 Termux:API）');
   $('d-wifi').textContent = wifiText;
+
+  // 总览摘要（详细字段仍在详情视图）
+  const bridgeSource = s.bridge_source === 'bridge' ? 'Bridge' : 'Termux 回退';
+  if ($('bridge-badge')) $('bridge-badge').textContent = bridgeSource + (s.bridge_age_s != null ? ' · ' + s.bridge_age_s + 's' : '');
+  if ($('bridge-hint')) $('bridge-hint').textContent = s.bridge_available ? 'Bridge 数据正常' : ('Bridge 不可用，已回退 Termux' + (s.bridge_error ? '：' + String(s.bridge_error).slice(0, 80) : ''));
+  if ($('s-uptime')) $('s-uptime').textContent = fmtUptime(s.uptime_s);
+  if ($('s-batt')) $('s-batt').textContent = s.battery_level == null ? '—（限制）' : `${s.battery_level}% · ${s.battery_status || '—'}`;
+  if ($('s-wifi')) $('s-wifi').textContent = s.wifi_ip ? `${s.wifi_ip} · ${s.wifi_rssi ?? '—'} dBm` : '—（限制）';
+  if ($('s-device')) $('s-device').textContent = s.device_model ? `${s.device_model} · Android ${s.android_version || '?'}` : '—';
+  if ($('svc-summary-badge')) $('svc-summary-badge').textContent = services.length ? `${run}/${services.length}` : '—';
+  if ($('svc-summary-body')) {
+    const abnormal = services.filter((x) => x.state !== 'RUNNING');
+    $('svc-summary-body').textContent = services.length
+      ? (abnormal.length ? `异常：${abnormal.map((x) => x.name + '(' + x.state + ')').join('、')}` : `全部 ${services.length} 个服务运行正常`)
+      : '等待服务数据…';
+  }
   const noteLan = $('note-lanip');
   if (noteLan) noteLan.textContent = s.lan_ip || LAN_IP || '—';
 
@@ -1165,6 +1265,7 @@ async function refreshAll(manual = false) {
     maybeSwitchByQuery();
     renderOverview(data);
     renderOps((ops && ops.items) || []);
+    scrollCurrentHash();
     if (manual) toast('已刷新', 'good');
   } catch (e) {
     $('overall').innerHTML = `<span class="dot bad"></span>状态接口不可用`;
@@ -1346,11 +1447,11 @@ document.addEventListener('click', (ev) => {
     copyText(cbtn.dataset.copyText || '', cbtn);
   }
 });
-document.querySelectorAll('#jump button').forEach((b) => {
+document.querySelectorAll('#jump button, #detail-nav button').forEach((b) => {
   b.addEventListener('click', () => {
     const target = document.getElementById(b.dataset.jump);
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    document.querySelectorAll('#jump button').forEach((x) => x.classList.toggle('active', x === b));
+    document.querySelectorAll('#jump button, #detail-nav button').forEach((x) => x.classList.toggle('active', x === b));
   });
 });
 let resizeTimer = null;
@@ -1392,6 +1493,9 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { docume
   setAdminUI();
   scheduleAuto();
   await refreshAll();
+
+
+
 })();
 </script>
 </body>
