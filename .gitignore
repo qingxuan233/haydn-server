@@ -29,3 +29,4 @@ Desktop.ini
 /scripts/server/dsh-web-cordis.patch.yml
 /scripts/server/recon-dsh-config*.sh
 __pycache__/
+/tools/apks/

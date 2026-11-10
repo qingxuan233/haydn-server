@@ -128,6 +128,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 6. **想在服务器里跑 DSH / 看 Linux 优化与 ADB 分析** → [07-DSH与Linux优化](docs/07-DSH与Linux优化.md)
 7. **想了解 bootloop 事故与重置后重建过程** → [08-事故复盘与重置重建报告](docs/08-事故复盘与重置重建报告.md)
 8. **想看下一轮性能优化方案与可行性分析** → [09-性能优化方案与可行性分析](docs/09-性能优化方案与可行性分析.md)
+9. **想看安卓/小米深度操作调研、Shizuku/自建 ADB 等技能** → [14-安卓深度操作调研与技能沉淀](docs/14-安卓深度操作调研与技能沉淀.md)
 8. **想下载整个文件夹 / 了解文件管理器增强** → [09-文件管理-文件夹打包下载](docs/09-文件管理-文件夹打包下载.md)
 9. **想了解面板为什么去掉 CI Runner / 如何按需启用** → [10-面板治理-移除CI-Runner](docs/10-面板治理-移除CI-Runner.md)
 9. **打开 DSH 时提示 authentication required / 想免 token 登录** → [10-DSH登录入口优化](docs/10-DSH登录入口优化.md)
