@@ -873,7 +873,7 @@ function renderOverview(data) {
   const battParts = [s.battery_level != null ? `${s.battery_level}%` : null, s.battery_status, s.battery_plugged, s.battery_temp_c != null ? `${s.battery_temp_c}°C` : null].filter(Boolean);
   $('d-batt').textContent = battParts.length ? battParts.join(' · ') : '—（重启后打开一次 Termux:API）';
   $('d-kernel').textContent = s.kernel || '—';
-  $('d-host').textContent = `${s.host || '—'} · ${s.arch || '—'}`;
+  $('d-host').textContent = `${s.host || '—'} · ${s.arch || '—'} · ${s.bridge_source || 'termux'}`;
   $('d-device').textContent = s.device_model ? `${s.device_model} · Android ${s.android_version || '?'} (${s.build_id || '?'})` : '—（未采集）';
   const wifiText = (s.wifi_ssid && s.wifi_ssid !== '<unknown ssid>') ? `${s.wifi_ssid} · ${s.wifi_rssi ?? '—'} dBm · ${s.wifi_link_speed_mbps ?? '—'} Mbps` : (s.wifi_ip ? `IP ${s.wifi_ip} · SSID 隐藏 · ${s.wifi_rssi ?? '—'} dBm` : '—（重启后打开一次 Termux:API）');
   $('d-wifi').textContent = wifiText;

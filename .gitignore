@@ -31,3 +31,11 @@ Desktop.ini
 __pycache__/
 /tools/apks/
 /tools/uad_lists.json
+
+# Android Bridge build artifacts / private keys
+/tools/android-sdk/
+/android-bridge/build/
+/android-bridge/assets/bridge.p12
+/android-bridge/signing.p12
+/android-bridge/certs/
+/android-bridge/_tmp*

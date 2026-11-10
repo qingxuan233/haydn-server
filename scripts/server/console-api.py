@@ -33,6 +33,11 @@ import platform
 import re
 import secrets
 import shutil
+
+try:
+    import bridge_client
+except Exception:
+    bridge_client = None
 import socket
 import ssl
 import subprocess
@@ -293,6 +298,30 @@ def sysinfo():
     up = uptime_s()
     with _hist_lock:
         latest = dict(LATEST)
+
+    try:
+        bs = bridge_client.snapshot() if bridge_client else {"ok": False, "source": "termux", "data": None}
+    except Exception:
+        bs = {"ok": False, "source": "termux", "data": None}
+    b = bs.get("data") or {}
+    bd = b.get("device") or {}
+    bb = b.get("battery") or {}
+    bw = b.get("wifi") or {}
+    bmem = b.get("memory") or {}
+    bdisk = b.get("disk") or {}
+    bth = b.get("thermal") or {}
+    bpk = b.get("packages") or {}
+
+    def bnum(obj, key, cast=float):
+        v = obj.get(key)
+        if v is None:
+            return None
+        try:
+            return cast(v)
+        except (TypeError, ValueError):
+            return None
+
+    bridge_ok = bool(bs.get("ok"))
     return {
         "host": platform.node(),
         "arch": platform.machine(),
@@ -305,40 +334,47 @@ def sysinfo():
         "load5": round(load[1], 2),
         "load15": round(load[2], 2),
         "cpu_pct": latest.get("cpu_pct") if latest.get("cpu_pct") is not None else tm.get("cpu_pct"),
-        "mem_total_mb": int(round(total / 1024)) if total else None,
-        "mem_available_mb": int(round(avail / 1024)) if avail else None,
+        "mem_total_mb": bnum(bmem, "total_mb", int) if bnum(bmem, "total_mb", int) is not None else (int(round(total / 1024)) if total else None),
+        "mem_available_mb": bnum(bmem, "available_mb", int) if bnum(bmem, "available_mb", int) is not None else (int(round(avail / 1024)) if avail else None),
         "mem_total_mb_legacy": int(round(total / 1024)) if total else None,
-        "disk_total_gb": round(du.total / 2**30, 1),
-        "disk_free_gb": round(du.free / 2**30, 1),
-        "disk_used_pct": round(du.used / du.total * 100, 1) if du.total else None,
+        "disk_total_gb": bnum(bdisk, "total_gb", float) if bnum(bdisk, "total_gb", float) is not None else round(du.total / 2**30, 1),
+        "disk_free_gb": bnum(bdisk, "free_gb", float) if bnum(bdisk, "free_gb", float) is not None else round(du.free / 2**30, 1),
+        "disk_used_pct": bnum(bdisk, "used_pct", float) if bnum(bdisk, "used_pct", float) is not None else (round(du.used / du.total * 100, 1) if du.total else None),
         "temperature_c": latest.get("temperature_c") if latest.get("temperature_c") is not None else (float(tm["thermal_max_c"]) if tm.get("thermal_max_c") else temperature_c()),
-        "battery_level": latest.get("battery_level") if latest.get("battery_level") is not None else (int(float(tm["battery_level"])) if tm.get("battery_level") else level),
-        "battery_status": latest.get("battery_status") if latest.get("battery_status") is not None else (tm.get("battery_status") or status),
-        "battery_health": tm.get("battery_health"),
-        "battery_plugged": tm.get("battery_plugged"),
-        "battery_temp_c": float(tm["battery_temp_c"]) if tm.get("battery_temp_c") else None,
-        "battery_voltage_mv": int(float(tm["battery_voltage_mv"])) if tm.get("battery_voltage_mv") else None,
-        "battery_current_ma": int(float(tm["battery_current_ma"])) if tm.get("battery_current_ma") else None,
+        "battery_level": bnum(bb, "level", int) if bnum(bb, "level", int) is not None else (int(float(tm["battery_level"])) if tm.get("battery_level") else level),
+        "battery_status": bb.get("status") or tm.get("battery_status") or status,
+        "battery_health": bb.get("health") or tm.get("battery_health"),
+        "battery_plugged": bb.get("plugged") or tm.get("battery_plugged"),
+        "battery_temp_c": bnum(bb, "temp_c", float) if bnum(bb, "temp_c", float) is not None else (float(tm["battery_temp_c"]) if tm.get("battery_temp_c") else None),
+        "battery_voltage_mv": bnum(bb, "voltage_mv", int) if bnum(bb, "voltage_mv", int) is not None else (int(float(tm["battery_voltage_mv"])) if tm.get("battery_voltage_mv") else None),
+        "battery_current_ma": bnum(bb, "current_ma", float) if bnum(bb, "current_ma", float) is not None else (int(float(tm["battery_current_ma"])) if tm.get("battery_current_ma") else None),
         "battery_cycle": int(float(tm["battery_cycle"])) if tm.get("battery_cycle") else None,
-        "device_model": tm.get("model"),
-        "device_name": tm.get("device"),
-        "android_version": tm.get("android"),
-        "android_sdk": tm.get("sdk"),
-        "build_id": tm.get("build"),
-        "package_count": int(float(tm["package_count"])) if tm.get("package_count") else None,
+        "device_model": bd.get("model") or tm.get("model"),
+        "device_name": bd.get("name") or tm.get("device"),
+        "android_version": bd.get("android") or tm.get("android"),
+        "android_sdk": bd.get("sdk") or tm.get("sdk"),
+        "build_id": bd.get("build") or tm.get("build"),
+        "oem": bd.get("oem"),
+        "package_count": bnum(bpk, "count", int) if bnum(bpk, "count", int) is not None else (int(float(tm["package_count"])) if tm.get("package_count") else None),
         "swap_total_mb": int(round(int(tm["swap_total_kb"]) / 1024)) if tm.get("swap_total_kb") else None,
         "swap_free_mb": int(round(int(tm["swap_free_kb"]) / 1024)) if tm.get("swap_free_kb") else None,
         "thermal_max_c": float(tm["thermal_max_c"]) if tm.get("thermal_max_c") else None,
         "thermal_cpu_c": float(tm["thermal_cpu_c"]) if tm.get("thermal_cpu_c") else None,
-        "thermal_battery_c": float(tm["thermal_battery_c"]) if tm.get("thermal_battery_c") else None,
-        "wifi_ssid": tm.get("wifi_ssid"),
-        "wifi_bssid": tm.get("wifi_bssid"),
-        "wifi_ip": tm.get("wifi_ip"),
-        "wifi_rssi": int(float(tm["wifi_rssi"])) if tm.get("wifi_rssi") else None,
-        "wifi_link_speed_mbps": int(float(tm["wifi_link_speed_mbps"])) if tm.get("wifi_link_speed_mbps") else None,
-        "wifi_frequency_mhz": int(float(tm["wifi_frequency_mhz"])) if tm.get("wifi_frequency_mhz") else None,
+        "thermal_battery_c": bnum(bth, "battery_c", float) if bnum(bth, "battery_c", float) is not None else (float(tm["thermal_battery_c"]) if tm.get("thermal_battery_c") else None),
+        "wifi_ssid": bw.get("ssid") if bw else tm.get("wifi_ssid"),
+        "wifi_bssid": bw.get("bssid") if bw else tm.get("wifi_bssid"),
+        "wifi_ip": bw.get("ip") or tm.get("wifi_ip"),
+        "wifi_rssi": bnum(bw, "rssi", int) if bnum(bw, "rssi", int) is not None else (int(float(tm["wifi_rssi"])) if tm.get("wifi_rssi") else None),
+        "wifi_link_speed_mbps": bnum(bw, "link_mbps", int) if bnum(bw, "link_mbps", int) is not None else (int(float(tm["wifi_link_speed_mbps"])) if tm.get("wifi_link_speed_mbps") else None),
+        "wifi_frequency_mhz": bnum(bw, "freq_mhz", int) if bnum(bw, "freq_mhz", int) is not None else (int(float(tm["wifi_frequency_mhz"])) if tm.get("wifi_frequency_mhz") else None),
         "net_rx_kbps": latest.get("net_rx_kbps"),
         "net_tx_kbps": latest.get("net_tx_kbps"),
+        "bridge_source": "bridge" if bridge_ok else "termux",
+        "bridge_available": bridge_ok,
+        "bridge_age_s": bs.get("age_s"),
+        "bridge_version": bs.get("version") or b.get("version"),
+        "bridge_last_seen": bs.get("last_seen"),
+        "bridge_error": bs.get("error"),
     }
 
 

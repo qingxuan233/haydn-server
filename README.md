@@ -16,7 +16,7 @@
 | DSH | 127.0.0.1:3081 + dsh-login 3082 + dsh-guard；`/app-login` 302，公网入口可用 |
 | Console | 8080/8443；`/api/sysinfo`、服务/备份/DSH/ops 审计；Battery/WiFi 目前来自 Termux:API |
 | 备份 | `server-backup` + `server-backup-sessions` 每日；加密；可校验恢复 |
-| Bridge APK | **尚未构建/安装**；Phase 0/1 待启动 |
+| Bridge APK | **MVP 已安装并运行（debug）**；5/5 重启通过；API `source=bridge`；待 release/24h |
 | 构建工具 | JDK 17/21 已有；**Gradle/Android SDK 未安装** |
 | 外部服务 | 未接 Uptime Kuma/异地备份/MFA/Tailscale；公网仅现有 frp 受控入口 |
 
@@ -32,8 +32,8 @@
 | 轨道 | 内容 | 状态 |
 |---|---|---|
 | **A. 服务器栈** | Termux + proot Ubuntu + supervisord + nginx + DSH + Console + 备份/审计 | ✅ 运行中 |
-| **B. Android Bridge APK** | BootReceiver + Foreground Service + loopback HTTPS + 电池/WiFi/宿主状态 | 🚧 规划/待构建 |
-| **C. 集成层** | `bridge_client.py` + `/api/sysinfo` + `server-ops bridge status` + Console/DSH | 🚧 随 B 落地 |
+| **B. Android Bridge APK** | BootReceiver + Foreground Service + loopback HTTPS + 电池/WiFi/宿主状态 | ✅ MVP 已运行（debug） |
+| **C. 集成层** | `bridge_client.py` + `/api/sysinfo` + `server-ops bridge status` + Console/DSH | ✅ 已接入 |
 
 原则：
 - **Server 是唯一聚合/存储/展示方**；Bridge 只提供宿主状态；

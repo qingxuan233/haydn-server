@@ -25,6 +25,7 @@ Tier1 只读：
   backups                        最近加密备份列表
   dsh [status|url]               dsh 状态 / token 入口（敏感）
   audit [lines]                  最近审计
+  bridge [status]                Bridge 只读状态（来源/版本/新鲜度/关键字段）
   backup-verify                  校验最新加密备份（解密+tar 列表）
 Tier2 受控写（必须带 --confirm，自动存配置快照并写审计）：
   restart <service> --confirm
@@ -127,6 +128,28 @@ case "$CMD" in
       *) usage ;;
     esac ;;
   audit) tail -n "${1:-50}" "$AUDIT" 2>/dev/null || echo '暂无审计记录' ;;
+  bridge)
+    sub="${1:-status}"
+    case "$sub" in
+      status)
+        curl -s --max-time 6 http://127.0.0.1:8080/api/sysinfo > /tmp/bridge_sysinfo.json 2>/dev/null || true
+        python3 - <<'PY'
+import json
+try:
+    d = json.load(open('/tmp/bridge_sysinfo.json'))
+    print('bridge_source=%s bridge_available=%s bridge_version=%s bridge_age_s=%s' % (
+        d.get('bridge_source'), d.get('bridge_available'), d.get('bridge_version'), d.get('bridge_age_s')))
+    print('device=%s/%s Android=%s' % (d.get('device_model'), d.get('device_name'), d.get('android_version')))
+    print('battery=%s%% %s %s %sC' % (d.get('battery_level'), d.get('battery_status'),
+                                        d.get('battery_plugged'), d.get('battery_temp_c')))
+    print('wifi_ip=%s rssi=%s link=%s' % (d.get('wifi_ip'), d.get('wifi_rssi'), d.get('wifi_link_speed_mbps')))
+    print('last_seen=%s error=%s' % (d.get('bridge_last_seen'), d.get('bridge_error')))
+except Exception as e:
+    print('bridge_status_unavailable:', e)
+PY
+        ;;
+      *) usage ;;
+    esac ;;
   backup-verify)
     f=$(latest_backup); [ -n "${f:-}" ] || { echo '没有备份文件' >&2; exit 1; }
     echo "latest=$f"
