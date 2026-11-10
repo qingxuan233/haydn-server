@@ -2,6 +2,12 @@
 # 平台工具（体积大、可重新下载，不入库）
 /tools/platform-tools/
 /tools/*.zip
+/tools/mi-unlock/
+/tools/magisk/
+/tools/firmware/
+
+# 备份与刷机物料（含个人数据/大文件）
+/backup/
 
 # 采集产物（含设备序列号等，重新运行脚本即可生成）
 /inventory/*.json

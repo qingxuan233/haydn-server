@@ -30,7 +30,7 @@
 | 能刷原生 Linux（postmarketOS/Ubuntu Touch 等）吗？ | ❌ 不可行——haydn 没有任何可刷的移植 |
 | 不解锁能用 Linux 吗？ | ✅ 可以：Termux + proot-distro（假 root、无 systemd、无容器、I/O 有损耗） |
 | 能跑 Docker 吗？ | ❌ **实测否决**：内核 `CONFIG_USER_NS`、`CONFIG_PID_NS` 未启用，容器无法创建命名空间 |
-| 想更强能力怎么办？ | 解锁 + Root + chroot（s6/supervisord），中高风险（清数据、失保修、变砖） |
+| 想更强能力怎么办？ | 解锁 + Root + chroot（s6/supervisord），中高风险（清数据、失保修、变砖）；**国行 2026 可能已关闭官方解锁，先做 Gate B0 验证（[docs/05](docs/05-B路线执行手册.md)）** |
 | 解锁后 KernelSU 还是 Magisk？ | **Magisk 优先**（5.4 QGKI 非 GKI 2.0；KernelSU 需自编译内核） |
 | 长期插电电池怎么办？ | 系统"充电保护" / Root 后 ACC 限充 60–80% + 通风散热 |
 
@@ -58,6 +58,7 @@
 │   ├── 02-可行性分析.md        ← 技术路线证据（含 §13 上机实测结论）
 │   ├── 03-操作手册.md          ← 分阶段操作步骤与命令
 │   ├── 04-风险与回滚.md        ← 风险登记册 + 回滚手册 + 准入检查表
+│   ├── 05-B路线执行手册.md      ← Gate B0 解锁验证 + 解锁/Root/chroot 全流程
 │   └── research/
 │       ├── raw-notes.md        ← 研究原始笔记与 33 条来源链接
 │       └── ...
