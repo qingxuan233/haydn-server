@@ -1,5 +1,7 @@
 # haydn-server
 
+> 更新：2026-11-11
+
 > 一台闲置的 **Redmi K40 Pro（M2012K11C / haydn / Snapdragon 888）**，改造成低功耗、可远程维护的家用 Linux 服务器 + DSH 控制面，并规划 Android Bridge APK 作为宿主感知层。
 > **当前规范总纲：[docs/28 全栈整体方案规范](docs/28-全栈整体方案规范.md)**
 > **新对话请先读：[docs/30 新会话接手指南](docs/30-新会话接手指南.md)**
@@ -14,10 +16,10 @@
 | 服务器 | Termux + proot Ubuntu；**12/12 supervisord 服务 RUNNING** |
 | 自启 | Termux:Boot → `00-server.sh` → `ubuntu.sh` → `server-up` + `server-watch`；实测 ADB 32s、8080 45s、完整服务+DSH 111s |
 | DSH | 127.0.0.1:3081 + dsh-login 3082 + dsh-guard；`/app-login` 302，公网入口可用 |
-| Console | 8080/8443；`/api/sysinfo`、服务/备份/DSH/ops 审计；Battery/WiFi 目前来自 Termux:API |
+| Console | 8080/8443；总览 + 详情双视图（[docs/34](docs/34-Console总览详情改版.md)）；Battery/WiFi 来自 Bridge |
 | 备份 | `server-backup` + `server-backup-sessions` 每日；加密；可校验恢复 |
 | Bridge APK | **MVP 已安装并运行（debug）**；5/5 重启通过；API `source=bridge`；待 release/24h |
-| 构建工具 | JDK 17/21 已有；**Gradle/Android SDK 未安装** |
+| 构建工具 | JDK 17/21；Android SDK 35 已装；无 Gradle（手工 aapt2/d8 构建） |
 | 外部服务 | 未接 Uptime Kuma/异地备份/MFA/Tailscale；公网仅现有 frp 受控入口 |
 
 **已知限制**
