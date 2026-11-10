@@ -69,3 +69,23 @@ cp -a /root/server/etc/services.d/runner.json.bak-runner-off-20261110-1745 /root
 - 修改后的面板与 `server-runner` 源码已归档到项目：
   [scripts/server/www/index.html](../scripts/server/www/index.html)、[scripts/server/bin/server-runner](../scripts/server/bin/server-runner)
 - 若以后真要用 Gitea Actions：启用 Runner 前先评估 `:host` 执行的权限边界（建议只允许私有仓库、限制可推送 workflow 的成员）。
+
+## 6. 后续变更（2026-11-10 17:59）
+
+用户评估后决定：**Runner 体量小，保留常驻运行**。
+
+| 项 | 变更 |
+|---|---|
+| `[program:runner]` | `autostart` 恢复 **true**（开机自动启动），已启动 |
+| runner 状态 | **RUNNING**（实测 RSS 约 16 MB；空闲 CPU 低） |
+| 面板卡片 | **仍保持删除**（按用户此前"删除卡片"的要求，代码与 CI 保持 2 项） |
+| 管理方式 | 仍可用 `server-runner status/on/off/logs`；重启手机后随 supervisord 自动启动 |
+
+> 回滚点不变：`dsh-server.conf.bak-runner-off-20261110-1745`（停用前）、`dsh-server.conf.bak-runner-on-20261110-1800`（恢复运行前）。面板卡片恢复仍可用 `index.html.bak-runner-off-20261110-1745`。
+
+## 7. 变更记录
+
+| 时间 | 变更 | 结果 |
+|---|---|---|
+| 17:45 | 停用 runner、移除面板卡片（代码与 CI 3→2） | STOPPED；面板 0 次 |
+| 17:59 | 用户决定保留运行：autostart 恢复 true、已启动 | RUNNING（约 16MB） |

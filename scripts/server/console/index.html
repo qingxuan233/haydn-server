@@ -62,6 +62,19 @@ h1 { font-size: 19px; margin: 0; letter-spacing: .3px; }
 .tool.danger { color: var(--bad); border-color: rgba(240,97,109,.35); }
 .tool:disabled { opacity: .45; cursor: not-allowed; }
 
+/* ---------- 访问入口切换 ---------- */
+.access-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.access-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 11px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel-2); color: inherit; text-decoration: none; transition: border-color .15s, background .15s; }
+.access-item:hover { border-color: #3a475d; background: #1e2632; }
+.access-item .a-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11.5px; }
+.access-item .a-url { font: 11.5px/1.45 ui-monospace, Menlo, Consolas, monospace; color: #cfe0ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.access-item .a-note { color: var(--dim); font-size: 10.5px; }
+.access-item.current { border-color: rgba(45,212,191,.42); background: var(--accent-soft); }
+.access-item.current .a-label::after { content: "当前"; color: var(--accent); border: 1px solid rgba(45,212,191,.3); border-radius: 999px; padding: 0 6px; font-size: 10px; }
+.access-item .tag-mini { color: var(--dim); border: 1px solid var(--line); border-radius: 999px; padding: 0 5px; font-size: 10px; }
+.access-item.disabled { opacity: .5; pointer-events: none; }
+.access-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 9px; }
+
 /* ---------- 指标 ---------- */
 .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 .metric { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 12px; min-width: 0; }
@@ -249,6 +262,19 @@ a, button { touch-action: manipulation; }
     </div>
   </header>
 
+  <section class="panel" id="access-card">
+    <div class="panel-head">
+      <h2>访问入口</h2>
+      <span class="right" id="access-mode">检测中…</span>
+    </div>
+    <div class="access-grid" id="access-grid"><div class="empty">检测中…</div></div>
+    <div class="access-actions">
+      <button class="tool small" type="button" id="btn-copy-lan">复制局域网地址</button>
+      <button class="tool small" type="button" id="btn-copy-public">复制公网 HTTPS</button>
+    </div>
+    <div class="hint" id="access-hint">公网访问时点「局域网 HTTP」可在同一 WiFi 下切到本地；公网 HTTP 只读，管理请用 HTTPS 或局域网。</div>
+  </section>
+
   <div class="metrics" aria-live="polite">
     <div class="metric"><div class="k">在线服务</div><div class="v" id="m-svc">—</div><div class="c" id="m-svc-c">检测中</div></div>
     <div class="metric"><div class="k">CPU 使用</div><div class="v" id="m-cpu">—</div><div class="c" id="m-cpu-c">—</div></div>
@@ -331,19 +357,13 @@ a, button { touch-action: manipulation; }
   </section>
 
   <section class="group">
-    <h2>代码与 CI <span class="count">3 项</span></h2>
+    <h2>代码与 CI <span class="count">2 项</span></h2>
     <div class="grid">
       <a class="card" href="/git/">
         <div class="card-top"><span class="ico teal">⎇</span><span class="state" data-dot="gitea"></span></div>
         <div class="t">Gitea</div>
         <div class="d">私有 Git 仓库：代码托管、Issues、Pull Request、Actions</div>
         <div class="tags"><span class="tag">Git</span><span class="tag dim">/git/</span></div>
-      </a>
-      <a class="card" href="/git/">
-        <div class="card-top"><span class="ico gray">⚙</span><span class="state"><span class="dot ok"></span>已启用</span></div>
-        <div class="t">CI Runner</div>
-        <div class="d">容器内 Gitea Actions 执行器，推送后自动跑构建</div>
-        <div class="tags"><span class="tag dim">Actions</span></div>
       </a>
       <div class="card cmd">
         <div class="card-top"><span class="ico blue">⌘</span><span class="state">密钥登录</span></div>
@@ -491,6 +511,8 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 const HOST = location.hostname || '127.0.0.1';
 const LAN = /^(192\.168\.|10\.|127\.|172\.(1[6-9]|2\d|3[01])\.)/.test(HOST);
 const PUB = '47.97.70.99';
+const PUBLIC_HTTPS = 'https://47.97.70.99:44904/';
+const PUBLIC_HTTP = 'http://47.97.70.99:48108/';
 const TOKEN_KEY = 'dsh-console-admin-token';
 let OVERVIEW = null;
 let META = { version: '', lan: LAN, admin: false, action_required: false, lan_ip: '' };
@@ -554,6 +576,46 @@ function fillLinks() {
   $('cmd-ssh-pub').textContent = 'ssh -i ~/.ssh/phone_server_ed25519 -p 13872 root@47.97.70.99';
   $('cmd-git').textContent = `ssh://root@qx.qingxuan.bbs0.cc:26249/${LAN ? 'gitadmin' : '<用户名>'}/<仓库>.git`;
 }
+function sameTarget(url) {
+  try {
+    const u = new URL(url, location.href);
+    return u.host === location.host && u.protocol === location.protocol;
+  } catch { return false; }
+}
+function renderAccess() {
+  const lanHost = LAN_IP || (LAN ? HOST : '');
+  const entries = [
+    { key: 'lan-http', label: '局域网 HTTP', url: lanHost ? `http://${lanHost}:8080/` : '', note: '同一 WiFi · 可管理' },
+    { key: 'lan-https', label: '局域网 HTTPS', url: lanHost ? `https://${lanHost}:8443/` : '', note: '自签证书 · 可管理' },
+    { key: 'pub-https', label: '公网 HTTPS', url: PUBLIC_HTTPS, note: '固定地址 · 可管理' },
+    { key: 'pub-http', label: '公网 HTTP', url: PUBLIC_HTTP, note: '固定地址 · 只读' },
+  ];
+  $('access-mode').textContent = LAN ? '当前：局域网访问' : '当前：公网访问';
+  $('access-grid').innerHTML = entries.map((e) => {
+    const disabled = !e.url;
+    const cur = e.url && sameTarget(e.url);
+    return `<a class="access-item ${cur ? 'current' : ''} ${disabled ? 'disabled' : ''}" href="${disabled ? '#' : esc(e.url)}" title="${disabled ? '尚未检测到局域网 IP' : '点击切换'}">
+      <span class="a-label">${esc(e.label)} ${e.key === 'pub-http' ? '<span class="tag-mini">只读</span>' : ''}</span>
+      <span class="a-url">${esc(e.url || '检测中…')}</span>
+      <span class="a-note">${esc(e.note)}</span>
+    </a>`;
+  }).join('');
+  $('access-hint').innerHTML = LAN
+    ? '当前通过局域网访问；收藏 <code>?to=public</code> 可自动切到固定公网 HTTPS。'
+    : `当前通过公网访问；点「局域网 HTTP」需与手机在同一 WiFi。收藏 <code>?to=lan</code> 可自动切到当前局域网 IP。${lanHost ? '' : '（正在检测局域网 IP…）'}`;
+}
+function maybeSwitchByQuery() {
+  const to = new URLSearchParams(location.search).get('to');
+  if (!to) return;
+  if (to === 'lan' && !LAN && LAN_IP) {
+    location.replace(`http://${LAN_IP}:8080/`);
+  } else if (to === 'public' && LAN) {
+    location.replace(PUBLIC_HTTPS);
+  } else if (to === 'public-http' && LAN) {
+    location.replace(PUBLIC_HTTP);
+  }
+}
+
 async function copyText(text, btn) {
   try { await navigator.clipboard.writeText(text); }
   catch {
@@ -599,13 +661,16 @@ function renderOverview(data) {
   const c = data.checks || {};
   const services = data.services || [];
   const hist = data.history || [];
-  const run = services.filter((x) => x.state === 'RUNNING').length;
+  const OPTIONAL = new Set(['runner']);
+  const required = services.filter((x) => !OPTIONAL.has(x.name));
+  const run = required.filter((x) => x.state === 'RUNNING').length;
+  const optionalDown = services.filter((x) => OPTIONAL.has(x.name) && x.state !== 'RUNNING');
   const critical = ['api', 'nginx', 'gitea', 'fileui', 'webdav', 'syncthing', 'https', 'public', 'public_https', 'dsh', 'dsh_login', 'sshd'];
   const checksOk = critical.filter((k) => c[k] && c[k].code > 0).length;
-  const overallOk = services.length && run === services.length && checksOk === critical.length;
-  $('m-svc').textContent = `${run}/${services.length}`;
-  $('m-svc-c').textContent = services.length ? (run === services.length ? '全部正常' : `${services.length - run} 项异常`) : '—';
-  $('overall').innerHTML = `<span class="dot ${overallOk ? 'ok' : (services.length ? 'bad' : 'warn')}"></span>${services.length ? (overallOk ? '全部服务正常' : `${run}/${services.length} 在线 · 检查 ${checksOk}/${critical.length}`) : '检测中…'}`;
+  const overallOk = required.length && run === required.length && checksOk === critical.length;
+  $('m-svc').textContent = `${run}/${required.length}`;
+  $('m-svc-c').textContent = required.length ? (run === required.length ? ('必需正常' + (optionalDown.length ? ' · runner 按需停用' : '')) : `${required.length - run} 项异常`) : '—';
+  $('overall').innerHTML = `<span class="dot ${overallOk ? 'ok' : (required.length ? 'bad' : 'warn')}"></span>${required.length ? (overallOk ? ('全部必需服务正常' + (optionalDown.length ? ' · runner 按需停用' : '')) : `${run}/${required.length} 在线 · 检查 ${checksOk}/${critical.length}`) : '检测中…'}`;
   $('m-cpu').textContent = s.cpu_pct == null ? '—' : `${s.cpu_pct}%`;
   $('m-cpu-c').textContent = `负载 ${s.load1 ?? '—'} · ${s.cpus ?? '—'} 核`;
   const memUsed = (s.mem_total_mb && s.mem_available_mb != null) ? ((s.mem_total_mb - s.mem_available_mb) / s.mem_total_mb * 100) : null;
@@ -664,7 +729,7 @@ function renderServices(items) {
     const h = x.health;
     const lat = h ? (h.code > 0 ? `${h.ms}ms` : '不通') : '—';
     return `<div class="svc-row" data-name="${esc(x.name)}">
-      <div class="svc-name"><span class="n">${esc(x.name)}</span><span class="p">${x.port ? ':' + x.port : ''}</span></div>
+      <div class="svc-name"><span class="n">${esc(x.name)}</span><span class="p">${x.name === 'runner' ? '按需' : (x.port ? ':' + x.port : '')}</span></div>
       ${stateBadge(x.state)}
       <div class="svc-meta">${x.uptime ? '运行 ' + esc(x.uptime) : '—'} ${x.log ? '' : '<br>无日志'}</div>
       <div class="svc-health">${lat}</div>
@@ -720,6 +785,8 @@ async function refreshAll(manual = false) {
     LAN_IP = (data.sysinfo && data.sysinfo.lan_ip) || meta.lan_ip || '';
     setAdminUI();
     fillLinks();
+    renderAccess();
+    maybeSwitchByQuery();
     renderOverview(data);
     if (manual) toast('已刷新', 'good');
   } catch (e) {
@@ -838,6 +905,12 @@ document.addEventListener('click', (ev) => {
 });
 $('btn-refresh').onclick = () => refreshAll(true);
 $('btn-refresh2').onclick = () => refreshAll(true);
+$('btn-copy-lan').onclick = () => {
+  const lanHost = LAN_IP || (LAN ? HOST : '');
+  if (!lanHost) { toast('尚未检测到局域网 IP', 'bad'); return; }
+  copyText(`http://${lanHost}:8080/`);
+};
+$('btn-copy-public').onclick = () => copyText(PUBLIC_HTTPS);
 $('auto-refresh').onchange = scheduleAuto;
 $('btn-admin').onclick = openAdmin;
 $('admin-close').onclick = $('admin-cancel').onclick = () => hideModal('admin-modal');
@@ -868,6 +941,8 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { docume
 
 (async () => {
   fillLinks();
+  renderAccess();
+  maybeSwitchByQuery();
   setAdminUI();
   scheduleAuto();
   await refreshAll();
