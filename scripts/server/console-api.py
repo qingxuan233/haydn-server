@@ -24,6 +24,8 @@
 """
 import base64
 import glob
+import hashlib
+import hmac
 import ipaddress
 import json
 import os
@@ -52,6 +54,10 @@ CONF = "/root/server/etc/supervisord.conf"
 CONF_GLOB = "/root/server/etc/conf.d/*.conf"
 TOKEN_FILE = "/root/server/etc/console-action.token"
 AUDIT_FILE = os.path.join(LOG_DIR, "console-actions.jsonl")
+VAULT_FILE = "/root/server/etc/vault.enc"
+VAULT_KEY = "/root/server/etc/vault.key"
+VAULT_AUDIT = os.path.join(LOG_DIR, "vault-actions.jsonl")
+VAULT_MAX_ENTRIES = 500
 WATCH_METRICS = os.path.join(LOG_DIR, "metrics.jsonl")
 TERMUX_METRICS = "/hosthome/server-metrics.txt"
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
@@ -658,6 +664,136 @@ def write_audit(entry):
         pass
 
 
+def _vault_master_key():
+    data = read_text(VAULT_KEY)
+    if data:
+        try:
+            raw = bytes.fromhex(data.strip())
+            if len(raw) == 32:
+                return raw
+        except ValueError:
+            pass
+    raw = secrets.token_bytes(32)
+    os.makedirs(os.path.dirname(VAULT_KEY), exist_ok=True)
+    try:
+        os.unlink(VAULT_KEY)
+    except OSError:
+        pass
+    fd = os.open(VAULT_KEY, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.write(fd, raw.hex().encode())
+    finally:
+        os.close(fd)
+    return raw
+
+
+def _vault_keys():
+    master = _vault_master_key()
+    enc = hmac.new(master, b"dsh-vault-enc", hashlib.sha256).digest()
+    mac = hmac.new(master, b"dsh-vault-mac", hashlib.sha256).digest()
+    return enc, mac
+
+
+def _openssl_vault(args, data):
+    p = subprocess.run(["openssl"] + args, input=data, capture_output=True, timeout=15)
+    if p.returncode != 0:
+        raise RuntimeError("openssl error: " + (p.stderr or b"").decode("utf-8", "ignore")[:160])
+    return p.stdout
+
+
+def _vault_encrypt_text(text):
+    enc, mac = _vault_keys()
+    iv = secrets.token_bytes(16)
+    ct = _openssl_vault(["enc", "-aes-256-cbc", "-K", enc.hex(), "-iv", iv.hex(), "-nosalt"], text.encode("utf-8"))
+    tag = hmac.new(mac, iv + ct, hashlib.sha256).hexdigest()
+    return {"v": 1, "iv": iv.hex(), "ct": base64.b64encode(ct).decode("ascii"), "mac": tag}
+
+
+def _vault_decrypt_text(wrapper):
+    enc, mac = _vault_keys()
+    try:
+        iv = bytes.fromhex(wrapper["iv"])
+        ct = base64.b64decode(wrapper["ct"])
+        expected = hmac.new(mac, iv + ct, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, str(wrapper.get("mac", ""))):
+            raise RuntimeError("vault MAC 校验失败")
+        return _openssl_vault(["enc", "-d", "-aes-256-cbc", "-K", enc.hex(), "-iv", iv.hex(), "-nosalt"], ct).decode("utf-8")
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError("vault 解密失败: %s" % (exc,))
+
+
+def _vault_load():
+    raw = read_text(VAULT_FILE)
+    if not raw:
+        return []
+    try:
+        wrapper = json.loads(raw)
+        text = _vault_decrypt_text(wrapper)
+        data = json.loads(text)
+        entries = data.get("entries")
+        return entries if isinstance(entries, list) else []
+    except Exception as exc:
+        raise RuntimeError("保险库读取失败（密钥不匹配或文件损坏）: %s" % (exc,))
+
+
+def _vault_save(entries):
+    os.makedirs(os.path.dirname(VAULT_FILE), exist_ok=True)
+    payload = {"version": 1, "entries": entries}
+    wrapper = _vault_encrypt_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+    tmp = VAULT_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(wrapper, fh, ensure_ascii=False, separators=(",", ":"))
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, VAULT_FILE)
+
+
+def _vault_audit(action, entry, client_ip):
+    try:
+        record = {
+            "at": _fmt_iso(),
+            "action": action,
+            "id": entry.get("id") if isinstance(entry, dict) else None,
+            "title": entry.get("title") if isinstance(entry, dict) else None,
+            "client": client_ip,
+        }
+        os.makedirs(LOG_DIR, exist_ok=True)
+        with open(VAULT_AUDIT, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def _vault_clean_entry(payload, existing=None):
+    existing = existing or {}
+    title = str(payload.get("title") or existing.get("title") or "").strip()
+    if not title:
+        raise ValueError("名称不能为空")
+    if len(title) > 120:
+        raise ValueError("名称太长（最多 120 字）")
+
+    def field(name, limit=2000):
+        val = payload.get(name, existing.get(name, ""))
+        if val is None:
+            return ""
+        val = str(val)
+        return val[:limit]
+
+    now = _fmt_iso()
+    return {
+        "id": existing.get("id") or secrets.token_hex(8),
+        "title": title,
+        "username": field("username", 300),
+        "password": field("password", 2000),
+        "url": field("url", 500),
+        "tags": field("tags", 300),
+        "notes": field("notes", 4000),
+        "created": existing.get("created") or now,
+        "updated": now,
+    }
+
+
 def run_cmd(args, timeout=20):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 
@@ -742,10 +878,23 @@ class Handler(BaseHTTPRequestHandler):
     def _admin(self):
         return valid_token(self.headers.get("X-Console-Token", ""))
 
-    def _read_json(self):
+    def _vault_guard(self):
+        if not self._admin():
+            self._send(401, {"ok": False, "error": "保险库需要管理 token（先解锁管理）"})
+            return False
+        if not self._secure_or_lan():
+            self._send(403, {"ok": False, "error": "保险库仅限 HTTPS 或局域网，请改用 https:// 入口"})
+            return False
+        return True
+
+    def _vault_response(self, entries):
+        entries = sorted(entries, key=lambda x: (x.get("title") or "").lower())
+        self._send(200, {"ok": True, "count": len(entries), "items": entries, "updated": _fmt_iso()})
+
+    def _read_json(self, limit=64 * 1024):
         try:
             n = int(self.headers.get("Content-Length", "0") or 0)
-            if n <= 0 or n > 64 * 1024:
+            if n <= 0 or n > limit:
                 return {}
             return json.loads(self.rfile.read(n).decode("utf-8", "ignore"))
         except Exception:
@@ -783,6 +932,15 @@ class Handler(BaseHTTPRequestHandler):
                 })
             elif path == "/api/backups":
                 self._send(200, {"items": list_backups()})
+            elif path == "/api/vault":
+                if not self._vault_guard():
+                    return
+                self._vault_response(_vault_load())
+            elif path == "/api/vault/export":
+                if not self._vault_guard():
+                    return
+                entries = sorted(_vault_load(), key=lambda x: (x.get("title") or "").lower())
+                self._send(200, {"version": 1, "exported_at": _fmt_iso(), "entries": entries})
             elif path == "/api/meta":
                 self._send(200, {
                     "version": API_VERSION,
@@ -815,9 +973,117 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             self._send(500, {"ok": False, "error": repr(e)})
 
+    def _vault_save_entry(self):
+        if not self._vault_guard():
+            return
+        payload = self._read_json()
+        try:
+            entries = _vault_load()
+        except RuntimeError as exc:
+            self._send(500, {"ok": False, "error": str(exc)})
+            return
+        eid = str(payload.get("id") or "")
+        existing = None
+        for item in entries:
+            if item.get("id") == eid:
+                existing = item
+                break
+        if existing is None and len(entries) >= VAULT_MAX_ENTRIES:
+            self._send(409, {"ok": False, "error": "保险库条目已达上限 (%d)" % VAULT_MAX_ENTRIES})
+            return
+        try:
+            entry = _vault_clean_entry(payload, existing)
+        except ValueError as exc:
+            self._send(400, {"ok": False, "error": str(exc)})
+            return
+        if existing is None:
+            entries.append(entry)
+        else:
+            entries[entries.index(existing)] = entry
+        try:
+            _vault_save(entries)
+        except Exception as exc:
+            self._send(500, {"ok": False, "error": "保存失败: %s" % (exc,)})
+            return
+        _vault_audit("update" if existing else "create", entry, self._client_ip())
+        self._send(200, {"ok": True, "entry": entry, "count": len(entries)})
+
+    def _vault_delete(self):
+        if not self._vault_guard():
+            return
+        payload = self._read_json()
+        eid = str(payload.get("id") or "")
+        if not eid:
+            self._send(400, {"ok": False, "error": "缺少 id"})
+            return
+        try:
+            entries = _vault_load()
+        except RuntimeError as exc:
+            self._send(500, {"ok": False, "error": str(exc)})
+            return
+        target = next((x for x in entries if x.get("id") == eid), None)
+        if not target:
+            self._send(404, {"ok": False, "error": "条目不存在"})
+            return
+        entries = [x for x in entries if x.get("id") != eid]
+        try:
+            _vault_save(entries)
+        except Exception as exc:
+            self._send(500, {"ok": False, "error": "保存失败: %s" % (exc,)})
+            return
+        _vault_audit("delete", target, self._client_ip())
+        self._send(200, {"ok": True, "count": len(entries)})
+
+    def _vault_import(self):
+        if not self._vault_guard():
+            return
+        payload = self._read_json(512 * 1024)
+        incoming = payload.get("entries") if isinstance(payload, dict) else payload
+        if not isinstance(incoming, list):
+            self._send(400, {"ok": False, "error": "导入格式应为 {entries: [...]} 或数组"})
+            return
+        try:
+            entries = _vault_load()
+        except RuntimeError as exc:
+            self._send(500, {"ok": False, "error": str(exc)})
+            return
+        imported = 0
+        for item in incoming:
+            if not isinstance(item, dict):
+                continue
+            eid = str(item.get("id") or "")
+            existing = next((x for x in entries if x.get("id") == eid), None) if eid else None
+            try:
+                entry = _vault_clean_entry(item, existing)
+            except ValueError:
+                continue
+            if existing is None:
+                if len(entries) >= VAULT_MAX_ENTRIES:
+                    break
+                entries.append(entry)
+            else:
+                entries[entries.index(existing)] = entry
+            imported += 1
+        try:
+            _vault_save(entries)
+        except Exception as exc:
+            self._send(500, {"ok": False, "error": "保存失败: %s" % (exc,)})
+            return
+        _vault_audit("import", {"title": "%d entries" % imported}, self._client_ip())
+        self._send(200, {"ok": True, "imported": imported, "count": len(entries)})
+
     def do_POST(self):
         u = urlparse(self.path)
         path = u.path.rstrip("/")
+        if path == "/api/vault":
+            self._vault_save_entry()
+            return
+        if path == "/api/vault/delete":
+            self._vault_delete()
+            return
+        if path == "/api/vault/import":
+            self._vault_import()
+            return
         if path != "/api/action":
             self._send(404, {"ok": False, "error": "not found"})
             return

@@ -140,6 +140,30 @@ h1 { font-size: 19px; margin: 0; letter-spacing: .3px; }
 .check-row .d { color: var(--dim); font-size: 11px; }
 .check-row .ms { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
 
+/* ---------- 账号密码保险库 ---------- */
+.vault-list { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.vault-row { display: grid; grid-template-columns: minmax(150px, 1.5fr) minmax(110px, 1fr) minmax(90px, .8fr) auto; gap: 8px; align-items: center; padding: 10px 13px; border-bottom: 1px solid #1c222c; min-width: 0; }
+.vault-row:last-child { border-bottom: 0; }
+.vault-name { min-width: 0; }
+.vault-name .vt { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+.vault-name .vu { color: var(--dim); font-size: 11.5px; overflow-wrap: anywhere; }
+.vault-url { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+.vault-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.vault-ops { display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; }
+.vault-ops .tool { min-height: 28px; padding: 3px 8px; font-size: 11.5px; }
+.vault-detail .vrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #1e242f; font-size: 12.5px; flex-wrap: wrap; }
+.vault-detail .vrow:first-child { border-top: 0; }
+.vault-detail .vk { color: var(--muted); flex: 0 0 62px; }
+.vault-detail .vv { flex: 1 1 auto; min-width: 0; color: var(--text); overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vault-detail .vv code { font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; color: #cfe0ff; }
+.vault-detail .vnotes { color: var(--muted); white-space: pre-wrap; }
+.vault-form .fl { color: var(--muted); font-size: 12px; margin: 8px 0 4px; }
+.vault-form input, .vault-form textarea { width: 100%; background: #0e131a; border: 1px solid var(--line-2); color: var(--text); border-radius: 8px; padding: 7px 9px; font: 13px/1.5 inherit; outline: 0; }
+.vault-form textarea { min-height: 76px; resize: vertical; }
+.vault-form .pw-row { display: flex; gap: 6px; }
+.vault-form .pw-row input { flex: 1 1 auto; }
+.vault-warn { color: var(--warn); font-size: 11.5px; margin-top: 8px; }
+
 /* ---------- 原有卡片 ---------- */
 .card { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 12px 12px 11px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); color: inherit; text-decoration: none; transition: border-color .15s, transform .12s, background .15s; touch-action: manipulation; }
 .card:active { transform: scale(.985); border-color: #38455c; }
@@ -338,6 +362,21 @@ a, button { touch-action: manipulation; }
     <div class="check-list" id="check-list"><div class="empty">加载中…</div></div>
   </section>
 
+  <section class="group" id="vault-group">
+    <h2>账号密码 <span class="count" id="vault-count">—</span>
+      <span class="svc-tools">
+        <span class="search">🔎<input id="vault-search" type="search" placeholder="搜索账号 / 用户名 / 标签" aria-label="搜索账号密码"></span>
+        <button class="tool small" id="btn-vault-new" type="button">＋ 新增</button>
+        <button class="tool small" id="btn-vault-export" type="button">导出</button>
+        <button class="tool small" id="btn-vault-import" type="button">导入</button>
+        <button class="tool small" id="btn-vault-refresh" type="button">刷新</button>
+        <input id="vault-import-file" type="file" accept=".json,application/json" hidden>
+      </span>
+    </h2>
+    <div class="vault-list" id="vault-list"><div class="empty">解锁管理后可查看（AES-256 加密存储）</div></div>
+    <div class="hint" id="vault-hint">AES-256-CBC + HMAC 加密存储；管理 token 解锁后可查看/复制/编辑；仅 HTTPS 或局域网可读；导出文件为明文，请妥善保管。</div>
+  </section>
+
   <section class="group">
     <h2>文件与同步 <span class="count">2 项</span></h2>
     <div class="grid">
@@ -503,6 +542,41 @@ a, button { touch-action: manipulation; }
   </div>
 </div>
 
+<div class="modal" id="vault-view-modal" role="dialog" aria-modal="true" aria-labelledby="vault-view-title">
+  <div class="box" style="max-width:640px">
+    <div class="bar"><h3 id="vault-view-title">账号详情</h3><span class="right"><button class="tool small" id="vault-view-close" type="button">✕</button></span></div>
+    <div class="body"><div class="vault-detail" id="vault-view-body"></div></div>
+    <div class="foot">
+      <button class="tool danger" id="vault-view-delete" type="button">删除</button>
+      <button class="tool" id="vault-view-edit" type="button">编辑</button>
+      <button class="tool primary" id="vault-view-close2" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="vault-edit-modal" role="dialog" aria-modal="true" aria-labelledby="vault-edit-title">
+  <div class="box" style="max-width:600px">
+    <div class="bar"><h3 id="vault-edit-title">新增账号密码</h3><span class="right"><button class="tool small" id="vault-edit-close" type="button">✕</button></span></div>
+    <div class="body vault-form">
+      <input type="hidden" id="vault-id">
+      <label class="fl" for="vault-title">名称 *</label>
+      <input id="vault-title" type="text" autocomplete="off" placeholder="例如：GitHub / 路由器管理 / Gitea">
+      <label class="fl" for="vault-username">用户名</label>
+      <input id="vault-username" type="text" autocomplete="off" placeholder="账号或邮箱">
+      <label class="fl" for="vault-password">密码</label>
+      <div class="pw-row"><input id="vault-password" type="password" autocomplete="off" placeholder="密码"><button class="tool small" id="vault-pw-toggle" type="button">显示</button></div>
+      <label class="fl" for="vault-url">网址（可选）</label>
+      <input id="vault-url" type="text" autocomplete="off" placeholder="https://…">
+      <label class="fl" for="vault-tags">标签（逗号分隔）</label>
+      <input id="vault-tags" type="text" autocomplete="off" placeholder="work, server, 常用">
+      <label class="fl" for="vault-notes">备注</label>
+      <textarea id="vault-notes" placeholder="额外的说明、恢复码、到期时间等"></textarea>
+      <div class="vault-warn">密码将以 AES-256 + HMAC 加密后保存到服务器；仅通过管理 token + HTTPS/局域网可读取。</div>
+    </div>
+    <div class="foot"><button class="tool" id="vault-edit-cancel" type="button">取消</button><button class="tool primary" id="vault-edit-save" type="button">保存</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -517,6 +591,7 @@ const TOKEN_KEY = 'dsh-console-admin-token';
 let OVERVIEW = null;
 let META = { version: '', lan: LAN, admin: false, action_required: false, lan_ip: '' };
 let LAN_IP = '';
+const VAULT = { items: [], loaded: false, current: null };
 let adminToken = sessionStorage.getItem(TOKEN_KEY) || '';
 let timer = null;
 let loading = false;
@@ -765,6 +840,179 @@ function renderChecks(c) {
   }).join('') + `<div class="check-row"><div><div class="n">TLS 证书</div><div class="d">本机 8443 / 公网 44904</div></div><span class="state ${((c.cert_local_days ?? 999) > 7) ? 'good' : 'bad'}"><span class="dot ${((c.cert_local_days ?? 999) > 7) ? 'ok' : 'bad'}"></span>${c.cert_local_days ?? '—'} 天</span><span class="ms">公网 ${c.cert_public_days ?? '—'} 天</span></div>`;
   $('check-count').textContent = `${ok}/${keys.length} 正常`;
 }
+function vaultTagChips(tags) {
+  const parts = String(tags || '').split(/[,，]+/).map((s) => s.trim()).filter(Boolean).slice(0, 8);
+  return parts.length ? parts.map((t) => `<span class="tag dim">${esc(t)}</span>`).join('') : '<span class="tag dim">无标签</span>';
+}
+function renderVault() {
+  const admin = !!META.admin;
+  const q = ($('vault-search') && $('vault-search').value || '').trim().toLowerCase();
+  $('vault-count').textContent = admin ? `${(VAULT.items || []).length} 条` : '🔒 未解锁';
+  if (!admin) {
+    $('vault-list').innerHTML = '<div class="empty">解锁管理后可查看账号密码（AES-256 加密存储）。点击右上角「解锁管理」。</div>';
+    $('vault-hint').textContent = 'AES-256-CBC + HMAC 加密存储；解锁管理后可查看/复制/编辑；仅 HTTPS 或局域网可读。';
+    return;
+  }
+  const items = (VAULT.items || []).filter((e) => {
+    if (!q) return true;
+    return [e.title, e.username, e.url, e.tags, e.notes].join(' ').toLowerCase().includes(q);
+  });
+  if (!items.length) {
+    $('vault-list').innerHTML = `<div class="empty">${VAULT.items.length ? '没有匹配的账号' : '还没有保存账号密码，点「＋ 新增」添加第一个。'}</div>`;
+  } else {
+    $('vault-list').innerHTML = items.map((e) => `<div class="vault-row">
+      <div class="vault-name"><div class="vt">${esc(e.title)}</div><div class="vu">${esc(e.username || '无用户名')}</div></div>
+      <div class="vault-url">${e.url ? esc(e.url) : '—'}</div>
+      <div class="vault-tags">${vaultTagChips(e.tags)}</div>
+      <div class="vault-ops">
+        <button class="tool small" data-vault="view" data-id="${esc(e.id)}">查看</button>
+        <button class="tool small" data-vault="edit" data-id="${esc(e.id)}">编辑</button>
+        <button class="tool small" data-vault="del" data-id="${esc(e.id)}">删除</button>
+      </div>
+    </div>`).join('');
+  }
+  $('vault-hint').textContent = 'AES-256-CBC + HMAC 加密存储；导出文件为明文，请妥善保管；按管理 token 解锁后方可读取。';
+}
+async function loadVault(force = false) {
+  if (!META.admin) {
+    VAULT.items = [];
+    VAULT.loaded = false;
+    renderVault();
+    return;
+  }
+  if (VAULT.loaded && !force) return;
+  try {
+    const data = await apiFetch('/api/vault');
+    VAULT.items = data.items || [];
+    VAULT.loaded = true;
+    renderVault();
+  } catch (e) {
+    VAULT.loaded = false;
+    $('vault-list').innerHTML = `<div class="empty">保险库读取失败：${esc(e.message)}${e.status === 403 ? '（请用 HTTPS 或局域网入口）' : ''}</div>`;
+    if (e.status === 401 || e.status === 403) openAdmin();
+  }
+}
+function openVaultView(entry) {
+  VAULT.current = entry;
+  $('vault-view-title').textContent = entry.title;
+  const safeUrl = /^https?:\/\//i.test(entry.url || '') ? entry.url : '';
+  const urlHtml = safeUrl
+    ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener">${esc(entry.url)}</a><button class="tool small" data-copy-text="${esc(entry.url)}">复制</button>`
+    : `${esc(entry.url || '—')}`;
+  $('vault-view-body').innerHTML = `
+    <div class="vrow"><span class="vk">用户名</span><span class="vv"><code>${esc(entry.username || '—')}</code><button class="tool small" data-copy-text="${esc(entry.username || '')}">复制</button></span></div>
+    <div class="vrow"><span class="vk">密码</span><span class="vv"><code id="vault-pw-value">••••••</code><button class="tool small" id="vault-pw-toggle2">显示</button><button class="tool small" id="vault-copy-pw">复制</button></span></div>
+    <div class="vrow"><span class="vk">网址</span><span class="vv">${urlHtml}</span></div>
+    <div class="vrow"><span class="vk">标签</span><span class="vv">${vaultTagChips(entry.tags)}</span></div>
+    <div class="vrow"><span class="vk">备注</span><span class="vv vnotes">${esc(entry.notes || '—')}</span></div>
+    <div class="vrow"><span class="vk">更新</span><span class="vv">${esc(fmtWhen(entry.updated))}</span></div>`;
+  let visible = false;
+  const toggle = $('vault-pw-toggle2');
+  if (toggle) toggle.onclick = () => {
+    visible = !visible;
+    $('vault-pw-value').textContent = visible ? entry.password : '••••••';
+    toggle.textContent = visible ? '隐藏' : '显示';
+  };
+  const copyPw = $('vault-copy-pw');
+  if (copyPw) copyPw.onclick = (ev) => copyText(entry.password || '', ev.currentTarget);
+  showModal('vault-view-modal');
+}
+function openVaultEdit(entry) {
+  VAULT.current = entry || null;
+  $('vault-edit-title').textContent = entry ? '编辑账号密码' : '新增账号密码';
+  $('vault-id').value = entry ? entry.id : '';
+  $('vault-title').value = entry ? entry.title : '';
+  $('vault-username').value = entry ? entry.username : '';
+  $('vault-password').value = entry ? entry.password : '';
+  $('vault-url').value = entry ? entry.url : '';
+  $('vault-tags').value = entry ? entry.tags : '';
+  $('vault-notes').value = entry ? entry.notes : '';
+  $('vault-password').type = 'password';
+  $('vault-pw-toggle').textContent = '显示';
+  hideModal('vault-view-modal');
+  showModal('vault-edit-modal');
+  setTimeout(() => $('vault-title').focus(), 80);
+}
+async function saveVaultEntry() {
+  if (!requireAdmin()) return;
+  const title = ($('vault-title').value || '').trim();
+  if (!title) { toast('名称不能为空', 'bad'); $('vault-title').focus(); return; }
+  const payload = {
+    id: $('vault-id').value || undefined,
+    title,
+    username: $('vault-username').value,
+    password: $('vault-password').value,
+    url: $('vault-url').value,
+    tags: $('vault-tags').value,
+    notes: $('vault-notes').value,
+  };
+  const btn = $('vault-edit-save');
+  btn.disabled = true;
+  try {
+    await apiFetch('/api/vault', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    hideModal('vault-edit-modal');
+    toast('账号密码已保存', 'good');
+    await loadVault(true);
+  } catch (e) {
+    toast('保存失败：' + e.message, 'bad');
+  } finally { btn.disabled = false; }
+}
+function deleteVaultEntry(entry) {
+  if (!requireAdmin()) return;
+  confirmAction('删除账号密码', `确认删除 <b>${esc(entry.title)}</b>？此操作不可恢复。`).then(async (ok) => {
+    if (!ok) return;
+    try {
+      await apiFetch('/api/vault/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: entry.id }),
+      });
+      hideModal('vault-view-modal');
+      toast('已删除', 'good');
+      await loadVault(true);
+    } catch (e) { toast('删除失败：' + e.message, 'bad'); }
+  });
+}
+async function exportVault() {
+  if (!requireAdmin()) return;
+  const ok = await confirmAction('导出保险库', '导出文件包含 <b>明文密码</b>，请妥善保管，确认导出？');
+  if (!ok) return;
+  try {
+    const data = await apiFetch('/api/vault/export');
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vault-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('已导出 JSON（含明文密码）', 'good');
+  } catch (e) { toast('导出失败：' + e.message, 'bad'); }
+}
+async function importVaultFile(file) {
+  if (!file) return;
+  if (!requireAdmin()) return;
+  if (file.size > 400 * 1024) { toast('导入文件太大（>400KB）', 'bad'); return; }
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const entries = Array.isArray(data) ? data : (data.entries || []);
+    if (!Array.isArray(entries) || !entries.length) { toast('文件里没有可导入的账号条目', 'bad'); return; }
+    const ok = await confirmAction('导入保险库', `将导入/合并 <b>${entries.length}</b> 个条目（同 ID 会更新），确认？`);
+    if (!ok) return;
+    const res = await apiFetch('/api/vault/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries }),
+    });
+    toast(`已导入 ${res.imported ?? entries.length} 条`, 'good');
+    await loadVault(true);
+  } catch (e) { toast('导入失败：' + e.message, 'bad'); }
+}
+
 function renderBackups(items) {
   if (!items || !items.length) { $('bak-list').innerHTML = '<div class="empty">暂无备份</div>'; return; }
   $('bak-list').innerHTML = items.slice(0, 8).map((b) => `<div class="bak"><span>${esc(fmtWhen(b.at))}</span><span>${esc(b.mb)} MB · ${esc(b.name)}</span></div>`).join('');
@@ -781,6 +1029,8 @@ async function refreshAll(manual = false) {
     META = meta;
     LAN_IP = (data.sysinfo && data.sysinfo.lan_ip) || meta.lan_ip || '';
     setAdminUI();
+    if (META.admin && !VAULT.loaded) loadVault();
+    if (!META.admin) { VAULT.items = []; VAULT.loaded = false; renderVault(); }
     fillLinks();
     renderAccess();
     maybeSwitchByQuery();
@@ -798,7 +1048,7 @@ async function refreshAll(manual = false) {
 function setAdminUI() {
   const admin = !!META.admin;
   $('btn-admin').textContent = admin ? '🔓 管理已解锁' : (META.action_required ? '🔒 解锁管理' : '⚙ 管理未配置');
-  $('admin-hint').textContent = admin ? '管理已解锁：可重启服务、查看日志、体检与备份。' : (META.action_required ? '只读模式：解锁后可重启服务、看日志、体检与备份。' : '未配置管理 token，操作已禁用。');
+  $('admin-hint').textContent = admin ? '管理已解锁：可重启服务、查看日志、管理账号密码、体检与备份。' : (META.action_required ? '只读模式：解锁后可重启服务、看日志、管理账号密码、体检与备份。' : '未配置管理 token，操作已禁用。');
 }
 function openAdmin() {
   $('admin-msg').textContent = '';
@@ -815,6 +1065,8 @@ async function tryUnlock() {
     if (!meta.admin) { adminToken = ''; $('admin-msg').textContent = 'token 不正确'; return; }
     sessionStorage.setItem(TOKEN_KEY, token);
     META = meta; setAdminUI(); hideModal('admin-modal'); toast('管理已解锁', 'good'); refreshAll();
+    VAULT.loaded = false;
+    loadVault(true);
   } catch (e) { adminToken = ''; $('admin-msg').textContent = '验证失败：' + e.message; }
 }
 function requireAdmin(msg = '该操作需要管理 token') {
@@ -916,6 +1168,40 @@ $('btn-doctor').onclick = () => runAction('doctor', '', '一键体检');
 $('btn-backup').onclick = () => runAction('backup', '', '立即备份');
 $('btn-backup2').onclick = () => runAction('backup', '', '立即备份');
 $('svc-search').oninput = () => { if (OVERVIEW) renderServices(OVERVIEW.services); };
+$('vault-search').oninput = () => renderVault();
+$('btn-vault-new').onclick = () => { if (requireAdmin()) openVaultEdit(); };
+$('btn-vault-export').onclick = exportVault;
+$('btn-vault-refresh').onclick = () => { if (requireAdmin()) { VAULT.loaded = false; loadVault(true); } };
+$('btn-vault-import').onclick = () => { if (requireAdmin()) $('vault-import-file').click(); };
+$('vault-import-file').onchange = (ev) => { const f = ev.target.files[0]; ev.target.value = ''; importVaultFile(f); };
+$('vault-edit-save').onclick = saveVaultEntry;
+$('vault-edit-cancel').onclick = $('vault-edit-close').onclick = () => hideModal('vault-edit-modal');
+$('vault-pw-toggle').onclick = () => {
+  const inp = $('vault-password');
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  $('vault-pw-toggle').textContent = show ? '隐藏' : '显示';
+};
+$('vault-view-close').onclick = $('vault-view-close2').onclick = () => hideModal('vault-view-modal');
+$('vault-view-edit').onclick = () => { if (VAULT.current) openVaultEdit(VAULT.current); };
+$('vault-view-delete').onclick = () => { if (VAULT.current) deleteVaultEntry(VAULT.current); };
+document.addEventListener('click', (ev) => {
+  const vbtn = ev.target.closest('button[data-vault]');
+  if (vbtn) {
+    ev.preventDefault();
+    const entry = (VAULT.items || []).find((x) => x.id === vbtn.dataset.id);
+    if (!entry) return;
+    if (vbtn.dataset.vault === 'view') openVaultView(entry);
+    else if (vbtn.dataset.vault === 'edit') openVaultEdit(entry);
+    else if (vbtn.dataset.vault === 'del') deleteVaultEntry(entry);
+    return;
+  }
+  const cbtn = ev.target.closest('button[data-copy-text]');
+  if (cbtn) {
+    ev.preventDefault();
+    copyText(cbtn.dataset.copyText || '', cbtn);
+  }
+});
 $('log-close').onclick = () => { hideModal('log-modal'); if (logTimer) clearInterval(logTimer); };
 $('log-service').onchange = () => { logService = $('log-service').value; loadLog(); };
 $('log-lines').onchange = () => loadLog();
@@ -939,6 +1225,7 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { docume
 (async () => {
   fillLinks();
   renderAccess();
+  renderVault();
   maybeSwitchByQuery();
   setAdminUI();
   scheduleAuto();
