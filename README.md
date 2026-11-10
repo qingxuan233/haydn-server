@@ -72,6 +72,7 @@
 │   ├── 10-DSH登录入口优化.md  ← /app/ 免 token 自动登录（dsh-login + nginx 入口标记）
 │   ├── 11-DSH服务器配置与模型.md ← DSH server/web profile、desktop 模型配置迁移、凭据与环境
 │   ├── 12-DSH性能优化.md   ← 运行环境分析、gzip/缓存/插件精简、优化前后对比
+│   ├── 13-DSH插件安装-pnpm.md ← pnpm 缺失导致 ENOENT 的修复与 codex 插件验证
 │   ├── 13-控制台功能分析与完善.md ← 控制台 v2：指标/趋势/服务/日志/操作/备份（参考成熟项目）
 │   └── 11-移除DSH-GO-App环境SSH.md ← 删除旧 DSH-GO 的 App 环境 SSH（2224/57166）
 │   └── research/

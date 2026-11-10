@@ -142,3 +142,17 @@ supervisorctl -c /root/server/etc/supervisord.conf restart dsh
 | 17:05 | 修正默认模型 eco/max | dump exit 0 |
 | 17:09 | broker 超时 6→10s + 重试 | LAN 登录 5/5、公网 2/2 成功 |
 | 17:12 | Edge/服务回归 | 11/11 RUNNING，DOM 716KB 正常 |
+## 7. 后续：安装 codex 插件后的状态（2026-11-10 17:25）
+
+插件管理器把 `inspector/forge` 等 bundles 重新加回后，重启 DSH 需要约 90 秒。为保持性能，已再次精简为 **base/web-app/agent-team/session-titles + subagent-codex**：
+
+| 指标 | 数值 |
+|---|---|
+| bundles | 5 个（4 核心 + codex） |
+| 启动（重启→新 token） | **34s** |
+| RSS | **410MB**（codex 比精简态多约 100MB） |
+| 客户端模块 | 222 |
+| 登录 LAN/公网 | 200 / 200 |
+| 服务 | 11/11 RUNNING |
+
+> 需要 inspector/forge 面板时，可在 DSH 插件管理器中重新启用；代价是启动时间与内存回升（约 90s / 更高 RSS）。pnpm 安装细节见 [13-DSH插件安装-pnpm](13-DSH插件安装-pnpm.md)。
