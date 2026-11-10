@@ -1,5 +1,7 @@
 # 07 · 服务器 DSH 部署 + Linux 环境优化 + 手机 ADB 分析
 
+> ⚠️ **后续状态**：本机已于 2026-11-10 因 bootloop 事故恢复出厂并**从备份重建服务器**（含 DSH）。最新状态、访问入口与开机自启验证见 [08-事故复盘与重置重建报告](08-事故复盘与重置重建报告.md)。
+
 > 执行日期：2026-11-10 11:39–12:14（Asia/Shanghai）
 > 执行方式：SSH（`root@192.168.10.143:2222`，proot Ubuntu 24.04 arm64）+ ADB（`2b3be151`）
 > 脚本：[scripts/setup-dsh-server.ps1](../scripts/setup-dsh-server.ps1)（可在服务器重复执行、幂等）

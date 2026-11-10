@@ -5,6 +5,8 @@
 /tools/mi-unlock/
 /tools/magisk/
 /tools/firmware/
+/tools/termux/
+/tools/termux-boot/
 
 # 备份与刷机物料（含个人数据/大文件）
 /backup/

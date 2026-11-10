@@ -4,7 +4,7 @@
 
 - 目标：SSH 远程登录、文件同步/备份、轻量 Web 与自托管服务、下载/定时任务
 - 原则：**先零风险上线（Termux + proot），再用运行数据决定是否解锁 Root 升级**
-- 状态：**P0 完成**；A 方案运行中（**10 个服务**，含自托管 DSH）；B 路线因国行无法官方解锁而终止；已转 **A+ 无 Root 优化** + 深度清理（活跃包 390→248）
+- 状态：**P0 完成**；2026-11-10 发生过一次「误删系统必需包导致 bootloop」，已恢复出厂并**从备份重建服务器**（复盘见 [docs/08](docs/08-事故复盘与重置重建报告.md)）；当前 **10/10 服务 RUNNING**、**重启自动拉起（实测 43s 就绪）**、公网入口恢复
 
 ---
 
@@ -65,6 +65,7 @@
 │   ├── 05-B路线执行手册.md      ← B 路线手册（已归档：Gate B0 失败）
 │   ├── 06-A+优化方案.md        ← **当前主方案**：无 Root 优化、已执行项、待办与回滚
 │   ├── 07-DSH与Linux优化.md    ← 服务器 DSH 部署、Linux 优化、手机 ADB 第二轮分析
+│   ├── 08-事故复盘与重置重建报告.md ← ⚠️ bootloop 事故、恢复出厂、服务器重建与开机自启验证
 │   └── research/
 │       ├── raw-notes.md        ← 研究原始笔记与 33 条来源链接
 │       └── ...
@@ -76,6 +77,9 @@
 │   ├── probe-device.sh         ← 设备端能力探测脚本（内核/容器/充电）
 │   ├── apply-a-plus.ps1        ← A+ 设置优化/回滚（-Apply / -Restore）
 │   ├── setup-dsh-server.ps1   ← 一键部署 DSH + Node24 到手机服务器（幂等）
+│   ├── optimize-server-profile.ps1 ← 重置后安全优化（第三方移除 + 系统 disable，带保护名单）
+│   ├── finalize-dsh-server.sh ← 服务器端 DSH 收尾（原生模块/包装器/supervisor/nginx）
+│   └── server/ubuntu.sh, 00-server.sh ← Termux 侧容器启动与开机脚本（重建用）
 │   ├── debloat-server-mode.ps1 ← 服务器模式深度清理（-Tier safe|aggressive|all，-Restore）
 │   ├── phone-health.ps1       ← 温度/负载/磁盘/9 个服务健康检查
 │   ├── restart-termux-services.ps1 ← 远程恢复 Termux/proot 服务（run-as，不需解锁）
@@ -107,6 +111,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 4. **要动手** → [03-操作手册](docs/03-操作手册.md)（含每步的风险标注）
 5. **动手前必读** → [04-风险与回滚](docs/04-风险与回滚.md)
 6. **想在服务器里跑 DSH / 看 Linux 优化与 ADB 分析** → [07-DSH与Linux优化](docs/07-DSH与Linux优化.md)
+7. **想了解 bootloop 事故与重置后重建过程** → [08-事故复盘与重置重建报告](docs/08-事故复盘与重置重建报告.md)
 
 ## 重要警告
 

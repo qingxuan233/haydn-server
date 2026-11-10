@@ -1,5 +1,7 @@
 ﻿<#
 .SYNOPSIS
+    ⚠️ 2026-11-10 事故后已废弃 aggressive 卸载路线：本脚本仅作为历史参考，禁止再对系统包执行 pm uninstall。
+    请使用 scripts\optimize-server-profile.ps1（带保护名单、系统包只 disable）。
     服务器模式 Debloat：无 Root 下通过 ADB 移除/禁用非必要组件（可回滚）。
 .DESCRIPTION
     分两档：
