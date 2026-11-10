@@ -130,6 +130,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 9. **打开 DSH 时提示 authentication required / 想免 token 登录** → [10-DSH登录入口优化](docs/10-DSH登录入口优化.md)
 10. **想了解 DSH 服务器 profile / 模型配置 / 凭据** → [11-DSH服务器配置与模型](docs/11-DSH服务器配置与模型.md)
 11. **DSH 有点卡 / 想做性能优化** → [12-DSH性能优化](docs/12-DSH性能优化.md)
+12. **DSH 安装插件报 spawn pnpm ENOENT** → [13-DSH插件安装-pnpm](docs/13-DSH插件安装-pnpm.md)
 10. **想清理旧 DSH-GO 的 App 环境 SSH / 2224 端口** → [11-移除DSH-GO-App环境SSH](docs/11-移除DSH-GO-App环境SSH.md)
 12. **想了解控制台 v2 的功能分析与改进参考** → [13-控制台功能分析与完善](docs/13-控制台功能分析与完善.md)
 
