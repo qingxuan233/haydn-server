@@ -88,6 +88,7 @@ _checks_cache = {"at": 0.0, "data": None}
 _services_cache = {"at": 0.0, "data": None}
 _backups_cache = {"at": 0.0, "data": None}
 _cert_cache = {}
+_lanip_cache = {"at": 0.0, "ip": None}
 _last_action_at = 0.0
 
 
@@ -101,6 +102,35 @@ def read_text(path, limit=None):
     except OSError:
         return None
 
+
+def local_lan_ip():
+    """当前 Wi-Fi 局域网 IP（通过默认路由套接字取本地地址，60 秒缓存）。
+
+    proot/App UID 读不到 netlink、/proc/net，但可以向公网/网关发起 TCP，
+    getsockname() 会给出当前路由选中的本地地址（即 wlan0 的 DHCP IP）。
+    """
+    now = time.time()
+    with _cache_lock:
+        if _lanip_cache["ip"] and now - _lanip_cache["at"] < 60:
+            return _lanip_cache["ip"]
+    for target in (("47.97.70.99", 1210), ("223.5.5.5", 53), ("1.1.1.1", 53)):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1.2)
+        try:
+            sock.connect(target)
+            ip = sock.getsockname()[0]
+            if ip and ip not in ("0.0.0.0", "127.0.0.1"):
+                with _cache_lock:
+                    _lanip_cache["at"], _lanip_cache["ip"] = now, ip
+                return ip
+        except OSError:
+            continue
+        finally:
+            try:
+                sock.close()
+            except OSError:
+                pass
+    return None
 
 def termux_metrics():
     """读取 Termux 侧采集的 uptime / top 数据（proot 内无法直接读 /proc/stat、/proc/uptime）。"""
@@ -249,6 +279,7 @@ def sysinfo():
         "host": platform.node(),
         "arch": platform.machine(),
         "kernel": platform.release(),
+        "lan_ip": local_lan_ip(),
         "cpus": os.cpu_count(),
         "uptime_s": up,
         "boot_at": datetime.fromtimestamp(now - up, timezone.utc).isoformat(timespec="seconds") if up else None,
@@ -756,6 +787,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {
                     "version": API_VERSION,
                     "lan": self._lan(),
+                    "lan_ip": local_lan_ip(),
                     "host_private": self._host_private(),
                     "https": self._proto() == "https",
                     "action_required": bool(action_token()),

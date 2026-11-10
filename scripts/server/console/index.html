@@ -231,7 +231,7 @@ a, button { touch-action: manipulation; }
     <div class="logo">▤</div>
     <div>
       <h1>手机服务器</h1>
-      <div class="sub">Termux · proot Ubuntu 24.04 · <span class="ip" id="hostip">…</span></div>
+      <div class="sub">Termux · proot Ubuntu 24.04 · 局域网 <span class="ip" id="lanip">…</span></div>
     </div>
     <div class="head-right">
       <div class="overall" id="overall"><span class="dot"></span>检测中…</div>
@@ -434,7 +434,8 @@ a, button { touch-action: manipulation; }
   </section>
 
   <div class="note">
-    <b>自动运行：</b>Termux:Boot 开机自启 → <code>server-up</code> → supervisord 托管 11 个服务；看门狗每 45 秒巡检，supervisord 掉了会被重新拉起。手机息屏前请确认 Termux 未被系统清理，否则整条链会停。
+    <b>WiFi 动态 IP：</b>局域网 IP 由 API 自动检测（当前 <span class="ip" id="note-lanip">—</span>）。IP 变化后请用固定公网入口 <code>http://47.97.70.99:48108/</code> 或 <code>https://47.97.70.99:44904/</code>；建议在路由器按 MAC 做静态租约并关闭随机 MAC，局域网入口就长期稳定。<br>
+    <b>自动运行：</b>Termux:Boot 开机自启 → <code>server-up</code> → supervisord 托管 11 个服务；看门狗定期巡检，supervisord 掉了会被重新拉起。手机息屏前请确认 Termux 未被系统清理，否则整条链会停。
   </div>
 </div>
 
@@ -492,7 +493,8 @@ const LAN = /^(192\.168\.|10\.|127\.|172\.(1[6-9]|2\d|3[01])\.)/.test(HOST);
 const PUB = '47.97.70.99';
 const TOKEN_KEY = 'dsh-console-admin-token';
 let OVERVIEW = null;
-let META = { version: '', lan: LAN, admin: false, action_required: false };
+let META = { version: '', lan: LAN, admin: false, action_required: false, lan_ip: '' };
+let LAN_IP = '';
 let adminToken = sessionStorage.getItem(TOKEN_KEY) || '';
 let timer = null;
 let loading = false;
@@ -546,8 +548,9 @@ function fillLinks() {
   if (dsh) dsh.href = LAN ? `https://${HOST}:8443/app-login` : `https://${PUB}:44904/app-login`;
   const pub = $('link-public');
   if (pub) pub.href = `https://${PUB}:44904/`;
-  $('hostip').textContent = HOST;
-  $('cmd-ssh-lan').textContent = `ssh -p 2222 root@${HOST}`;
+  $('hostip') && ($('hostip').textContent = LAN_IP || HOST);
+  $('lanip').textContent = LAN_IP || HOST;
+  $('cmd-ssh-lan').textContent = `ssh -p 2222 root@${LAN_IP || HOST}`;
   $('cmd-ssh-pub').textContent = 'ssh -i ~/.ssh/phone_server_ed25519 -p 13872 root@47.97.70.99';
   $('cmd-git').textContent = `ssh://root@qx.qingxuan.bbs0.cc:26249/${LAN ? 'gitadmin' : '<用户名>'}/<仓库>.git`;
 }
@@ -638,6 +641,8 @@ function renderOverview(data) {
   $('d-batt').textContent = s.battery_level == null ? '—（系统限制）' : `${s.battery_level}% · ${s.battery_status || '—'}`;
   $('d-kernel').textContent = s.kernel || '—';
   $('d-host').textContent = `${s.host || '—'} · ${s.arch || '—'}`;
+  const noteLan = $('note-lanip');
+  if (noteLan) noteLan.textContent = s.lan_ip || LAN_IP || '—';
 
   ['fileui', 'webdav', 'syncthing', 'gitea', 'api', 'https', 'public'].forEach((k) => setDot(k, c[k]));
   renderServices(services);
@@ -712,7 +717,9 @@ async function refreshAll(manual = false) {
       apiFetch('/api/meta'),
     ]);
     META = meta;
+    LAN_IP = (data.sysinfo && data.sysinfo.lan_ip) || meta.lan_ip || '';
     setAdminUI();
+    fillLinks();
     renderOverview(data);
     if (manual) toast('已刷新', 'good');
   } catch (e) {
