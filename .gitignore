@@ -10,8 +10,7 @@
 /backup/
 
 # 采集产物（含设备序列号等，重新运行脚本即可生成）
-/inventory/*.json
-/inventory/*.txt
+/inventory/*
 
 # 本地临时文件
 *.log
