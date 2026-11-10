@@ -14,6 +14,7 @@ import http.server
 import os
 import re
 import sys
+import time
 
 LOG = os.environ.get("DSH_LOG", "/root/server/logs/dsh.log")
 PORT = int(os.environ.get("DSH_LOGIN_PORT", "3082"))
@@ -34,9 +35,9 @@ def current_token():
     return found
 
 
-def dsh_cookie(browser_host, token):
+def dsh_cookie(browser_host, token, timeout=10):
     """用浏览器 Host 请求 token 入口，返回 (cookie_name_value, status)。"""
-    conn = http.client.HTTPConnection(DSH_HOST, DSH_PORT, timeout=6)
+    conn = http.client.HTTPConnection(DSH_HOST, DSH_PORT, timeout=timeout)
     try:
         conn.putrequest("GET", "/?token=" + token, skip_host=True)
         conn.putheader("Host", browser_host or (DSH_HOST + ":" + str(DSH_PORT)))
@@ -66,10 +67,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         token = current_token()
         cookie = None
         if token:
-            try:
-                cookie, _status = dsh_cookie(self.headers.get("Host", ""), token)
-            except Exception as exc:
-                sys.stderr.write("dsh-login: token exchange failed: %r\n" % (exc,))
+            # DSH 启动/负载抖动时 token 交换可能超时，重试一次
+            for attempt in range(2):
+                try:
+                    cookie, _status = dsh_cookie(self.headers.get("Host", ""), token, timeout=10)
+                except Exception as exc:
+                    sys.stderr.write("dsh-login: token exchange failed (attempt %d): %r\n" % (attempt + 1, exc))
+                    time.sleep(0.6)
+                    continue
+                if cookie:
+                    break
         if not cookie:
             # DSH 尚未就绪（插件加载/重启中）或日志里还没有 token：给出 503，下一次刷新再试
             body = ("<!doctype html><meta charset=utf-8><title>DSH 正在启动</title>"
