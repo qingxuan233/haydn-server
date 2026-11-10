@@ -76,6 +76,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_response(302)
             self.send_header("Location", "/app/")
             self.send_header("Set-Cookie", cookie + "; Path=/app; Max-Age=2592000; HttpOnly; SameSite=Lax")
+            # broker 标记：/app/ 只接受经过登录入口换取的会话，旧 DSH cookie 不会直接压过它
+            self.send_header("Set-Cookie", "dshbrk=1; Path=/app; Max-Age=86400; HttpOnly; SameSite=Lax")
             # 清掉浏览器里同名的旧 Path=/ cookie（此前 DSH 直接种下的 Strict/Secure 版本），避免双份 cookie 混淆
             name = cookie.split("=", 1)[0]
             self.send_header("Set-Cookie", name + "=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax")

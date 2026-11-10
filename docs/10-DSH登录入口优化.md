@@ -52,6 +52,28 @@
 | `fileui` / `/files/` | 不受影响 |
 | 服务 | **11/11 RUNNING**（新增 dsh-login） |
 
+## 2.2 空白页加固（2026-11-10 16:00）
+
+现象：浏览器打开公网 `/app/` 后**页面空白**（服务器 curl 返回 200、HTML 43KB；真实 Edge 注入正确 Basic 后渲染 795K 完整界面）。
+
+判断：不是服务端故障，而是浏览器里 **旧的 DSH cookie / 旧 HTML 缓存** 让 `/app/` 走了错误的跳转链。加固措施：
+
+1. `dsh-login` 在成功换 cookie 时额外下发 **broker 标记 cookie**：`dshbrk=1; Path=/app; Max-Age=86400; HttpOnly; SameSite=Lax`；
+2. nginx `/app/` 只认这个标记：`if ($cookie_dshbrk = "") { return 302 /app-login; }`——旧 `dsh-auth` cookie 不再能直接放行，会被强制走一次登录入口，换取**全新 cookie**并清掉旧 `Path=/` cookie；
+3. `/app/` 的 HTML 增加 `Cache-Control: no-store`，避免浏览器缓存旧前端壳。
+
+验证：
+
+| 检查 | 结果 |
+|---|---|
+| `/app/` 无 cookie | 302 → `/app-login` |
+| `/app/` 带旧 `dsh-auth` 但没有 `dshbrk` | **302 → `/app-login`**（强制刷新登录态） |
+| `/app-login` | 302 `/app/` + 3 条 Set-Cookie（会话 + dshbrk + 清除旧 Path=/） |
+| 完整跟随公网 `/app/` | **200，2 次跳转** |
+| 真实 Edge（header Basic，无 URL userinfo）打开公网 `/app/` | **DOM 795593，工作区/欢迎语正常渲染** |
+| 页面头 | `Cache-Control: no-store` |
+
+> 浏览器处理：**清除 `47.97.70.99` 的站点数据（cookie/缓存）或开无痕窗口**，打开 `/app-login` 输入 Basic 账号；之后 `/app/` 会自动通过 broker 登录，不再空白。
 ## 3. 组成与回滚
 
 | 文件 | 说明 |
@@ -90,3 +112,4 @@ nginx -t && nginx -s reload
 | 15:25 | 去掉重复 `proxy_intercept_errors` / 双 Location | `/app/` 单次跳转 |
 | 15:26 | 兼容 cookie 清旧 `Path=/` + 相对跳转 | 完整跟随 200 |
 | 15:29 | Edge fresh profile 验证 | DOM 751070，正常进入 |
+| 16:00 | 空白页加固：dshbrk 标记 + no-store | 旧 cookie 强制走登录，公网 Edge 渲染 795593 |
