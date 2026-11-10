@@ -35,6 +35,32 @@ Android Bridge APK（同机、普通 App、无 root）
 
 ---
 
+## 1.5 服务器构建/运行是否包含在本方案内？
+
+**结论：包含，但分成两条轨道，且不会把服务器塞进 APK 里。**
+
+| 轨道 | 内容 | 构建 | 运行 |
+|---|---|---|---|
+| **A. 服务器栈** | Termux + proot Ubuntu + supervisord + nginx + DSH + Console + 备份/ops | 按 [docs/17](17-研究平台环境构建手册.md) Phase 0–6；脚本在 `scripts/server/` | Termux:Boot → `00-server.sh` → `ubuntu.sh` → `server-up` + `server-watch`；12 个服务常驻 |
+| **B. Bridge APK** | Android 宿主侧采集/本地 HTTPS（本文方案） | 新建 `android-bridge/` Gradle 工程，产出 APK | BootReceiver + `specialUse` 前台服务常驻 |
+| **C. 集成层** | `bridge_client.py` + Console 字段 + token/证书 pin | 随服务器代码部署 | 服务器轮询 Bridge；失败回退 Termux 采集器 |
+
+**为什么不是把服务器打进 APK：**
+- 那等于重做一个 Termux（Termux 运行时 + rootfs + 包管理 + 终端），工程量远大于 Bridge；
+- 当前服务器已在 proot Ubuntu 内稳定运行，APK 只做“宿主桥”更轻、更安全；
+- APK 若内嵌 Linux 用户空间，升级/备份/DSH 全部要重做，不符合“最小变更”。
+
+**当前服务器基线（已实测）**：12/12 服务 RUNNING；ADB 32s、8080 45s、完整服务+DSH 111s；备份含 server+sessions；这些继续沿用，不在 Bridge 工程里重做。
+
+**全栈部署顺序（重装/新机）**：
+1. Android 宿主准备：ADB、Termux、Termux:Boot、权限/白名单；
+2. 服务器构建：按 docs/17 装 proot Ubuntu、Node24、DSH、nginx、supervisor 服务、备份；
+3. 服务器验收：12/12、DSH `/app-login`、Console、重启自启；
+4. 安装/配置 Bridge APK：BootReceiver + FGS + token/证书 + ADB 白名单；
+5. 部署 `bridge_client.py`，Console 切换数据源（Bridge 优先 / Termux 回退）；
+6. 全栈验收：5 次重启、24h soak、Bridge 断开回退、DSH/服务可用。
+
+> 因此：**“服务器构建运行”是本方案 Track A，已经包含在总体交付里；docs/27 只详细展开新增的 Track B（Bridge APK），不是遗漏。** 若目标是从零重装整机，按上面 1–6 执行；若服务器已在运行，只需做 3–6 的增量。
 ## 2. 当前实现路径回顾
 
 | 数据 | 当前来源 | 问题 |
