@@ -352,6 +352,21 @@ body.details-mode .main-only { display: none; }
 @media (max-width: 600px) {
   .device-strip { grid-template-columns: 1fr 1fr; }
 }
+
+.quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.quick {
+  display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 48px;
+  padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel-2); color: var(--text); text-decoration: none;
+}
+.quick .qico {
+  flex: 0 0 auto; width: 28px; height: 28px; display: flex; align-items: center;
+  justify-content: center; border-radius: 8px; background: #202938; color: var(--accent);
+  font-size: 15px;
+}
+.quick b { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quick small { display: block; font-size: 10.5px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+@media (max-width: 600px) { .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 #detail-nav {
   display: none;
 }
@@ -458,10 +473,19 @@ body.details-mode #detail-nav {
   <section class="panel main-only" id="service-summary">
     <div class="panel-head"><h2>服务概览</h2><span class="right" id="svc-summary-badge">—</span></div>
     <div class="hint" id="svc-summary-body">—</div>
-    <div class="access-actions">
-      <a class="tool small" href="?view=details#services-group">全部服务 →</a>
-      <a class="tool small" href="?view=details#checks-group">检查项 →</a>
-      <a class="tool small" href="?view=details">全部详情 →</a>
+  </section>
+  <section class="panel main-only" id="main-links">
+    <div class="panel-head"><h2>快捷入口</h2><span class="right"><a class="tool small" href="?view=details">全部详情 →</a></span></div>
+    <div class="quick-grid">
+      <a class="quick" href="/files/"><span class="qico">▤</span><span><b>文件管理</b><small>/files/</small></span></a>
+      <a class="quick" href="/git/"><span class="qico">⎇</span><span><b>Gitea</b><small>/git/</small></span></a>
+      <a class="quick" id="main-link-dsh" href="#"><span class="qico">◈</span><span><b>DSH</b><small>/app-login</small></span></a>
+      <a class="quick" href="?view=details#access-card"><span class="qico">🌐</span><span><b>访问入口</b><small>LAN / 公网</small></span></a>
+      <a class="quick" href="?view=details#services-group"><span class="qico">▣</span><span><b>全部服务</b><small>健康 / 日志</small></span></a>
+      <a class="quick" href="?view=details#checks-group"><span class="qico">◔</span><span><b>检查项</b><small>探活 / 证书</small></span></a>
+      <a class="quick" href="?view=details#bak-card"><span class="qico">⛁</span><span><b>加密备份</b><small>最近备份</small></span></a>
+      <a class="quick" href="?view=details#vault-group"><span class="qico">▤</span><span><b>账号密码</b><small>保险库</small></span></a>
+      <a class="quick" href="?view=details#ops-group"><span class="qico">⚙</span><span><b>运维操作</b><small>体检 / 重启</small></span></a>
     </div>
   </section>
 
@@ -813,7 +837,10 @@ function fillLinks() {
     sync.querySelector('.d').textContent = '管理界面仅局域网可用；公网只开放同步端口 50278/32829';
   }
   const dsh = $('link-dsh');
-  if (dsh) dsh.href = LAN ? `https://${HOST}:8443/app-login` : `https://${PUB}:44904/app-login`;
+  const mainDsh = $('main-link-dsh');
+  const dshHref = LAN ? `https://${HOST}:8443/app-login` : `https://${PUB}:44904/app-login`;
+  if (dsh) dsh.href = dshHref;
+  if (mainDsh) mainDsh.href = dshHref;
   const pub = $('link-public');
   if (pub) pub.href = `https://${PUB}:44904/`;
   $('hostip') && ($('hostip').textContent = LAN_IP || HOST);
