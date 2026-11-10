@@ -315,3 +315,61 @@ Android Bridge APK（同机、普通 App、无 root）
 - 同时保留 Termux 采集器为回退；
 - 完成后按 §6 Phase 4 做 5 次重启与 24h 稳定性验收；
 - 特权数据（全局 CPU/网络原始字节/冻结）继续留给 Shizuku/ADB 维护通道，不承诺常驻。
+
+---
+
+## 10. 与 DSH 的深度集成策略（补充）
+
+**结论：要深度集成，但只集成在“控制/观测面”，不要做进程/运行依赖。**
+
+DSH 是服务器的大脑/控制面（自然语言运维、诊断、server-ops 执行）；Bridge 是 Android 宿主感知面。正确关系是：
+
+```text
+Bridge APK ──HTTPS/token──> Server bridge_client ──> /api/sysinfo /api/ops
+                                                        ▲
+                                                        │ 只读/受控
+                                                       DSH（经 server API / server-ops）
+```
+
+### 10.1 三层集成
+
+| 层 | 做法 | 边界 |
+|---|---|---|
+| **数据面** | Bridge → server `bridge_client.py` → `/api/sysinfo`、Console；DSH 只读 server API | **DSH 不直接持有 Bridge token**，不直接连 Bridge |
+| **控制面** | DSH 使用 `server-ops` Tier1/Tier2：查状态、健康、日志、备份、重启服务、nginx、备份 | Bridge 生命周期不能由 DSH 控制（proot 无 ADB，无法启动 Android App）；不要设计这种能力 |
+| **策略面** | `/root/AGENTS.md` 规定：先 `server-ops status/health`，Tier2 需人工确认，Tier3 禁止；操作写 ops-audit | DSH 有审计、有确认；Bridge 不暴露 shell |
+
+### 10.2 建议新增的集成动作
+
+1. **`server-ops bridge status`**（只读）：
+   - 显示 Bridge 来源（APK/回退 Termux）、版本、最后成功时间、缺失字段；
+   - DSH 可直接用它判断“手机状态是否完整”。
+2. **`/api/sysinfo` 增加 `bridge_source` / `bridge_age_s` / `bridge_version`**：
+   - DSH 用自然语言问“手机现在状态”时，一次读 server API 即可回答；
+   - Console 显示“数据来源：Bridge/回退”，避免假数据。
+3. **DSH 技能/AGENTS 约定**：
+   - `手机状态` → `server-ops status` + `curl /api/sysinfo`（只读）；
+   - `手机为什么卡` → `/api/sysinfo` + `server-ops health` + 服务日志；
+   - `重启某项` → `server-ops restart <svc> --confirm`，必须先说明并人工确认；
+   - Bridge 缺失时提示用户检查 Bridge 自启，而不是尝试用 ADB 拉起。
+4. **控制台展示**：Bridge 数据卡 + DSH/ops 审计卡并列；DSH 可以直接链接/引用。
+5. **告警**（可选后续）：
+   - Bridge 连续不可达 → Console 红色提示 + DSH 对话中解释；
+   - 真正的推送告警仍属于外部服务（按用户要求暂不接）。
+
+### 10.3 为什么不做“进程级深度集成”
+
+- **DSH 是约 300–400MB 的 Node 进程**；Bridge 是 <30MB 的小 App。Bridge 不应依赖 DSH 启动/存活，否则 DSH 故障会拖垮遥测；
+- **DSH 无法启动 Android App**（proot 无 ADB/Shizuku 自启），所谓“DSH 控制 Bridge 生命周期”在无 Root 下不可实现；
+- **安全边界**：Bridge token/证书只在 server 内使用；DSH 作为公开入口（`/app-login`）不应持有宿主采集凭据；
+- **故障隔离**：DSH 挂掉时，服务器、Bridge、Console 数据仍应正常；DSH 恢复后自动继续读数据。
+
+### 10.4 推荐落地顺序
+
+1. **Bridge MVP**（Phase 1）先把数据接进 server `/api/sysinfo`；
+2. **C1**：`bridge_client.py` + `server-ops bridge status` 只读 + Console 数据来源；
+3. **C2**：DSH 技能/AGENTS 文案与动作约束（不新增特权接口）；
+4. **C3**：异常提示/告警规则（Console/DSH 对话层，不接外部推送）；
+5. **不做**：把 DSH 嵌入 APK、让 Bridge 依赖 DSH、让 DSH 直接控制 Bridge、把 Bridge token 暴露给 DSH。
+
+> 一句话：**“深度集成 DSH”= 深度接口与治理，不是深度进程耦合。** DSH 是运维入口和解释层；Bridge 是稳定感知层；server 是唯一数据聚合与安全边界。
