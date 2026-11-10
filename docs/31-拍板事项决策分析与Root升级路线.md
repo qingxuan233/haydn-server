@@ -13,11 +13,11 @@
 | D1 | Bridge MVP 是否含 UsageStats/NetworkStats | 含 / 不含 | **不含，Phase 2** |
 | D2 | 传输安全 | TLS+token+pin / 直接 mTLS | **TLS+token+pin；mTLS Phase 2** |
 | D3 | 是否安装 Android SDK/Gradle | 允许 / 不允许 | **允许（一次性构建环境）** |
-| D4 | Bridge 包名 | `com.qingxuan.bridge` / `com.qingxuan.haydn.bridge` 等 | **`com.qingxuan.haydn.bridge`** |
+| D4 | Bridge 包名 | `com.qingxuan.bridge` / `com.qingxuan.bridge` 等 | **`com.qingxuan.bridge`** |
 | D5 | 是否现在接 Shizuku 特权 | 现在 / 延后 | **延后；Root 手机后做** |
 | D6 | DSH 集成深度 | 最小 AGENTS / 正式技能 | **先最小；Bridge 稳定后再技能** |
 | D7 | 公网入口 | 保留 frp / 仅局域网 | **保留现有 frp，不新增端口** |
-| D8 | MIUI 白名单 | 人工 / 尝试 ADB 自动化 | **人工+脚本辅助，5 次重启验证** |
+| D8 | OEM 自启/省电白名单 | 标准核心+OEM profile / 尝试厂商自动化 | **标准核心+OEM profile，5 次重启验证** |
 | D9 | Bridge APK 资产 | 仅 checksum / 纳入备份 | **仅版本+checksum** |
 | D10 | 数据频率 | 10s / 更实时 | **10s，可配置** |
 
@@ -64,7 +64,7 @@
 
 ### D4 · Bridge 包名
 
-**选项 A：`com.qingxuan.haydn.bridge`（推荐）**
+**选项 A：`com.qingxuan.bridge`（推荐）**
 - 优点：包含项目/设备语义，唯一、清晰；不占用 Shizuku/Termux 保留包名；侧载无域名要求；
 - 缺点：一旦安装/签名后基本不可改（改包名=新应用，token/权限需迁移）；名字较长；
 - 限制：不能使用 `moe.shizuku.privileged.api`、`com.termux*` 或冒充官方；release 签名一旦确定需长期保管。
@@ -116,16 +116,19 @@
 
 **推荐**：D7 A 保持现状；后续需要更强安全时可切 C，但不在本轮实施。
 
-### D8 · MIUI 白名单自动化
+### D8 · OEM 自启/省电白名单（厂商无关）
 
-**选项 A：人工 + 脚本辅助（推荐）**
-- 步骤：ADB 授予通知/定位；`appops GET_USAGE_STATS`、`RUN_ANY_IN_BACKGROUND`；`deviceidle whitelist`；MIUI 自启动/无限制省电人工开启；
-- 优点：可靠、可控；5 次重启验证；
-- 缺点：首次需要人工点击；
-- 限制：MIUI 无标准 API 设置“自启动”，无法保证脚本全自动。
+**选项 A（推荐）：标准 Android 核心 + OEM profile**
+- 标准核心：`BOOT_COMPLETED` + `specialUse` FGS + 电池优化豁免 + `deviceidle whitelist` + `appops RUN_ANY_IN_BACKGROUND`；
+- OEM profile：MIUI/HyperOS、Samsung、ColorOS、OriginOS、EMUI/MagicOS 等各自“自启动/电池/后台”人工设置；
+- 优点：换机只换 profile，不改核心；可靠可控；5 次重启验证；
+- 缺点：首次需要人工点几项；
+- 限制：厂商私有设置无标准 API，不能承诺全自动。
 
-**选项 B：尝试 ADB 自动化 MIUI**
-- 风险：厂商私有设置/版本差异；可能误改；不可持续；不建议作为验收依据。
+**选项 B：尝试厂商自动化**
+- 风险：私有设置/版本差异；可能误改；不可持续；不作为验收依据。
+
+**推荐**：A。具体 OEM 矩阵见 [docs/32 多厂商适配指南](32-多厂商Android适配与迁移指南.md)。
 
 ### D9 · Bridge APK 资产
 
@@ -157,6 +160,9 @@
 
 ### 3.1 换 Root 手机的选购/准入清单
 
+> **不按品牌选机**：按能否解锁、Root 方案/社区、内核能力、可恢复性选；OEM 只影响解锁政策，不影响 Bridge 核心。详见 [docs/32 §5](32-多厂商Android适配与迁移指南.md#5-root-选机矩阵厂商无关的准入标准)。
+
+
 | 项 | 要求 |
 |---|---|
 | BL 解锁 | 官方/社区可解锁；解锁会清数据，需先接受 |
@@ -174,7 +180,7 @@
 | P1 | **精确 CPU/逐核频率** | `/proc/stat` 禁读 | root shell 读 `/proc/stat`、cpufreq | 高价值/低风险（只读） |
 | P1 | **网络原始字节/连接** | `/proc/net/dev` 禁读 | root 读 net/dev、iptables/conntrack | 高价值/低风险（只读） |
 | P1 | **特权遥测** | battery/WiFi 部分 | dumpsys battery/wifi/power、settings、appops | 高/中 |
-| P2 | **自启/常驻** | BootReceiver+FGS+MIUI 白名单 | Magisk `post-fs-data`/`service.d`；Sui/Shizuku 自启；可选 priv-app | 高/中 |
+| P2 | **自启/常驻** | BootReceiver+FGS+OEM 自启/省电白名单 | Magisk `post-fs-data`/`service.d`；Sui/Shizuku 自启；可选 priv-app | 高/中 |
 | P2 | **系统级 debloat/freeze** | `pm disable-user` 受限、suspend | systemless 模块/冻结、appops、settings | 高/中（勿删 boot 必需包） |
 | P2 | **CPU/热/功耗** | 无 | governor、thermal profile、cgroup、taskset、isolcpus | 中/高 |
 | P3 | **内存/zram/IO** | 无 | zram 大小/算法、swappiness、I/O scheduler、drop caches | 中/中 |
@@ -246,11 +252,11 @@
 | D1 MVP 范围 | 不含 Usage/Network；Phase 2 feature flag |
 | D2 安全 | TLS+token+pin；Phase 2 可选 mTLS |
 | D3 SDK/Gradle | 允许安装（cmdline-tools + platform 34/35） |
-| D4 包名 | `com.qingxuan.haydn.bridge` |
+| D4 包名 | `com.qingxuan.bridge` |
 | D5 Shizuku | 不进 MVP；Root 手机后由 Sui/root helper 替代 |
 | D6 DSH | 先 AGENTS + server-ops；稳定后再技能 |
 | D7 公网 | 保留现有 frp，不新增端口 |
-| D8 MIUI | 人工+脚本，5 次重启验收 |
+| D8 OEM 白名单 | 标准核心+OEM profile，5 次重启验收 |
 | D9 APK 资产 | 版本+checksum |
 | D10 频率 | 10s 可配置 |
 
