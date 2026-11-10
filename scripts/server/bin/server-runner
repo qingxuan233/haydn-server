@@ -1,0 +1,23 @@
+#!/bin/bash
+# CI Runner 按需开关（面板卡片已于 2026-11-10 移除；默认停用，需要时手动启用）
+CONF=/root/server/etc/supervisord.conf
+case "${1:-status}" in
+  on|start)
+    supervisorctl -c "$CONF" start runner
+    supervisorctl -c "$CONF" status runner
+    ;;
+  off|stop)
+    supervisorctl -c "$CONF" stop runner
+    supervisorctl -c "$CONF" status runner
+    ;;
+  status)
+    supervisorctl -c "$CONF" status runner
+    ;;
+  logs)
+    tail -n 40 /root/server/logs/runner.log
+    ;;
+  *)
+    echo "用法: server-runner [on|off|status|logs]"
+    exit 1
+    ;;
+esac

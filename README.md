@@ -69,6 +69,7 @@
 │   ├── 08-事故复盘与重置重建报告.md ← ⚠️ bootloop 事故、恢复出厂、服务器重建与开机自启验证
 │   ├── 09-性能优化方案与可行性分析.md ← 下一轮 ADB/服务器优化清单与风险/收益评估
 │   ├── 09-文件管理-文件夹打包下载.md ← /files/ 文件夹 zip 打包下载（API + UI + 安全边界）
+│   ├── 10-面板治理-移除CI-Runner.md ← 面板删除 CI Runner 卡片 + 按需启用开关
 │   ├── 10-DSH登录入口优化.md  ← /app/ 免 token 自动登录（dsh-login + nginx 入口标记）
 │   ├── 11-DSH服务器配置与模型.md ← DSH server/web profile、desktop 模型配置迁移、凭据与环境
 │   ├── 12-DSH性能优化.md   ← 运行环境分析、gzip/缓存/插件精简、优化前后对比
@@ -92,7 +93,8 @@
 │   ├── server/termux-metrics.sh ← Termux 侧 CPU/uptime 采集器（供控制台）
 │   ├── server/console-api.py    ← 控制台 API v2 源码（部署到 /root/server/api/app.py）
 │   ├── server/console/          ← 控制台页面源码（部署到 /root/server/www/index.html）
-│   └── server/webui/            ← 文件管理器源码（含"下载整个文件夹"增强，见 docs/09）
+│   ├── server/webui/            ← 文件管理器源码（含"下载整个文件夹"增强，见 docs/09）
+│   └── server/www/index.html, server/bin/server-runner ← 面板与 CI Runner 按需启停脚本（docs/10）
 │   ├── debloat-server-mode.ps1 ← 服务器模式深度清理（-Tier safe|aggressive|all，-Restore）
 │   ├── phone-health.ps1       ← 温度/负载/磁盘/9 个服务健康检查
 │   ├── restart-termux-services.ps1 ← 远程恢复 Termux/proot 服务（run-as，不需解锁）
@@ -127,6 +129,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 7. **想了解 bootloop 事故与重置后重建过程** → [08-事故复盘与重置重建报告](docs/08-事故复盘与重置重建报告.md)
 8. **想看下一轮性能优化方案与可行性分析** → [09-性能优化方案与可行性分析](docs/09-性能优化方案与可行性分析.md)
 8. **想下载整个文件夹 / 了解文件管理器增强** → [09-文件管理-文件夹打包下载](docs/09-文件管理-文件夹打包下载.md)
+9. **想了解面板为什么去掉 CI Runner / 如何按需启用** → [10-面板治理-移除CI-Runner](docs/10-面板治理-移除CI-Runner.md)
 9. **打开 DSH 时提示 authentication required / 想免 token 登录** → [10-DSH登录入口优化](docs/10-DSH登录入口优化.md)
 10. **想了解 DSH 服务器 profile / 模型配置 / 凭据** → [11-DSH服务器配置与模型](docs/11-DSH服务器配置与模型.md)
 11. **DSH 有点卡 / 想做性能优化** → [12-DSH性能优化](docs/12-DSH性能优化.md)
