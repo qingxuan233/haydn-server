@@ -6,7 +6,8 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\after-reboot-android.ps1 -Serial 192.168.10.159:5555 -EnableTcpip
 param(
     [string]$Serial = '',
-    [switch]$EnableTcpip
+    [switch]$EnableTcpip,
+    [switch]$AppManager
 )
 
 $ErrorActionPreference = 'Continue'
@@ -39,6 +40,13 @@ Write-Host '=== 2) 启动 Shizuku（重启后必须） ==='
 
 Write-Host '=== 3) 重放 P0/P1 临时设置与 appops ==='
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'perf-adb-apply.ps1') -Apply
+
+if ($AppManager) {
+    Write-Host '=== 3.5) AppManager ADB 特权服务端 ==='
+    $amArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'appmanager-adb-mode.ps1'), '-Start')
+    if ($Serial) { $amArgs += @('-Serial', $Serial) }
+    & powershell @amArgs
+}
 
 Write-Host '=== 4) 最终状态 ==='
 A @('shell', 'ps -A') | Select-String -Pattern 'shizuku_server' | Select-Object -First 1
