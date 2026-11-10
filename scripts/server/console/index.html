@@ -259,6 +259,82 @@ a, button { touch-action: manipulation; }
   .copy:hover, .tool:hover { color: var(--text); border-color: #3a475d; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; animation: none !important; } }
+/* ---------- 移动端适配（2026-11-10） ---------- */
+html, body { max-width: 100%; }
+.wrap { width: 100%; }
+.jump { display: none; }
+#live-card, #services-group, #checks-group, #vault-group, #ops-group, #bak-card { scroll-margin-top: 62px; }
+.list-more { padding: 8px 12px; border-top: 1px solid #1c222c; display: flex; justify-content: center; }
+.list-more .tool { width: 100%; justify-content: center; }
+
+@media (max-width: 600px) {
+  body { padding: 12px 10px calc(28px + env(safe-area-inset-bottom)); }
+  .wrap { max-width: 100%; }
+  header { gap: 8px; }
+  .head-right { margin-left: 0; width: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+  .head-right .overall { flex: 1 1 100%; justify-content: center; margin-left: 0; }
+  .head-right .tool { min-height: 40px; }
+  .head-right label.tool { flex: 0 0 auto; }
+  .jump { display: flex; position: sticky; top: 0; z-index: 40; gap: 5px; overflow-x: auto; padding: 7px 0 8px; margin: 0 -2px 10px; background: rgba(13,17,23,.94); backdrop-filter: blur(8px); scrollbar-width: none; }
+  .jump::-webkit-scrollbar { display: none; }
+  .jump button { flex: 0 0 auto; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 6px 11px; font: 12px inherit; min-height: 34px; }
+  .jump button.active { color: var(--accent); border-color: rgba(45,212,191,.4); background: var(--accent-soft); }
+  .air { scroll-margin-top: 58px; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .metric { padding: 9px 10px; border-radius: 11px; }
+  .metric .v { font-size: 17px; }
+  .access-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .access-item { padding: 8px 9px; border-radius: 9px; }
+  .access-item .a-url { font-size: 10.5px; }
+  .access-actions { margin-top: 7px; }
+  .access-actions .tool { min-height: 38px; }
+  .panel { padding: 11px 11px; border-radius: 12px; }
+  .group { margin-bottom: 14px; }
+  .group h2 { font-size: 11px; }
+  .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .gauge { padding: 9px 10px; }
+  .gauge .val { font-size: 16px; }
+  .sparks { grid-template-columns: 1fr; gap: 6px; }
+  .spark-box svg { height: 30px; }
+  .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 10px; font-size: 12px; }
+  .detail-grid .line { padding-top: 4px; }
+  .svc-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name ops" "state ops" "meta ops" "health ops"; row-gap: 1px; padding: 9px 10px; }
+  .svc-name { grid-area: name; }
+  .svc-row .state { grid-area: state; justify-self: start; }
+  .svc-meta { grid-area: meta; }
+  .svc-health { grid-area: health; }
+  .svc-ops { grid-area: ops; align-self: start; }
+  .check-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "info state" "info ms"; row-gap: 2px; padding: 8px 10px; }
+  .check-row > div:first-child { grid-area: info; }
+  .check-row > .state { grid-area: state; justify-self: end; }
+  .check-row > .ms { grid-area: ms; text-align: right; }
+  .vault-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name ops" "url ops" "tags ops"; row-gap: 1px; padding: 9px 10px; }
+  .vault-name { grid-area: name; }
+  .vault-url { grid-area: url; }
+  .vault-tags { grid-area: tags; }
+  .vault-ops { grid-area: ops; align-self: start; }
+  .svc-tools { width: 100%; margin-left: 0; justify-content: flex-end; flex-wrap: wrap; gap: 5px; }
+  .search { flex: 1 1 120px; }
+  .search input { width: 100%; }
+  .svc-tools .tool { min-height: 34px; }
+  .grid { grid-template-columns: 1fr; gap: 8px; }
+  .d { -webkit-line-clamp: 2; }
+  .modal { padding: 0; align-items: flex-end; }
+  .modal .box { width: 100%; max-width: 100% !important; max-height: 92vh; border-radius: 18px 18px 0 0; }
+  .modal .bar { padding: 11px 13px; }
+  .modal .body { padding: 11px 13px; }
+  .modal .foot { position: sticky; bottom: 0; background: var(--panel); padding: 9px 13px calc(9px + env(safe-area-inset-bottom)); }
+  .modal pre { max-height: 42vh; }
+  .vault-form textarea { min-height: 62px; }
+  .vault-detail .vk { flex-basis: 52px; }
+}
+@media (max-width: 359px) {
+  .access-grid { grid-template-columns: 1fr; }
+  .metrics { gap: 6px; }
+  .metric .v { font-size: 16px; }
+  .detail-grid { grid-template-columns: 1fr; }
+}
+
 </style>
 </head>
 <body>
@@ -285,6 +361,15 @@ a, button { touch-action: manipulation; }
       <button class="tool" id="btn-admin" type="button" title="解锁管理操作">🔒 解锁管理</button>
     </div>
   </header>
+
+  <nav class="jump" id="jump" aria-label="页面快速导航">
+    <button type="button" data-jump="live-card">状态</button>
+    <button type="button" data-jump="services-group">服务</button>
+    <button type="button" data-jump="checks-group">检查</button>
+    <button type="button" data-jump="vault-group">账号</button>
+    <button type="button" data-jump="ops-group">运维</button>
+    <button type="button" data-jump="bak-card">备份</button>
+  </nav>
 
   <section class="panel" id="access-card">
     <div class="panel-head">
@@ -377,7 +462,7 @@ a, button { touch-action: manipulation; }
     <div class="hint" id="vault-hint">AES-256-CBC + HMAC 加密存储；管理 token 解锁后可查看/复制/编辑；仅 HTTPS 或局域网可读；导出文件为明文，请妥善保管。</div>
   </section>
 
-  <section class="group">
+  <section class="group" id="files-group">
     <h2>文件与同步 <span class="count">2 项</span></h2>
     <div class="grid">
       <a class="card" href="/files/">
@@ -395,7 +480,7 @@ a, button { touch-action: manipulation; }
     </div>
   </section>
 
-  <section class="group">
+  <section class="group" id="code-group">
     <h2>代码与 CI <span class="count">2 项</span></h2>
     <div class="grid">
       <a class="card" href="/git/">
@@ -413,7 +498,7 @@ a, button { touch-action: manipulation; }
     </div>
   </section>
 
-  <section class="group">
+  <section class="group" id="api-group">
     <h2>接口与数据 <span class="count">4 项</span></h2>
     <div class="grid">
       <a class="card" href="/api/health">
@@ -443,7 +528,7 @@ a, button { touch-action: manipulation; }
     </div>
   </section>
 
-  <section class="group">
+  <section class="group" id="remote-group">
     <h2>远程访问 <span class="count">3 项</span></h2>
     <div class="grid">
       <div class="card cmd">
@@ -592,6 +677,8 @@ let OVERVIEW = null;
 let META = { version: '', lan: LAN, admin: false, action_required: false, lan_ip: '' };
 let LAN_IP = '';
 const VAULT = { items: [], loaded: false, current: null };
+const UI = { svcExpanded: false, checkExpanded: false, vaultExpanded: false };
+const IS_MOBILE = () => window.matchMedia('(max-width: 600px)').matches;
 let adminToken = sessionStorage.getItem(TOKEN_KEY) || '';
 let timer = null;
 let loading = false;
@@ -797,7 +884,9 @@ function renderServices(items) {
   const list = (items || []).filter((x) => !q || x.name.toLowerCase().includes(q));
   $('svc-count').textContent = `${(items || []).length} 个`;
   if (!items || !items.length) { $('svc-list').innerHTML = '<div class="empty">没有服务信息</div>'; return; }
-  $('svc-list').innerHTML = list.map((x) => {
+  const limit = IS_MOBILE() && !UI.svcExpanded ? 6 : list.length;
+  const shown = list.slice(0, limit);
+  let html = shown.map((x) => {
     const h = x.health;
     const lat = h ? (h.code > 0 ? `${h.ms}ms` : '不通') : '—';
     return `<div class="svc-row" data-name="${esc(x.name)}">
@@ -811,6 +900,10 @@ function renderServices(items) {
       </div>
     </div>`;
   }).join('');
+  if (IS_MOBILE() && list.length > 6) {
+    html += `<div class="list-more"><button class="tool small" type="button" data-more="svc">${UI.svcExpanded ? '收起列表' : `展开其余 ${list.length - 6} 项`}</button></div>`;
+  }
+  $('svc-list').innerHTML = html;
 }
 const CHECK_META = {
   api: ['本地 API', '127.0.0.1:8000'],
@@ -831,14 +924,21 @@ const CHECK_META = {
 function renderChecks(c) {
   const keys = Object.keys(CHECK_META);
   let ok = 0;
-  $('check-list').innerHTML = keys.map((k) => {
+  const rows = keys.map((k) => {
     const v = c[k] || { code: 0, ms: 0 };
     const good = v.code > 0;
     if (good) ok++;
     const label = CHECK_META[k][0], desc = CHECK_META[k][1];
     return `<div class="check-row"><div><div class="n">${esc(label)}</div><div class="d">${esc(desc)}</div></div><span class="state ${good ? 'good' : 'bad'}"><span class="dot ${good ? 'ok' : 'bad'}"></span>${good ? '正常' : '异常'}</span><span class="ms">${good ? v.ms + 'ms' : '—'}</span></div>`;
-  }).join('') + `<div class="check-row"><div><div class="n">TLS 证书</div><div class="d">本机 8443 / 公网 44904</div></div><span class="state ${((c.cert_local_days ?? 999) > 7) ? 'good' : 'bad'}"><span class="dot ${((c.cert_local_days ?? 999) > 7) ? 'ok' : 'bad'}"></span>${c.cert_local_days ?? '—'} 天</span><span class="ms">公网 ${c.cert_public_days ?? '—'} 天</span></div>`;
+  });
+  rows.push(`<div class="check-row"><div><div class="n">TLS 证书</div><div class="d">本机 8443 / 公网 44904</div></div><span class="state ${((c.cert_local_days ?? 999) > 7) ? 'good' : 'bad'}"><span class="dot ${((c.cert_local_days ?? 999) > 7) ? 'ok' : 'bad'}"></span>${c.cert_local_days ?? '—'} 天</span><span class="ms">公网 ${c.cert_public_days ?? '—'} 天</span></div>`);
   $('check-count').textContent = `${ok}/${keys.length} 正常`;
+  const limit = IS_MOBILE() && !UI.checkExpanded ? 6 : rows.length;
+  let html = rows.slice(0, limit).join('');
+  if (IS_MOBILE() && rows.length > 6) {
+    html += `<div class="list-more"><button class="tool small" type="button" data-more="check">${UI.checkExpanded ? '收起列表' : `展开其余 ${rows.length - 6} 项`}</button></div>`;
+  }
+  $('check-list').innerHTML = html;
 }
 function vaultTagChips(tags) {
   const parts = String(tags || '').split(/[,，]+/).map((s) => s.trim()).filter(Boolean).slice(0, 8);
@@ -860,7 +960,9 @@ function renderVault() {
   if (!items.length) {
     $('vault-list').innerHTML = `<div class="empty">${VAULT.items.length ? '没有匹配的账号' : '还没有保存账号密码，点「＋ 新增」添加第一个。'}</div>`;
   } else {
-    $('vault-list').innerHTML = items.map((e) => `<div class="vault-row">
+    const limit = IS_MOBILE() && !UI.vaultExpanded ? 5 : items.length;
+    const shown = items.slice(0, limit);
+    let html = shown.map((e) => `<div class="vault-row">
       <div class="vault-name"><div class="vt">${esc(e.title)}</div><div class="vu">${esc(e.username || '无用户名')}</div></div>
       <div class="vault-url">${e.url ? esc(e.url) : '—'}</div>
       <div class="vault-tags">${vaultTagChips(e.tags)}</div>
@@ -870,6 +972,10 @@ function renderVault() {
         <button class="tool small" data-vault="del" data-id="${esc(e.id)}">删除</button>
       </div>
     </div>`).join('');
+    if (IS_MOBILE() && items.length > 5) {
+      html += `<div class="list-more"><button class="tool small" type="button" data-more="vault">${UI.vaultExpanded ? '收起列表' : `展开其余 ${items.length - 5} 项`}</button></div>`;
+    }
+    $('vault-list').innerHTML = html;
   }
   $('vault-hint').textContent = 'AES-256-CBC + HMAC 加密存储；导出文件为明文，请妥善保管；按管理 token 解锁后方可读取。';
 }
@@ -1186,6 +1292,20 @@ $('vault-view-close').onclick = $('vault-view-close2').onclick = () => hideModal
 $('vault-view-edit').onclick = () => { if (VAULT.current) openVaultEdit(VAULT.current); };
 $('vault-view-delete').onclick = () => { if (VAULT.current) deleteVaultEntry(VAULT.current); };
 document.addEventListener('click', (ev) => {
+  const mb = ev.target.closest('button[data-more]');
+  if (mb) {
+    ev.preventDefault();
+    const kind = mb.dataset.more;
+    if (kind === 'svc') UI.svcExpanded = !UI.svcExpanded;
+    if (kind === 'check') UI.checkExpanded = !UI.checkExpanded;
+    if (kind === 'vault') UI.vaultExpanded = !UI.vaultExpanded;
+    if (OVERVIEW) {
+      if (kind === 'svc') renderServices(OVERVIEW.services);
+      if (kind === 'check') renderChecks(OVERVIEW.checks);
+    }
+    if (kind === 'vault') renderVault();
+    return;
+  }
   const vbtn = ev.target.closest('button[data-vault]');
   if (vbtn) {
     ev.preventDefault();
@@ -1201,6 +1321,24 @@ document.addEventListener('click', (ev) => {
     ev.preventDefault();
     copyText(cbtn.dataset.copyText || '', cbtn);
   }
+});
+document.querySelectorAll('#jump button').forEach((b) => {
+  b.addEventListener('click', () => {
+    const target = document.getElementById(b.dataset.jump);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('#jump button').forEach((x) => x.classList.toggle('active', x === b));
+  });
+});
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (OVERVIEW) {
+      renderServices(OVERVIEW.services);
+      renderChecks(OVERVIEW.checks);
+    }
+    renderVault();
+  }, 160);
 });
 $('log-close').onclick = () => { hideModal('log-modal'); if (logTimer) clearInterval(logTimer); };
 $('log-service').onchange = () => { logService = $('log-service').value; loadLog(); };

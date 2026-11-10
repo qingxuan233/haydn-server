@@ -77,6 +77,7 @@
 │   ├── 13-DSH插件安装-pnpm.md ← pnpm 缺失导致 ENOENT 的修复与 codex 插件验证
 │   ├── 13-控制台功能分析与完善.md ← 控制台 v2：指标/趋势/服务/日志/操作/备份（参考成熟项目）
 │   ├── 15-账号密码保险库.md ← AES-256+HMAC 加密、管理 token 解锁、增删改查/导入导出
+│   ├── 17-控制台移动端适配.md ← 390px 手机布局、列表折叠、吸顶导航、底部抽屉
 │   └── 11-移除DSH-GO-App环境SSH.md ← 删除旧 DSH-GO 的 App 环境 SSH（2224/57166）
 │   └── research/
 │       ├── raw-notes.md        ← 研究原始笔记与 33 条来源链接
@@ -142,6 +143,7 @@ powershell -ExecutionPolicy Bypass -File scripts\probe-device.ps1
 10. **想清理旧 DSH-GO 的 App 环境 SSH / 2224 端口** → [11-移除DSH-GO-App环境SSH](docs/11-移除DSH-GO-App环境SSH.md)
 12. **想了解控制台 v2 的功能分析与改进参考** → [13-控制台功能分析与完善](docs/13-控制台功能分析与完善.md)
 13. **想管理账号密码 / 避免忘记密码** → [15-账号密码保险库](docs/15-账号密码保险库.md)
+14. **手机上看控制台 / 移动端适配说明** → [17-控制台移动端适配](docs/17-控制台移动端适配.md)
 
 ## 重要警告
 
