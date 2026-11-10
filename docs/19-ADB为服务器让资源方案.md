@@ -1,5 +1,7 @@
 # 19 · ADB 为服务器让资源：方案矩阵
 
+> **执行状态（2026-11-10）**：P0 的"研究 App 静默 + Termux 保护 + netpolicy 白名单 + freezer/logcat"已执行，记录见 [docs/25](25-ADB资源优化与Console审计落地.md)。未重启 DSH、未接外部服务。
+>
 > 目标：在一台 Android 手机上长期跑 Termux + proot Ubuntu 服务器时，**用 ADB（无 Root）把 CPU/内存/网络/IO 资源尽量让给服务器**，同时不破坏 MIUI 日常功能和可恢复性。
 > 定位：方案设计；所有写操作均标注"需实测/可回滚"；不执行不可逆操作。
 

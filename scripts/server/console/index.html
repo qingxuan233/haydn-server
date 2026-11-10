@@ -263,7 +263,7 @@ a, button { touch-action: manipulation; }
 html, body { max-width: 100%; }
 .wrap { width: 100%; }
 .jump { display: none; }
-#live-card, #services-group, #checks-group, #vault-group, #ops-group, #bak-card { scroll-margin-top: 62px; }
+#live-card, #services-group, #checks-group, #vault-group, #ops-group, #ops-audit-group, #bak-card { scroll-margin-top: 62px; }
 .list-more { padding: 8px 12px; border-top: 1px solid #1c222c; display: flex; justify-content: center; }
 .list-more .tool { width: 100%; justify-content: center; }
 
@@ -440,6 +440,12 @@ html, body { max-width: 100%; }
       <span class="svc-tools"><span class="search">🔎<input id="svc-search" type="search" placeholder="筛选服务" aria-label="筛选服务"></span></span>
     </h2>
     <div class="svc-list" id="svc-list"><div class="empty">加载中…</div></div>
+  </section>
+
+  <section class="group" id="ops-audit-group">
+    <h2>DSH 控制平面 / Ops 审计 <span class="count" id="ops-audit-count">—</span></h2>
+    <div class="vault-list" id="ops-audit-list"><div class="empty">加载中…</div></div>
+    <div class="hint">来自 server-ops 审计（Tier1 只读 / Tier2 受控写）；DSH 状态见上方“服务健康”。</div>
   </section>
 
   <section class="group" id="checks-group">
@@ -1119,6 +1125,16 @@ async function importVaultFile(file) {
   } catch (e) { toast('导入失败：' + e.message, 'bad'); }
 }
 
+function renderOps(items) {
+  const countEl = $('ops-audit-count');
+  if (!items || !items.length) {
+    if (countEl) countEl.textContent = '0';
+    $('ops-audit-list').innerHTML = '<div class="empty">暂无 server-ops 审计</div>';
+    return;
+  }
+  if (countEl) countEl.textContent = String(items.length);
+  $('ops-audit-list').innerHTML = items.slice(0, 12).map((it) => `<div class="bak"><span>${esc(fmtWhen(it.ts))}</span><span>${esc(it.cmd || '')} ${esc(it.args || '')} · rc=${esc(String(it.rc ?? ''))}</span></div>`).join('');
+}
 function renderBackups(items) {
   if (!items || !items.length) { $('bak-list').innerHTML = '<div class="empty">暂无备份</div>'; return; }
   $('bak-list').innerHTML = items.slice(0, 8).map((b) => `<div class="bak"><span>${esc(fmtWhen(b.at))}</span><span>${esc(b.mb)} MB · ${esc(b.name)}</span></div>`).join('');
@@ -1128,9 +1144,10 @@ async function refreshAll(manual = false) {
   loading = true;
   const b = $('btn-refresh'); if (b) b.textContent = '⟳ 刷新中';
   try {
-    const [data, meta] = await Promise.all([
+    const [data, meta, ops] = await Promise.all([
       apiFetch('/api/overview?n=120'),
       apiFetch('/api/meta'),
+      apiFetch('/api/ops?n=20'),
     ]);
     META = meta;
     LAN_IP = (data.sysinfo && data.sysinfo.lan_ip) || meta.lan_ip || '';
@@ -1141,6 +1158,7 @@ async function refreshAll(manual = false) {
     renderAccess();
     maybeSwitchByQuery();
     renderOverview(data);
+    renderOps((ops && ops.items) || []);
     if (manual) toast('已刷新', 'good');
   } catch (e) {
     $('overall').innerHTML = `<span class="dot bad"></span>状态接口不可用`;

@@ -54,6 +54,7 @@ CONF = "/root/server/etc/supervisord.conf"
 CONF_GLOB = "/root/server/etc/conf.d/*.conf"
 TOKEN_FILE = "/root/server/etc/console-action.token"
 AUDIT_FILE = os.path.join(LOG_DIR, "console-actions.jsonl")
+OPS_AUDIT = os.path.join(LOG_DIR, "ops-audit.jsonl")
 VAULT_FILE = "/root/server/etc/vault.enc"
 VAULT_KEY = "/root/server/etc/vault.key"
 VAULT_AUDIT = os.path.join(LOG_DIR, "vault-actions.jsonl")
@@ -623,6 +624,27 @@ def load_metrics(n=60):
     return out
 
 
+def load_ops_audit(n=20):
+    n = max(1, min(int(n), 200))
+    try:
+        with open(OPS_AUDIT, "rb") as f:
+            f.seek(0, 2)
+            size = f.tell()
+            f.seek(max(0, size - 96 * 1024))
+            lines = f.read().decode("utf-8", "ignore").splitlines()
+    except Exception:
+        return []
+    out = []
+    for line in lines[-n:]:
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                out.append(json.loads(line))
+            except Exception:
+                pass
+    return out
+
+
 def read_log(name, lines=200):
     mapping = service_log_map()
     path = mapping.get(name)
@@ -932,6 +954,10 @@ class Handler(BaseHTTPRequestHandler):
                 })
             elif path == "/api/backups":
                 self._send(200, {"items": list_backups()})
+            elif path == "/api/ops":
+                n = (q.get("n") or ["20"])[0]
+                items = load_ops_audit(n)
+                self._send(200, {"count": len(items), "items": items, "updated": _fmt_iso()})
             elif path == "/api/vault":
                 if not self._vault_guard():
                     return
