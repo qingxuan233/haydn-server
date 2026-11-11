@@ -1,41 +1,41 @@
-# ---- 项目专用 ----
-# 平台工具（体积大、可重新下载，不入库）
+# ---- 平台/构建工具（体积大、可重新下载，不入库）----
 /tools/platform-tools/
+/tools/android-sdk/
 /tools/*.zip
 /tools/mi-unlock/
 /tools/magisk/
 /tools/firmware/
 /tools/termux/
 /tools/termux-boot/
-
-# 备份与刷机物料（含个人数据/大文件）
-/backup/
-
-# 采集产物（含设备序列号等，重新运行脚本即可生成）
-/inventory/*
-
-# 本地临时文件
-*.log
-*.tmp
-*.bak
-~$*
-
-# 编辑器 / OS
-.vscode/
-.idea/
-Thumbs.db
-Desktop.ini
-.DS_Store
-/scripts/server/dsh-web-cordis.patch.yml
-/scripts/server/recon-dsh-config*.sh
-__pycache__/
 /tools/apks/
 /tools/uad_lists.json
 
-# Android Bridge build artifacts / private keys
-/tools/android-sdk/
+# ---- 备份与刷机物料（含个人数据/大文件）----
+/backup/
+
+# ---- 采集产物（含设备序列号等隐私，重新运行脚本即可生成）----
+/inventory/*
+# 但保留说明文件
+!/inventory/README.md
+
+# ---- Android Bridge 构建产物 / 私钥（绝不可提交）----
 /android-bridge/build/
 /android-bridge/assets/bridge.p12
 /android-bridge/signing.p12
 /android-bridge/certs/
 /android-bridge/_tmp*
+
+# ---- 本地临时文件 / 编辑器 / OS ----
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+~$*
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+__pycache__/
+/scripts/server/recon-dsh-config*.sh
