@@ -43,14 +43,13 @@ agent_hint: 先读本页确认定位与阅读路径；Agent 的完整启动顺�
 5. 按需：[MTH-004 服务器栈](03-server-stack.md) / [MTH-005 遥测桥](04-telemetry-bridge.md) / [MTH-006 控制面](05-control-plane.md) / [MTH-007 安全](06-security.md) / [MTH-008 验收](07-validation.md)
 6. 动手前必读：[guardrails/README.md](../guardrails/README.md)；排障先查 [pitfalls/README.md](../pitfalls/README.md)
 
-### 2.2 Agent（约 10 分钟）
+### 2.2 Agent（分层最小，权威读序见 [AGENTS.md §0](../AGENTS.md)）
 
-1. [AGENTS.md](../AGENTS.md)：工作协议、红线、DoD、任务协议
-2. [agent-manifest.json](../agent-manifest.json)：机器可读索引与阅读顺序（由 `toolkit index` 生成）
-3. [MTH-001](00-foundations.md) → [MTH-002](01-assessment.md) → [MTH-003](02-roadmap.md)：确认边界与当前阶段
-4. [MTH-009 Agent 交接与扩展协议](08-agent-handoff.md)：目录约定、扩展流程、变更传播
-5. [backlog.json](../backlog.json) 领取任务；开工前跑基线校验（见 §7 快速开始）
-6. 动手时：先只读、再小步写；门禁未过不推进；证据不伪造
+1. [AGENTS.md](../AGENTS.md)：工作协议、红线、DoD、任务协议。
+2. [agent-manifest.json](../agent-manifest.json)：根摘要（≤160 行）；需要某层时只读一个 `agent-manifest.d/` 分片。
+3. 按任务**只选 1 篇**主题 MTH（评估/路线图/服务器/桥/控制面/安全/验收之一）；扩展/交接读 [MTH-009](08-agent-handoff.md)，归档/上下文预算读 [MTH-011](10-document-lifecycle.md)。
+4. [README](../README.md) 只读"仓库地图/阅读路径"段；[backlog.json](../backlog.json) 领取任务。
+5. 动手前按 AGENTS §0 跑基线校验；只读优先、小步变更、证据不伪造。
 
 > **最小判断路径**：只想回答"这台手机能不能做服务器" → [MTH-002](01-assessment.md) §4 决策表 + [MTH-003](02-roadmap.md) §1 阶段总览，5 分钟足够。
 
@@ -97,17 +96,16 @@ agent_hint: 先读本页确认定位与阅读路径；Agent 的完整启动顺�
 
 ---
 
-## 5. 当前成熟度（2026-11-11）
+## 5. 当前成熟度
 
-| 层 | 状态 | 说明 |
-|---|---|---|
-| methodology | **v2 初版（11 篇）** | 覆盖评估/路线图/服务器/桥/控制面/安全/验收/交接/术语/文档生命周期；本页与部分章节仍随实践修订 |
-| cases | **实证案例（1 个，部分验收）** | haydn K40 Pro：无 Root proot 栈 + 桥 release + 控制面；**24h soak 等未完成项如实记录**，不得表述为"全验收通过" |
-| toolkit | **alpha** | 零依赖 CLI/schema/模板/测试；fixture 单测可跑，**尚未真机回归**；字段与顺序可能随实测调整 |
-| pitfalls / guardrails | 初版（20 / 14 条） | 来自真实案例与已发现偏差；每条必须含证据与检查方式 |
-| 文档/Agent 可读性 | 初步可用 | 稳定 ID + front matter + 机器索引 + 校验命令；新增内容必须过校验 |
+> 只给结论与链接，不维护数字快照：文档范围见 §4；工具测试/限制见 [toolkit/README.md](../toolkit/README.md) 与 [CHANGELOG.md](../CHANGELOG.md) 当前窗口；案例成熟度见 [cases/README.md](../cases/README.md)；未完成/优先级见 [backlog.json](../backlog.json)。
 
-**已知缺口**（不在本页展开，见 [backlog.json](../backlog.json)）：真机回归、第二设备案例、OEM profile 矩阵、桥的 mTLS/配对/token 轮换、fleet 扩展、CI 质量门。
+| 层 | 结论 |
+|---|---|
+| methodology | v2 初版可用（MTH-000..011；随实践修订，变更进 CHANGELOG 窗口/归档） |
+| cases | 实证案例 1 个，**部分验收**（未完成项以案例内记录为准，不得表述为全通过） |
+| toolkit | alpha：fixture 单测可跑、**尚未真机回归**；限制与测试数见 toolkit/README |
+| pitfalls / guardrails | 初版条目，均含证据/检查方式；新增/变更进 CHANGELOG |
 
 ---
 

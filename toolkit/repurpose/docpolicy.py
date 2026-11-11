@@ -31,7 +31,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "status_sections": {
         "max_lines": 8,
         "files": ["AGENTS.md", "README.md"],
-        "match_headings": ["当前状态", "现状", "Status"],
+        "match_headings": ["当前状态", "现状", "当前阶段", "Status"],
     },
     "line_limits": {
         "AGENTS.md": 340,
@@ -41,6 +41,8 @@ DEFAULT_POLICY: dict[str, Any] = {
         "guardrails/*.md": 90,
         "cases/*/README.md": 280,
         "cases/*/oem-profile.md": 200,
+        "toolkit/README.md": 380,
+        "backlog.json": 400,
     },
     "byte_limits": {
         "changelog/*.md": 262144,

@@ -302,6 +302,28 @@
       "owner": "",
       "updated": "",
       "result": ""
+    },
+    {
+      "id": "BL-018",
+      "title": "CHANGELOG §4 归档索引与归档文件条数/版本一致性机检",
+      "priority": "P1",
+      "area": "toolkit",
+      "status": "pending",
+      "acceptance": "validate --strict 解析 CHANGELOG §4 索引行与 changelog/YYYY-MM.md，校验月份条目数、版本范围、链接存在且无重复/缺失；不符即 exit 4，并有临时 repo 测试。",
+      "outputs": [
+        "toolkit/repurpose/validate.py",
+        "toolkit/tests/test_validate.py",
+        "methodology/10-document-lifecycle.md"
+      ],
+      "depends": [
+        "BL-016"
+      ],
+      "notes": "当前归档由人工核对（MTH-011 已标注）；实现后 MTH-011 改为机检。",
+      "agent_hint": "先从 CHANGELOG §4 表解析 month/条目数/版本范围，再逐个归档文件计数比对。",
+      "requires": "",
+      "owner": "",
+      "updated": "",
+      "result": ""
     }
   ]
 }

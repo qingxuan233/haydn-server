@@ -17,12 +17,11 @@
 > 本清单是仓库**唯一权威读序**；README、MTH-000、MTH-009 中的读序都是它的简化/引用。若发现不一致，以本节为准并修文档。
 
 1. 读本文件（尤其 §3 红线、§7 DoD）。
-2. 读 [README.md](README.md) 了解仓库定位与阅读路径。
-3. 读 [agent-manifest.json](agent-manifest.json)（不存在或过期则先运行 `python -m toolkit.repurpose index`）。
-4. 读 [methodology/08-agent-handoff.md](methodology/08-agent-handoff.md)（扩展协议细则）。
-5. 读 [methodology/README.md](methodology/README.md) 与 [MTH-001](methodology/00-foundations.md)、[MTH-002](methodology/01-assessment.md)、[MTH-003](methodology/02-roadmap.md)。
-6. 从 [backlog.json](backlog.json) 选一项（优先 P0/P1），或接受用户新任务。
-7. 动手前跑：
+2. 读根 [agent-manifest.json](agent-manifest.json) 摘要（≤160 行；不存在/过期则先 `python -m toolkit.repurpose index`）。
+3. 按任务**只选 1 篇**主题文档深入（MTH-001/002/003/004/005/006/007/008 之一）；扩展/交接任务读 [MTH-009](methodology/08-agent-handoff.md)，归档/上下文规则读 [MTH-011](methodology/10-document-lifecycle.md)。
+4. 读 [README.md](README.md) 的"仓库地图/阅读路径"段落即可（不必整读）。
+5. 从 [backlog.json](backlog.json) 选一项（优先 P0/P1），或接受用户新任务。
+6. 动手前跑：
    ```powershell
    python -m toolkit.repurpose validate --strict
    python scripts/dev/check-links.py --strict-anchors
@@ -149,6 +148,7 @@ agent_hint: 新设备接入第一步；先 probe 再 assess
 - 引用案例事实必须给相对链接与"案例实证"标注；通用结论必须可被新设备验证。
 - 规范用语：**必须（MUST）** = 不可验收通过；**应当（SHOULD）** = 默认，偏离需记录理由；**可以（MAY）** = 可选。
 - 历史/案例文档保留原编号与历史结论，不迁移、不改写；通用层新文档使用 ASCII 文件名。
+- **历史证据豁免**：冻结/归档文档（`docs/`、`cases/`、`changelog/`）中残留的旧地址/端口/主机名属于历史事实，不适用新层的"禁止写入"规则；但**不得复制、使用或当作当前配置**，只能作为追溯证据。
 
 ### 4.4 工具与产物
 
@@ -274,10 +274,9 @@ git status --short                                   # 期望只有本次有意�
 
 > 本节只写**结论与链接**（≤8 行），不复制数字；当前窗口变更见 [CHANGELOG.md](CHANGELOG.md)，历史变更见 [changelog/](changelog/README.md)（默认不读）。
 
-- 方法论 v2.0 初版：MTH-000..011（12 个文件）、PIT-000..020（21 个文件）、GRD-000..014（15 个文件）、TOOL-001..010（7 个 CLI 子命令 + 3 个 Termux 脚本；PowerShell 包装器不单独编号；manifest 的物理工具条目为 5 个）已完成初稿。工具登记表以 [toolkit/README.md](toolkit/README.md) 为准。
-- `toolkit` 为 alpha：**163 项 fixture 单元测试通过，尚未真机回归**；`detect/probe` 的字段解析以实测为准，可能需随设备差异调整。
-- 案例是**部分验证**：服务器/桥/Console/备份已落地，但 24h soak、配对/token 轮换、mTLS、限流、OEM profile 矩阵、外部监控均未完成；不得把案例说成"全验收通过"。
-- 待办见 [backlog.json](backlog.json)；优先级 P0 是一切真机验证与基线绿化。
+- 方法论/证据/护栏/工具初版完成；工具测试与真机缺口见 [toolkit/README.md](toolkit/README.md) 与 [CHANGELOG.md](CHANGELOG.md) 当前窗口。
+- 案例是**部分验证**（24h soak、配对/轮换、mTLS、限流等未完成，详见 [cases/haydn-k40pro/README.md](cases/haydn-k40pro/README.md)）；不得表述为"全验收通过"。
+- 待办与优先级见 [backlog.json](backlog.json)；P0 是真机验证与基线绿化。
 
 ---
 

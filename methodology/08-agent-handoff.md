@@ -39,15 +39,12 @@ agent_hint: 每个新 Agent 开工前必读；先协议后动手，任务是取�
 | `docs/`、`scripts/`、`android-bridge/` | 旧项目冻结证据 | 只读（事实纠错需明确任务） |
 | `profiles/`、`agent-manifest.json` + `agent-manifest.d/` | 运行期隐私档案（gitignored）/ 机器索引根摘要与按层分片（生成物） | 不入库；manifest 只用 `index` 重建；Agent 分层加载 |
 
-## 3. Agent 启动读序（10 分钟）
+## 3. Agent 启动读序（以 [AGENTS.md](../AGENTS.md) §0 为准，本节是分层最小版）
 
-1. [AGENTS.md](../AGENTS.md)：重点"分层与权威顺序、红线、DoD"。
-2. [README.md](../README.md)：仓库定位与阅读路径。
-3. [agent-manifest.json](../agent-manifest.json)：机器索引**根摘要**（不存在/过期 → 先 `python -m toolkit.repurpose index`）；需要某层内容时**只读一个** `agent-manifest.d/<layer>.json` 分片，禁止一次加载全部分片。
-4. [MTH-011](10-document-lifecycle.md)：文档生命周期、归档与上下文预算（阅读预算/默认不读归档/整读上限）。
-4. 本文件（MTH-009）、[methodology/](README.md) 索引与 [MTH-001](00-foundations.md)、[MTH-002](01-assessment.md)、[MTH-003](02-roadmap.md)。
-5. 任务相关的方法论/护栏/踩坑/案例（按 manifest 与索引跳转）。
-6. [backlog.json](../backlog.json)：领取任务或确认优先级。
+1. [AGENTS.md](../AGENTS.md)：分层与权威顺序、红线、DoD。
+2. [agent-manifest.json](../agent-manifest.json)：根摘要（≤160 行；过期先 `python -m toolkit.repurpose index`）；需要某层时**只读一个** `agent-manifest.d/<layer>.json` 分片，禁止一次加载全部分片。
+3. 按任务**只选 1 篇**主题 MTH（MTH-001..008 之一）；扩展/交接任务读本文件，归档/上下文预算读 [MTH-011](10-document-lifecycle.md)。
+4. [README.md](../README.md) 只读"仓库地图/阅读路径"段；[backlog.json](../backlog.json) 领取任务或确认优先级。
 
 **只读优先**：先看状态与证据再改文件；不了解影响面时禁止批量重写。基线校验必须全绿（红基线先修基线，禁止叠加变更）：
 

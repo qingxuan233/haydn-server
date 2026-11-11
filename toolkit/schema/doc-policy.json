@@ -24,7 +24,9 @@
     "pitfalls/*.md": 90,
     "guardrails/*.md": 90,
     "cases/*/README.md": 280,
-    "cases/*/oem-profile.md": 200
+    "cases/*/oem-profile.md": 200,
+    "toolkit/README.md": 380,
+    "backlog.json": 400
   },
   "byte_limits": {
     "changelog/*.md": 262144

@@ -173,7 +173,7 @@ python scripts/dev/check-links.py --strict-anchors
 
 ## 10. 当前状态与成熟度
 
-> 本节只写摘要（≤8 行）；详细状态见 [methodology/README.md 成熟度](methodology/README.md) 与 [CHANGELOG.md](CHANGELOG.md) 当前窗口（≤8 条），历史见 [changelog/](changelog/README.md)（默认不读）。
+> 本节只写摘要（≤8 行）；详细状态见 [CHANGELOG.md](CHANGELOG.md) 当前窗口、[backlog.json](backlog.json) 与 [cases/README.md](cases/README.md)；历史见 [changelog/](changelog/README.md)（默认不读）。
 
 - 方法论：MTH-000..011 初版完成；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；案例：部分验收（24h soak 等未完成，不得表述为全验收）。
 - 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-011](methodology/10-document-lifecycle.md)。

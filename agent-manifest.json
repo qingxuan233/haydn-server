@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.agent-manifest.v1",
-  "generated_at": "2026-11-11T03:50:27Z",
+  "generated_at": "2026-11-11T04:01:55Z",
   "repo": {"name":"haydn-server","root":".","protocol":["AGENTS.md","backlog.json","README.md"]},
   "entrypoints": [{"id":"MTH-000","title":"方法论门户：定位、路径与文档地图","path":"methodology/README.md","type":"index"},{"id":"TOOL-000","title":"通用改造工具链 toolkit（CLI / schema / 模板 / Termux 脚本 / 测试）","path":"toolkit/README.md","type":"index"},{"id":"CASE-000","title":"案例层索引：设备实证案例的目录约定与登记流程","path":"cases/README.md","type":"index"},{"id":"GRD-000","title":"护栏索引与使用规范","path":"guardrails/README.md","type":"guardrail"},{"id":"PIT-000","title":"踩坑库索引（Pitfalls Index）","path":"pitfalls/README.md","type":"pitfall"}],
   "reading_order": [
