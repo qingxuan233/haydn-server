@@ -33,10 +33,8 @@ from .util import (
 )
 from .validate import format_validation_human, validate_repo
 from .indexgen import (
-    build_manifest,
-    default_manifest_path,
     format_index_summary,
-    write_manifest,
+    write_bundle,
 )
 
 EXIT_OK = 0
@@ -156,11 +154,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     index_parser = subparsers.add_parser(
         "index",
-        help="扫描新层 Markdown 并生成 agent-manifest.json",
+        help="重建根摘要 agent-manifest.json + agent-manifest.d/ 四层分片",
         description=(
             "扫描 methodology/、pitfalls/、guardrails/、cases/ 下 .md 的 front matter，"
-            "生成 repurpose.agent-manifest.v1（默认写入 <root>/agent-manifest.json）。"
-            "目录缺失时跳过且不失败。"
+            "生成根摘要（repurpose.agent-manifest.v1，≤160 行，含 shards 映射）与按层分片"
+            "（agent-manifest.d/{methodology,pitfalls,guardrails,case-studies}.json，"
+            "repurpose.manifest-shard.v1，≤300 行/≤32KB/≤40 条）。目录缺失时跳过且不失败；"
+            "旧分片（本工具 schema 标记）会被清理。"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -344,19 +344,23 @@ def cmd_new_profile(args: argparse.Namespace, *, transport: Any = None) -> int:
 
 def cmd_index(args: argparse.Namespace, *, transport: Any = None) -> int:
     root = find_repo_root(args.root)
-    target, manifest = write_manifest(root, args.out)
+    info = write_bundle(root, args.out)
+    manifest = info["manifest"]
     if args.json:
         summary = {
             "schema": manifest["schema"],
             "generated_at": manifest["generated_at"],
-            "output": rel_posix(target, root),
+            "output": info["root"]["path"],
+            "root": info["root"],
+            "shards": info["shards"],
             "counts": manifest["counts"],
-            "warnings": manifest["warnings"],
-            "errors": manifest["errors"],
+            "removed_shards": info["removed_shards"],
+            "warnings": info["warnings"],
+            "errors": info["errors"],
         }
         _print_json(summary)
     else:
-        print(format_index_summary(manifest, target))
+        print(format_index_summary(info))
     return EXIT_OK
 
 
@@ -410,4 +414,4 @@ def main(
         return 130
 
 
-_ = iso_now, load_json, build_manifest, default_manifest_path, validate_profile
+_ = iso_now, load_json, rel_posix, write_json, validate_profile

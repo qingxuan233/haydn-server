@@ -256,6 +256,52 @@
       "owner": "",
       "updated": "",
       "result": ""
+    },
+    {
+      "id": "BL-016",
+      "title": "文档体积与归档窗口机器校验（doc-policy + manifest 分片）",
+      "priority": "P1",
+      "area": "toolkit",
+      "status": "done",
+      "acceptance": "validate 依据 toolkit/schema/doc-policy.json 校验 AGENTS/README/CHANGELOG 窗口/各层文档行数与 manifest 根/分片大小；index 产出根摘要+四层分片；测试覆盖。",
+      "outputs": [
+        "toolkit/schema/doc-policy.json",
+        "toolkit/repurpose/validate.py",
+        "agent-manifest.d/",
+        "toolkit/tests/"
+      ],
+      "depends": [
+        "BL-003"
+      ],
+      "notes": "2026-11-11 完成初版；backlog 归档与 >40 条分片仍待 BL-017。",
+      "agent_hint": "改动上限时先改 doc-policy 再跑 validate。",
+      "requires": "",
+      "owner": "toolkit",
+      "updated": "2026-11-11",
+      "result": "已实现：docpolicy.py + doc-policy.json + 根/分片索引与一致性校验；163 项单测全绿，validate --strict 0 error。"
+    },
+    {
+      "id": "BL-017",
+      "title": "单层 >40 条的分片拆分与 backlog 归档机检",
+      "priority": "P2",
+      "area": "toolkit",
+      "status": "pending",
+      "acceptance": "manifest 分片超过 40 条时自动按子目录/字母区间拆分为多片并在根 shards 映射；backlog done 超过 5 条时自动归档到 backlog-archive.json 并机检；两者均有测试。",
+      "outputs": [
+        "toolkit/repurpose/indexgen.py",
+        "toolkit/repurpose/validate.py",
+        "toolkit/schema/",
+        "backlog-archive.json"
+      ],
+      "depends": [
+        "BL-016"
+      ],
+      "notes": "当前四层均 ≤40 条，尚未触发；规则见 MTH-011。",
+      "agent_hint": "先定拆分键（ID 区间或 domain），再改 index/validate 与测试。",
+      "requires": "",
+      "owner": "",
+      "updated": "",
+      "result": ""
     }
   ]
 }

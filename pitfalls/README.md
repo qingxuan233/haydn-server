@@ -14,24 +14,15 @@ domain: docs
 
 # 踩坑库（Pitfalls）
 
-> 这里是**证据层**：把真实改造过程中踩过的坑，沉淀成可检索、可复现、可被 Agent 直接消费的条目。
-> 每条 PIT 都回答四个问题：**怎么坏掉的 / 为什么会坏 / 怎么避免和修 / 怎么验证修好了**。
-> 上位文档：[根 AGENTS.md](../AGENTS.md) · [人类入口 README](../README.md) · [方法论索引](../methodology/README.md) · [护栏索引](../guardrails/README.md) · [工具链索引](../toolkit/README.md) · [haydn 案例](../cases/haydn-k40pro/README.md)。
+> 这里是**证据层**：把真实改造过程中踩过的坑沉淀成可检索、可复现、可被 Agent 直接消费的条目。
+> 每条 PIT 回答：**怎么坏掉的 / 为什么坏 / 怎么避免和修 / 怎么验证修好了**。上位与边界：[AGENTS.md](../AGENTS.md) · [MTH-011](../methodology/10-document-lifecycle.md)（归档与阅读预算）· [方法论文档地图](../methodology/README.md)。
 
----
+## 1. 用途
 
-## 1. 这个目录用来做什么
-
-| 用途 | 说明 |
-|---|---|
-| 反推规范 | 每条坑都对应一条应该存在的红线或规范；PIT 与 [GRD](../guardrails/README.md) / [MTH](../methodology/README.md) 交叉引用 |
-| 换机复用 | 新设备/新 OEM 接入前先扫本库，按域与严重度过滤，避免重蹈覆辙 |
-| Agent 检索 | 稳定 ID + flat front matter + 机器索引（`python -m toolkit.repurpose index` 生成的 `agent-manifest.json`） |
-| 验收依据 | 每条都有可执行的验证步骤，不能只写“注意一下” |
-
-**这不是**：某机型的故障流水账；也不是一次性事故报告合集。只保留**可迁移**的教训——换一台 Android 手机仍然成立的部分。
-
----
+- **反推规范**：每条坑对应一条应该存在的红线或规范；PIT 与 [GRD](../guardrails/README.md) / [MTH](../methodology/README.md) 交叉引用。
+- **换机复用**：新设备/新 OEM 接入前先按严重度与域过滤，避免重蹈覆辙。
+- **Agent 检索**：稳定 ID + flat front matter + 机器索引（`agent-manifest.d/pitfalls.json`）。
+- **验收依据**：每条都有可执行验证步骤；不是故障流水账，只保留可迁移教训（换一台 Android 手机仍成立的部分）。
 
 ## 2. 严重度分级（S1–S4）
 
@@ -42,48 +33,26 @@ domain: docs
 | **S3** | 效率黑洞 / 返工 / 能力路线被否导致重做 | 记录决策门，先探测再动手 |
 | **S4** | 质量 / 一致性 / 可维护性问题 | 纳入校验与索引，定期整理 |
 
-> 严重度描述的是**这一条坑的风险等级**，不是事故已经发生时的损失等级。已发生事故的证据统一放在 `## 证据`。
+> 严重度描述的是**这一条坑的风险等级**，不是事故已发生时的损失等级；已发生事故的证据统一放 `## 证据`。
 
----
+## 3. 检索与格式
 
-## 3. 检索方式
+1. **按 ID**：`pitfalls/PIT-NNN-*.md`；ID 只增不复用；索引见 §5。
+2. **按严重度**：先读 S1（PIT-002/011/015/017），再读 S2（服务中断类）。
+3. **按域**：`domain` 取 `device / boot / server / bridge / security / ops / docs`；按 OEM 字段复核厂商相关条目。
+4. **按机器索引**：`agent-manifest.d/pitfalls.json` 含 id/title/tags/severity/domain；不要手改生成物。
+5. **格式**：文件名 ASCII；front matter 是**文件头部**（首行 `---` 到下一个 `---`）；必填 8 键 + **PIT 额外必需 `severity`、`domain`**；正文固定七个 H2：`症状 / 触发场景 / 根因 / 规避与修复 / 验证 / 关联 / 证据`；只用相对链接、禁止 `#anchor`、禁止绝对路径/IP/凭据/个人信息；建议 40–80 行。
+6. **证据**：案例实证必须回链 `../docs/` 或 `../cases/`；无案例时写"通用风险，待案例验证"；不得编造。
 
-1. **按 ID 精确定位**：`pitfalls/PIT-NNN-*.md`；ID 只增不复用。
-2. **按严重度**：先读 S1（PIT-002、PIT-011、PIT-015、PIT-017），再看 S2（服务中断类）。
-3. **按域**：`domain` 取 `device / boot / server / bridge / security / ops / docs`；例如排查构建问题看 `docs`，排查前台服务被杀看 `bridge`。
-4. **按 OEM**：`oem` 字段（如 `xiaomi`）标记厂商相关条目，换非小米设备时重点复核。
-5. **机器检索**：`agent-manifest.json`（由 [toolkit](../toolkit/README.md) 生成）含 id/title/tags/severity/domain，可被 Agent 直接过滤；不要手改生成物。
-6. **按证据回溯**：需要原始事实时，沿 `## 证据` 的相对链接回到案例文档（[docs/](../docs/README.md) 为冻结证据，只读）。
+## 4. 新增一条 PIT（步骤）
 
----
+1. **找证据**：从案例文档、复盘、日志、命令输出中找可复现事实；没有证据只登记为"通用风险，待案例验证"。
+2. **取号**：查本索引与 `agent-manifest`，取下一个未使用的 `PIT-NNN`；编号只增不复用。
+3. **建文件**：按 [pitfall 模板](../toolkit/templates/pitfall.md) 新建 `pitfalls/PIT-NNN-*.md`，写 front matter + 七段。
+4. **交叉链接**：至少关联一条 [GRD](../guardrails/README.md) 或 [MTH](../methodology/README.md)；同类互链；证据回链案例；更新 §5 索引。
+5. **跑校验**：`python -m toolkit.repurpose validate --strict`、`python -m toolkit.repurpose index`、`python scripts/dev/check-links.py --strict-anchors` 全绿后，由 Lead 统一提交并记 CHANGELOG 当前窗口。
 
-## 4. 格式规范（新增/修改必守）
-
-- 文件名全 ASCII：`PIT-NNN-kebab-case.md`；正文中文。
-- 首行与末行为 `---`，之间是 **flat YAML**（禁止嵌套、禁止多行块）。列表键（`audience/tags/depends`）用逗号串。
-- 必需键：`id, title, type: pitfall, status: current, audience: human, agent, updated: 2026-11-11, agent_hint`；**PIT 额外必需** `severity(S1–S4)`、`domain`（缺失/非法会被 `validate --strict` 判失败）；可选 `oem`。
-- front matter 是**文件头部**（首行 `---` 到下一个 `---`；末尾不要求 `---`），列表键用逗号串。
-- 正文固定七个 H2：`## 症状` / `## 触发场景` / `## 根因` / `## 规避与修复` / `## 验证` / `## 关联` / `## 证据`。
-- `## 规避与修复` 必须是**编号步骤**；`## 验证` 必须可执行、有通过标准；`## 证据` 无案例时写“通用风险，待案例验证”。
-- 只用相对链接（同一层用 `../methodology/...`、`../guardrails/...`、`../docs/...`），**禁止 `#anchor`**，禁止绝对路径、IP、端口、凭据、个人信息。
-- 建议 40–80 行；超过说明应拆条，少于 40 行说明证据或验证不足。
-
----
-
-## 5. 如何新增一条 PIT（步骤）
-
-1. **先找证据**：从案例文档、复盘、日志、命令输出中找可复现的事实；没有证据的只登记为“通用风险，待案例验证”，不得写成已发生。
-2. **取号**：查本索引与 `agent-manifest.json`，取下一个未使用的 `PIT-NNN`；编号只增不复用。
-3. **建文件**：按 [pitfall 模板](../toolkit/templates/pitfall.md) 新建 `pitfalls/PIT-NNN-*.md`，先写 front matter。
-4. **写七段**：症状、触发场景、根因（到机制层，不写“可能是”）、规避与修复（编号步骤）、验证（命令 + 通过标准）、关联、证据。
-5. **交叉链接**：至少关联一条 [GRD](../guardrails/README.md) 或 [MTH](../methodology/README.md)；同类坑互链；证据回链案例文档。
-6. **更新本索引**：在 §6 表格加一行（ID、标题、严重度、域、一句话、链接）。
-7. **跑校验**：`python -m toolkit.repurpose validate --strict`、`python -m toolkit.repurpose index`、`python scripts/dev/check-links.py --strict-anchors`，必须全绿。
-8. **提交**：由 Lead/维护者统一审 diff 并提交，并在 `CHANGELOG.md` 记录；teammate 不单独 commit。
-
----
-
-## 6. 索引（PIT-000 总表）
+## 5. 索引（PIT-000 总表）
 
 | ID | 标题 | 严重度 | 域 | 一句话 | 链接 |
 |---|---|---|---|---|---|
@@ -105,19 +74,14 @@ domain: docs
 | PIT-016 | 签名/TLS 密钥缺省生成导致不可复现 | S2 | bridge | 密钥是长期资产：生成一次、备份、固定口令策略、checksum 入档 | [PIT-016](PIT-016-generated-signing-keys-repro.md) |
 | PIT-017 | 只做快照不回滚/不演练=假安全 | S1 | ops | 快照 + 恢复验证 + 定期演练，三者缺一不可 | [PIT-017](PIT-017-snapshot-without-rollback.md) |
 | PIT-018 | proot 挂载假设错误导致服务全灭 | S2 | server | 最小绑定、启动断言、固定启动上下文；不要绑定共享存储 | [PIT-018](PIT-018-proot-mount-assumptions.md) |
-| PIT-019 | “证书 pin”名不副实的安全承诺缺口 | S2 | security | 自签证书+静态口令+明文 token+无配对轮换≈伪加固；按上限说明 | [PIT-019](PIT-019-fake-pinning-bridge.md) |
+| PIT-019 | "证书 pin"名不副实的安全承诺缺口 | S2 | security | 自签证书+静态口令+明文 token+无配对轮换≈伪加固；按上限说明 | [PIT-019](PIT-019-fake-pinning-bridge.md) |
 | PIT-020 | 看门狗误判/自救级联重启风暴 | S2 | server | 状态机 + 宽限期 + 有界重启 + 退避 + 独立观测 | [PIT-020](PIT-020-watchdog-selfheal-cascade.md) |
 
----
+## 6. 关系与冻结
 
-## 7. 与护栏、方法论、案例的关系
+- **[guardrails/](../guardrails/README.md)**：MUST NOT 红线；PIT 根因应反推是否有对应 GRD，没有则先补证据再提红线。
+- **[methodology/](../methodology/README.md)**：规范正文；PIT 反推规范缺口，规范变更回链本库。
+- **[toolkit/](../toolkit/README.md)**：模板/schema/校验/索引都走工具，不手写索引；新增条目上 §4。
+- **冻结**：`docs/`、`scripts/` 与案例是历史证据，只允许事实纠错；偏差必须保留，不得为了"看起来完成"删除。
 
-- **[guardrails/](../guardrails/README.md)**：MUST NOT 红线。每条 PIT 的根因应反推是否存在对应 GRD；若没有，先补 PIT 证据再提 GRD。
-- **[methodology/](../methodology/README.md)**：规范正文。PIT 用于验证/反推规范是否漏了约束；规范变更需在 MTH 记录并回链本库。
-- **[cases/haydn-k40pro/](../cases/haydn-k40pro/README.md)**：真实案例与回归样例；PIT 的“案例实证”以该目录与 [docs/](../docs/README.md) 冻结证据为准。
-- **[toolkit/](../toolkit/README.md)**：模板、schema、校验命令；新增条目、重建索引、跑门禁都走工具，不手写索引。
-- **冻结原则**：`docs/`、`scripts/` 与案例是历史证据，只允许事实纠错；复盘偏差必须保留，不得为了“看起来完成”而删除。
-
----
-
-*检索入口：本文件 + `agent-manifest.json`；新增条目从 [pitfall 模板](../toolkit/templates/pitfall.md) 开始。最后更新 2026-11-11。*
+*检索入口：本文件 + `agent-manifest.d/pitfalls.json`；最后更新 2026-11-11。*

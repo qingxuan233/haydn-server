@@ -68,7 +68,7 @@ agent_hint: 先读本页确认定位与阅读路径；Agent 的完整启动顺�
 
 ---
 
-## 4. 文档地图（MTH-000 ~ MTH-010）
+## 4. 文档地图（MTH-000 ~ MTH-011）
 
 | ID | 文档 | 解决什么问题 | 主要读者 |
 |---|---|---|---|
@@ -83,6 +83,7 @@ agent_hint: 先读本页确认定位与阅读路径；Agent 的完整启动顺�
 | MTH-008 | [验收与稳定性](07-validation.md) | 5 重启、24h soak、故障注入、恢复演练、证据格式 | Agent 为主 |
 | MTH-009 | [Agent 交接与扩展协议](08-agent-handoff.md) | 目录/ID/任务/扩展/变更传播/DoD（Agent 必读） | Agent |
 | MTH-010 | [术语表](09-glossary.md) | 统一术语口径（proot/FGS/AVB/FBE/soak/Tier 等） | 人 + Agent |
+| MTH-011 | [文档生命周期、归档与上下文预算](10-document-lifecycle.md) | 记录边界、CHANGELOG 归档、阅读预算、分层加载与停止条件 | 人 + Agent |
 
 **配套层入口**
 
@@ -100,7 +101,7 @@ agent_hint: 先读本页确认定位与阅读路径；Agent 的完整启动顺�
 
 | 层 | 状态 | 说明 |
 |---|---|---|
-| methodology | **v2 初版（10 篇）** | 覆盖评估/路线图/服务器/桥/控制面/安全/验收/交接/术语；本页与部分章节仍随实践修订 |
+| methodology | **v2 初版（11 篇）** | 覆盖评估/路线图/服务器/桥/控制面/安全/验收/交接/术语/文档生命周期；本页与部分章节仍随实践修订 |
 | cases | **实证案例（1 个，部分验收）** | haydn K40 Pro：无 Root proot 栈 + 桥 release + 控制面；**24h soak 等未完成项如实记录**，不得表述为"全验收通过" |
 | toolkit | **alpha** | 零依赖 CLI/schema/模板/测试；fixture 单测可跑，**尚未真机回归**；字段与顺序可能随实测调整 |
 | pitfalls / guardrails | 初版（20 / 14 条） | 来自真实案例与已发现偏差；每条必须含证据与检查方式 |

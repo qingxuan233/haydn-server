@@ -157,12 +157,21 @@ class TemplateSchemaConsistencyTests(unittest.TestCase):
         cls.manifest_schema = json.loads(
             (SCHEMA_DIR / "agent-manifest.schema.json").read_text(encoding="utf-8")
         )
+        cls.shard_schema = json.loads(
+            (SCHEMA_DIR / "manifest-shard.schema.json").read_text(encoding="utf-8")
+        )
         cls.frontmatter_schema = json.loads(
             (SCHEMA_DIR / "frontmatter.schema.json").read_text(encoding="utf-8")
         )
+        cls.doc_policy = json.loads((SCHEMA_DIR / "doc-policy.json").read_text(encoding="utf-8"))
 
     def test_schema_files_are_valid_json_objects(self) -> None:
-        for schema in (self.profile_schema, self.manifest_schema, self.frontmatter_schema):
+        for schema in (
+            self.profile_schema,
+            self.manifest_schema,
+            self.shard_schema,
+            self.frontmatter_schema,
+        ):
             self.assertIsInstance(schema, dict)
             self.assertIn("$schema", schema)
 
@@ -177,10 +186,34 @@ class TemplateSchemaConsistencyTests(unittest.TestCase):
             self.assertIn(key, template)
             self.assertIn(key, schema_props, msg=f"schema 缺少顶层属性 {key}")
 
-    def test_manifest_schema_entry_has_retrieval_fields(self) -> None:
-        entry_props = self.manifest_schema["definitions"]["entry"]["properties"]
-        for key in ("id", "title", "type", "status", "tags", "path", "severity", "domain"):
+    def test_root_manifest_schema_is_summary_with_shards(self) -> None:
+        self.assertNotIn("content", self.manifest_schema["properties"])
+        self.assertIn("shards", self.manifest_schema["properties"])
+        self.assertIn("shards", self.manifest_schema["required"])
+        for layer in ("methodology", "pitfalls", "guardrails", "case_studies"):
+            self.assertIn(layer, self.manifest_schema["properties"]["shards"]["required"])
+
+    def test_shard_schema_has_retrieval_entries(self) -> None:
+        self.assertEqual(self.shard_schema["properties"]["schema"]["const"], "repurpose.manifest-shard.v1")
+        self.assertIn("layer", self.shard_schema["required"])
+        self.assertIn("entries", self.shard_schema["required"])
+        entry_props = self.shard_schema["definitions"]["shardEntry"]["properties"]
+        for key in ("id", "title", "path", "type", "status", "tags", "agent_hint", "severity", "domain", "scope"):
             self.assertIn(key, entry_props)
+        self.assertEqual(self.shard_schema["properties"]["entries"]["maxItems"], 40)
+
+    def test_doc_policy_json_matches_contract(self) -> None:
+        self.assertEqual(self.doc_policy["schema"], "repurpose.doc-policy.v1")
+        archival = self.doc_policy["archival"]
+        self.assertEqual(archival["current_file"], "CHANGELOG.md")
+        self.assertEqual(archival["archive_dir"], "changelog")
+        self.assertEqual(archival["pattern"], "YYYY-MM.md")
+        self.assertEqual(archival["max_current_entries"], 8)
+        self.assertFalse(archival["default_read"])
+        self.assertTrue(archival["archive_read_only"])
+        self.assertEqual(self.doc_policy["status_sections"]["max_lines"], 8)
+        self.assertEqual(self.doc_policy["manifest"]["root_max_lines"], 160)
+        self.assertEqual(self.doc_policy["manifest"]["shard_max_entries"], 40)
 
     def test_markdown_templates_use_valid_frontmatter_values(self) -> None:
         type_enum = self.frontmatter_schema["properties"]["type"]["enum"]

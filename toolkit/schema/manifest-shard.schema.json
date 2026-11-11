@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://haydn-server.local/toolkit/schema/manifest-shard.schema.json",
+  "title": "repurpose.manifest-shard.v1",
+  "description": "agent-manifest.d/ 下的按层分片（methodology/pitfalls/guardrails/case-studies）。由 python -m toolkit.repurpose index 生成，Agent 按需只读一个分片；不要手改。每片 ≤300 行 / ≤32KB / ≤40 条（上限见 toolkit/schema/doc-policy.json）。本文件是自描述 JSON Schema（draft-07），校验器不依赖 jsonschema 库。",
+  "type": "object",
+  "required": ["schema", "layer", "generated_at", "count", "entries"],
+  "properties": {
+    "schema": {"const": "repurpose.manifest-shard.v1"},
+    "layer": {
+      "enum": ["methodology", "pitfalls", "guardrails", "case_studies"],
+      "description": "分片所属层；与 agent-manifest.json 的 shards 映射键一致"
+    },
+    "generated_at": {"type": "string", "description": "UTC ISO-8601，与根摘要一致"},
+    "count": {"type": "integer", "minimum": 0, "description": "entries 条数（必须等于 len(entries)）"},
+    "entries": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {"$ref": "#/definitions/shardEntry"}
+    }
+  },
+  "definitions": {
+    "shardEntry": {
+      "type": "object",
+      "required": ["id", "title", "path", "type", "status", "tags", "agent_hint"],
+      "properties": {
+        "id": {"type": "string", "description": "稳定 ID（PREFIX-000），四层分片间全局唯一"},
+        "title": {"type": "string"},
+        "path": {"type": "string", "description": "仓库相对 POSIX 路径；禁止绝对路径"},
+        "type": {"type": "string"},
+        "status": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "agent_hint": {"type": "string"},
+        "severity": {"type": "string", "description": "pitfall: S1-S4；guardrail: blocker|warning"},
+        "domain": {"type": "string", "description": "pitfall 分类域"},
+        "scope": {"type": "string", "description": "guardrail 作用范围 device|server|agent|repo"},
+        "oem": {"type": "string", "description": "可选 OEM/ROM 标记"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

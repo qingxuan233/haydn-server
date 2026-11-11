@@ -280,10 +280,49 @@ class IndexValidateTests(unittest.TestCase):
             self.assertEqual(summary["counts"]["methodology"], 2)
             self.assertEqual(summary["counts"]["pitfalls"], 2)
             self.assertEqual(summary["output"], "agent-manifest.json")
+            self.assertLessEqual(summary["root"]["lines"], 160)
+            self.assertLessEqual(summary["root"]["bytes"], 16384)
+            self.assertEqual(set(summary["shards"]), {"methodology", "pitfalls", "guardrails", "case_studies"})
             manifest_path = root / "agent-manifest.json"
             self.assertTrue(manifest_path.is_file())
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             self.assertIn("reading_order", manifest)
+            self.assertIn("shards", manifest)
+            self.assertNotIn("content", manifest)
+            shard_dir = root / "agent-manifest.d"
+            self.assertEqual(
+                sorted(path.name for path in shard_dir.glob("*.json")),
+                ["case-studies.json", "guardrails.json", "methodology.json", "pitfalls.json"],
+            )
+            shard = json.loads((shard_dir / "pitfalls.json").read_text(encoding="utf-8"))
+            self.assertEqual(shard["schema"], "repurpose.manifest-shard.v1")
+            self.assertEqual(shard["layer"], "pitfalls")
+            self.assertEqual(shard["count"], len(shard["entries"]))
+
+    def test_index_cleans_stale_shards(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo-clean"
+            build_sample_repo(root)
+            shard_dir = root / "agent-manifest.d"
+            shard_dir.mkdir(parents=True, exist_ok=True)
+            stale = shard_dir / "case_studies.json"
+            stale.write_text(
+                json.dumps(
+                    {
+                        "schema": "repurpose.manifest-shard.v1",
+                        "layer": "case_studies",
+                        "generated_at": "2026-11-11T00:00:00Z",
+                        "count": 0,
+                        "entries": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = _run(["index", "--root", str(root), "--json"])
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            summary = json.loads(result.stdout)
+            self.assertIn("agent-manifest.d/case_studies.json", summary["removed_shards"])
+            self.assertFalse(stale.exists())
 
     def test_index_missing_toolkit_readme_warns_but_succeeds(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

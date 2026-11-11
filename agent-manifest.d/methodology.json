@@ -1,0 +1,20 @@
+{
+  "schema": "repurpose.manifest-shard.v1",
+  "layer": "methodology",
+  "generated_at": "2026-11-11T03:50:27Z",
+  "count": 12,
+  "entries": [
+    {"id":"MTH-000","title":"方法论门户：定位、路径与文档地图","path":"methodology/README.md","type":"index","status":"current","tags":["methodology","portal","index","navigation"],"agent_hint":"先读本页确认定位与阅读路径；Agent 的完整启动顺序以根 AGENTS.md 为准，本页不是工作协议。"},
+    {"id":"MTH-001","title":"方法论边界与原则","path":"methodology/00-foundations.md","type":"methodology","status":"current","tags":["methodology","foundations","scope","principles","architecture"],"agent_hint":"任何改造任务开工前先读本页；确认适用前提与三轨边界，再按 MTH-002 评估设备。"},
+    {"id":"MTH-002","title":"评估与可行性决策","path":"methodology/01-assessment.md","type":"methodology","status":"current","tags":["assessment","feasibility","decision","gate","oem","profile"],"agent_hint":"新设备接入第一步；先 detect 再 probe，然后 assess；未知字段一律走保守路线并降置信度。"},
+    {"id":"MTH-003","title":"通用路线图（P0–P6）","path":"methodology/02-roadmap.md","type":"methodology","status":"current","tags":["roadmap","phases","gates","change-management","rollback"],"agent_hint":"开工前先按本页定位当前阶段；门禁未通过不得进入下一阶段，一次只推进一个变更。"},
+    {"id":"MTH-004","title":"服务器栈（Track A）","path":"methodology/03-server-stack.md","type":"methodology","status":"current","tags":["server","termux","proot","supervisord","backup","network"],"agent_hint":"实现 Track A 前先读\"为什么 proot\"与启动链；服务集按最小核心起步，网络先局域网，备份先于服务。"},
+    {"id":"MTH-005","title":"宿主遥测桥（Track B）","path":"methodology/04-telemetry-bridge.md","type":"methodology","status":"current","tags":["telemetry","bridge","android","fgs","data-contract","no-root"],"agent_hint":"先判定是否真的需要桥，再按数据契约与安全最低要求实现；无实测证据不得标验收通过；Android 14/15 FGS 规则以本文件约束表为准"},
+    {"id":"MTH-006","title":"AI 控制面（Track C）","path":"methodology/05-control-plane.md","type":"methodology","status":"current","tags":["control-plane","agent","ops","tiering","audit","watchdog","blue-green"],"agent_hint":"控制面是解释层与受控运维层而非运行时必需；先落地 Tier1 只读与审计，再谈 Tier2；Tier3 永不对 Agent 开放"},
+    {"id":"MTH-007","title":"安全与密钥生命周期","path":"methodology/06-security.md","type":"methodology","status":"current","tags":["security","secrets","tls","pinning","least-exposure","audit"],"agent_hint":"任何涉及 token/证书/口令/备份/公网入口/日志的改动先读本文件；敏感值绝不入库；泄露处置顺序是止损→轮换→排查→记录"},
+    {"id":"MTH-008","title":"验收与稳定性","path":"methodology/07-validation.md","type":"methodology","status":"current","tags":["validation","acceptance","soak","fault-injection","recovery","evidence"],"agent_hint":"没有证据就没有完成；先定证据类型与门禁，再跑 5 次重启/24h soak/故障注入；soak 期间禁止变更，结果不得伪造"},
+    {"id":"MTH-009","title":"Agent 交接与扩展协议","path":"methodology/08-agent-handoff.md","type":"methodology","status":"current","tags":["agent-handoff","protocol","extension","lifecycle","cli-contract","governance"],"agent_hint":"每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；任何扩展先查本文件 SOP"},
+    {"id":"MTH-010","title":"术语表（统一口径）","path":"methodology/09-glossary.md","type":"methodology","status":"current","tags":["glossary","terminology","conventions"],"agent_hint":"遇到不确定术语先查本表；新增术语必须一句定义+为何重要，并回链唯一出处文档。"},
+    {"id":"MTH-011","title":"文档生命周期、归档与 Agent 上下文预算","path":"methodology/10-document-lifecycle.md","type":"methodology","status":"current","tags":["documentation","archival","context-budget","changelog","manifest","agent"],"agent_hint":"任何要新增文档/变更记录/读仓库前，先按本文确定边界与阅读预算；归档默认不读。"}
+  ]
+}

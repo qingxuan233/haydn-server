@@ -47,7 +47,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
 
 SCAN_ROOTS = ["README.md", "AGENTS.md", "CHANGELOG.md", "docs", "android-bridge",
               "scripts", "methodology", "pitfalls", "guardrails", "toolkit", "cases",
-              "tools/README.md", "inventory/README.md"]
+              "changelog", "tools/README.md", "inventory/README.md"]
 SKIP_DIR_NAMES = {".git", "backup", "inventory", "tools", "node_modules",
                   "__pycache__", "build", "android-sdk", "platform-tools",
                   "apks", "termux", "termux-boot", "mi-unlock", "magisk"}

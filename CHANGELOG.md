@@ -1,88 +1,51 @@
 # 变更记录（CHANGELOG）
 
-> 本文件是本项目**唯一变更记录**（原分散在 `docs/00-overview/00-项目规划.md` 头部的追加式变更表已迁出并合并于此）。
-> **历史版本号已按时间顺序重新编号**：旧记录由多条并行工作流各自追加，曾出现两套 `v1.6–v1.16`、重复的 `v1.7/v1.8/v1.9` 与 `v2.0/v2.1`；本文件统一为 **v1.0 → v1.48 唯一递增**，日期与内容保持原样，仅做排序、去重与编号归一。
-> **所有状态数字均为当时记录（历史快照）**，不是当前状态；当前状态只看 [当前状态](docs/00-overview/当前状态.md)。
+> 本文件是**当前迭代对外可感知变更摘要**，不是工作日志。当前窗口最多 **8 条**；更早条目按月归档到 `changelog/YYYY-MM.md`（**归档默认不读**，只在追溯时读单个文件）。
+> 记录边界、归档与 Agent 上下文预算规则见 [MTH-011](methodology/10-document-lifecycle.md)；归档索引见 §4。
 
 | 项目 | 内容 |
 |---|---|
 | 文档 ID | HB-CHANGELOG-001 |
-| 版本 | v1.0（2026-11-11 创建/整理） |
+| 版本 | v2.0（2026-11-11 归档规范化） |
 | 状态 | 现行 |
-| 关联 | [当前状态](docs/00-overview/当前状态.md) · [00 项目规划](docs/00-overview/00-项目规划.md) · [29 文档评审报告](docs/00-overview/29-项目文档评审报告.md) · [README](README.md) |
+| 关联 | [MTH-011](methodology/10-document-lifecycle.md) · [changelog/README.md](changelog/README.md) · [当前状态](docs/00-overview/当前状态.md) · [README](README.md) · [AGENTS](AGENTS.md) |
 
-**编号规则**：以后每次变更在末尾追加一条，版本号严格 +1，不重号、不回填、不拆分；状态类变更同时更新 [当前状态](docs/00-overview/当前状态.md)。条目粒度 = 一次可验收的落地变更。
+## 1. 记录边界
 
----
+| 内容 | 唯一位置 |
+|---|---|
+| 当前方法/规范/边界 | `methodology/`（MTH-001..011） |
+| 红线与必须检查项 | `guardrails/`（GRD-001..014） |
+| 踩坑证据与修复 | `pitfalls/`（PIT-001..020） |
+| 当前任务/未完成/需要授权 | [backlog.json](backlog.json) |
+| 对外可感知变更摘要 | 本文件（当前窗口 ≤8 条） |
+| 历史变更 | `changelog/YYYY-MM.md`（归档，默认不读） |
+| 原始过程/逐条命令输出 | git commit（本仓库无 PR/远程时由 commit message 承载） |
+| 设备案例事实 | [cases/](cases/README.md) 与旧 `docs/`（冻结证据） |
+| 机器索引 | `agent-manifest.json` 摘要 + `agent-manifest.d/` 分片 |
 
-## 2026-11-10
+## 2. 硬上限
 
-### 基础设施与服务器（主工作流）
+1. **每条最多一行**（三要素：变更 / 验证 / 未完成；无未完成可省略），禁止原始日志、测试计数明细、临时账号与清理记录。
+2. **当前窗口最多 8 条**；新增第 9 条时，立即把最旧条目移入对应 `changelog/YYYY-MM.md`，不等月末。
+3. 归档文件**只读不改**、按时间倒序追加；同一能力的后续修补并入原条目，不重复开条。
+4. 归档索引在 §4 维护；`CHANGELOG.md` 体积与条数由 `toolkit validate` 机检（见 [doc-policy](toolkit/schema/doc-policy.json)）。
 
-| 日期 | 版本 | 变更 |
-|---|---|---|
-| 2026-11-10 | v1.0 | 初版：P0 完成，路线决策与 P1–P6 规划定稿 |
-| 2026-11-10 | v1.1 | B 路线启动：新增 [05 B 路线执行手册（已归档）](docs/90-archive/05-B路线执行手册.md)、Gate B0 与 ADR-007；备好 Mi Unlock/Magisk；新增前置检查脚本 |
-| 2026-11-10 | v1.2 | **Gate B0 失败→B 终止**；A+ 落地（8 项设置 + 10 个 debloat）；新增 [06 A+ 优化方案](docs/20-server/06-A+优化方案.md) 与 phone-health 脚本；备份 `/root` + `/etc` |
-| 2026-11-10 | v1.3 | 服务器模式深度清理：活跃包 390→252、禁用 10（历史快照）；修复 `am kill-all` 误杀事故；新增 restart-termux-services 恢复工具 |
-| 2026-11-10 | v1.4 | 服务器自托管 DSH（Node24 + npm 包 0.2.2-rc.1，`127.0.0.1:3081`）；Linux 清理约 640MB 缓存；手机二轮清理至 248 包（历史快照） |
-| 2026-11-10 | v1.5 | **bootloop 事故（ext.services）→ 恢复出厂 → 备份重建服务器**；安全版优化；开机自启实测通过；新增 [08 事故复盘与重置重建报告](docs/20-server/08-事故复盘与重置重建报告.md) 与保护名单脚本 |
-| 2026-11-10 | v1.6 | 性能优化方案与可行性分析（[09 性能优化](docs/20-server/09-性能优化方案与可行性分析.md)）：proot 33%/DSH 9.5% 基线、ADB 可做/需 Root 不可做清单、P0–P2 路线（历史快照） |
-| 2026-11-10 | v1.7 | 执行 P0/P1 性能优化：apt 清理、日志/冻结、关闭设置页、切讯飞输入法、appops+suspend 后台治理、看门狗 45→180s、Termux 编译 + fstrim；proot 33→18.9%，MemAvailable 3.9→4.5G，**11/11 服务/公网正常（历史快照；当前 12/12）** |
-| 2026-11-10 | v1.8 | 安卓深度操作调研与技能沉淀（[14 调研](docs/20-server/14-安卓深度操作调研与技能沉淀.md)）：Shizuku 安装/ADB 启动、MIUI 安装弹窗自动化、proot 自建 ADB、cmd/dpm/appops/device_config 能力矩阵；新增 3 个脚本 |
-| 2026-11-10 | v1.9 | 非官方 Root 路径研究（[16 历史研究](docs/90-archive/16-非官方Root路径可行性与风险研究.md)）；AppManager ADB 特权模式脚本与重启恢复集成；Hail 冻结待加首页 |
-| 2026-11-10 | v1.10 | 研究平台环境构建手册（[17 构建手册](docs/20-server/17-研究平台环境构建手册.md)）+ 只读验证脚本（21 项通过）；固化复现流程/ADR/经验矩阵/验收清单 |
-| 2026-11-10 | v1.11 | 新增 [18 控制台持久化与容器优化方案](docs/20-server/18-控制台持久化与容器优化方案.md)：SQLite 状态库、备份闭环、3-2-1、Termux 看门狗、DSH 调优路线 |
-| 2026-11-10 | v1.12 | 新增 [19 ADB 为服务器让资源方案](docs/20-server/19-ADB为服务器让资源方案.md)：保护 Termux、研究 App 静默、freeze/suspend/trim-caches/netpolicy 矩阵与验收阈值 |
-| 2026-11-10 | v1.13 | 新增 [20 DSH 控制平面方案](docs/30-dsh/20-DSH控制平面方案.md)：入口/可靠性/profile 备份/受限执行层 server-ops/安全威胁模型/蓝绿升级 |
-| 2026-11-10 | v1.14 | DSH 控制平面 P0 机器本地落地：profile/bin/ops 纳入备份、dsh-guard、nginx 限流 429、只读 server-ops+AGENTS；新增 [21 落地手册](docs/30-dsh/21-DSH控制平面落地手册.md) 与复用脚本 |
-| 2026-11-10 | v1.15 | DSH Tier2 受控写落地（[22 Tier2 受控写](docs/30-dsh/22-DSH-Tier2受控写落地.md)）：server-ops 重启/nginx/备份 + `--confirm` + 配置快照 + 审计 + backup-verify；演练通过 |
-| 2026-11-10 | v1.16 | DSH 蓝绿升级演练完成（[23 蓝绿升级演练](docs/30-dsh/23-DSH蓝绿升级演练.md)）：3083 第二实例→切 nginx/dsh-login→验证→回滚 |
-| 2026-11-10 | v1.17 | DSH sessions 持久化补全（[24 sessions 持久化](docs/30-dsh/24-DSH-sessions持久化补全.md)）：普通文件专用备份（`--verbatim-files-from`）、接入 server-backup/安装器；DSH npm 最新=当前版本 |
-| 2026-11-10 | v1.18 | ADB 资源 P0（研究 App 静默/netpolicy/freezer/logcat）+ Console `/api/ops` 与 Ops 审计卡片；新增 [25 ADB 资源优化与 Console 审计](docs/20-server/25-ADB资源优化与Console审计落地.md) 与 adb-server-resource 脚本 |
-| 2026-11-10 | v1.19 | 重启验证：ADB 32s / 8080 45s / 12 服务+DSH 111s；dsh-guard v1.2 修复开机误重启；记录 MIUI 重置项与 Quiet 重放 |
-| 2026-11-10 | v1.20 | Console 手机状态补全（[26 手机状态](docs/40-console/26-Console手机状态补全.md)）：Termux:API（电池/WiFi）+ 综合采集器 + API/UI 字段；记录重启后需手动打开 API App 限制 |
-| 2026-11-10 | v1.21 | Android Bridge APK 调研（[27 架构调研](docs/50-bridge/27-Android-Bridge-APK架构调研.md)）：对比 Termux:API/Shizuku/HA/WallPanel/LocalSend/KDE/NanoHTTPD；确定 Boot+FGS+本地 HTTPS 架构与实施计划 |
-| 2026-11-10 | v1.22 | 明确全栈范围：服务器栈（17 构建手册）为 Track A，Bridge APK 为 Track B，集成层为 Track C；补全栈部署顺序 |
-| 2026-11-10 | v1.23 | 明确 DSH 深度集成边界：控制/观测面深接口、不进程耦合；Bridge token 不暴露；新增集成策略章节 |
-| 2026-11-10 | v1.24 | 新增 [28 全栈整体方案规范](docs/00-overview/28-全栈整体方案规范.md)；README 文档地图重排、统一 12/12 与当时 IP；27 加规范总纲指引 |
-| 2026-11-10 | v1.25 | 文档评审：[28 规范](docs/00-overview/28-全栈整体方案规范.md) 修订为 v1.1、新增 [29 评审报告](docs/00-overview/29-项目文档评审报告.md) 与 [30 接手指南](docs/00-overview/30-新会话接手指南.md)、README 重写并归档旧版、00 规划头部同步 |
-| 2026-11-10 | v1.26 | 拍板事项决策分析与 Root 升级路线（[31 拍板事项](docs/10-device/31-拍板事项决策分析与Root升级路线.md)）：给出 D1–D10 推荐组合与双模架构预留 |
-| 2026-11-10 | v1.27 | 多厂商适配：Bridge 包名/核心去小米化、OEM profile 矩阵、Root 选机厂商无关；新增 [32 多厂商适配](docs/10-device/32-多厂商Android适配与迁移指南.md) |
-
-### 控制台 / DSH 并行工作流
-
-> 以下条目原本各自维护版本号（与上方主工作流重号），现按内容时间线索统一重排；日期均为 2026-11-10。
+## 3. 当前变更（最新在上，最多 8 条）
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
-| 2026-11-10 | v1.28 | 文件管理器新增**文件夹打包下载**（`/files/api/zip` + 列表 ⬇ + 工具栏 🗜）；实测 200/401 边界、zip 内容校验通过；源码归档 `scripts/server/webui` |
-| 2026-11-10 | v1.29 | 面板移除 **CI Runner** 卡片（代码与 CI 3→2 项）；runner 默认停用、按需 `server-runner on/off`；源码与文档归档 |
-| 2026-11-10 | v1.30 | 用户决定 **Runner 保留常驻运行**（约 11MB）：autostart 恢复 true、已启动；面板卡片保持移除（历史快照，当时 11/11 服务口径） |
-| 2026-11-10 | v1.31 | DSH 登录入口优化：`/app/` 免 token 自动登录（dsh-login 动态读取 token + nginx 401 跳转），LAN/公网实测 200，DSH 重启换 token 后仍生效（[10 登录入口](docs/30-dsh/10-DSH登录入口优化.md)） |
-| 2026-11-10 | v1.32 | 进一步修复浏览器重定向循环：dsh-login 改为服务端 cookie broker（兼容 cookie `Path=/app; SameSite=Lax` + 清除旧 `Path=/` cookie），`/app/` 无 cookie 单次跳转；Edge 真实浏览器验证通过 |
-| 2026-11-10 | v1.33 | 迁移 desktop 已验证模型配置到服务器 DSH（默认 open-design/deepseek-v4.1-flash-eco/max，补齐 siliconflow/easy-cliproxyapi 凭据），完善 web profile 与 supervisor 环境；broker 增加 dshbrk 标记（[11 DSH 配置与模型](docs/30-dsh/11-DSH服务器配置与模型.md)） |
-| 2026-11-10 | v1.34 | DSH 性能优化：nginx gzip_types + assets/plugins 长缓存、profile 精简（去 inspector/forge/auto-review/plugin-market、禁 HMR）、broker 重试；RSS 463→304MB，JS 体积 -66~72%（[12 性能优化](docs/30-dsh/12-DSH性能优化.md)，历史快照） |
-| 2026-11-10 | v1.35 | 修复 DSH 插件安装：pnpm 缺失导致 `spawn ENOENT` → 安装 pnpm@10.34.9 到 `/opt/node24/bin`，验证并安装/加载 codex 插件；bundles 精简为 4 核心 + codex，重启 34s（[13 插件安装](docs/30-dsh/13-DSH插件安装-pnpm.md)） |
-| 2026-11-10 | v1.36 | 删除旧 DSH-GO App 环境 SSH：`www/index.html` 移除卡片（4→3 项）、frp 删除 2224→公网旧端口 隧道（7→6 条）；旧公网端口已关闭、2224 无监听（历史快照；此后公网仅现有 frp 受控入口，具体值见运维私密记录） |
-| 2026-11-10 | v1.37 | 修复公网 `/app/` 空白：dsh-login 增加 dshbrk 标记 cookie，nginx `/app/` 只认标记（旧 DSH cookie 强制重登录）+ HTML no-store；真实浏览器验证 795593 DOM |
-| 2026-11-10 | v1.38 | **控制台 v2**：API 聚合/服务/日志/操作/备份 + Termux 指标采集；页面实时趋势、服务健康、检查项、管理 token、备份修复（sqlite3）；新增 [13 控制台功能分析](docs/40-console/13-控制台功能分析与完善.md) 与截图 |
-| 2026-11-10 | v1.39 | 动态 WiFi IP 兼容：API 默认路由取当前 LAN IP、页面/SSH 命令自适应；固定公网 HTTPS 控制台补强（历史快照；公网端口见运维私密记录）；nginx default 站点移出 `sites-enabled` |
-| 2026-11-10 | v1.40 | **公网↔局域网入口切换**：访问入口面板/复制/`?to=lan`/`?to=public` 自动跳转；合并 CI Runner 面板治理（卡片移除、runner 恢复常驻，11/11 历史口径） |
-| 2026-11-10 | v1.41 | **账号密码保险库**：AES-256-CBC+HMAC 加密存储、管理 token+HTTPS/局域网门禁、增删改查/搜索/复制/导入导出/审计（[15 保险库](docs/40-console/15-账号密码保险库.md)） |
-| 2026-11-10 | v1.42 | 导入服务器现有凭据：WebDAV/Gitea/Syncthing/Supervisor/DSH/备份口令/控制台 token/Runner token/SSH 共 9 条；清理重复项；新增导入脚本 |
-| 2026-11-10 | v1.43 | **控制台移动端适配**：390px 无横向溢出、服务/检查/账号折叠、吸顶快速导航、弹层底部抽屉；桌面无回归（[17 移动端适配](docs/40-console/17-控制台移动端适配.md)） |
-
----
-
-## 2026-11-11
-
-| 日期 | 版本 | 变更 |
-|---|---|---|
-| 2026-11-11 | v1.44 | 用户批准 **D1–D10** 推荐；Bridge Phase 0/1 开工；[28 规范](docs/00-overview/28-全栈整体方案规范.md) v1.2、[31 拍板事项](docs/10-device/31-拍板事项决策分析与Root升级路线.md) 决策状态更新 |
-| 2026-11-11 | v1.45 | **Bridge MVP 实施完成（debug）**：SDK/构建、APK、MIUI 自启动、服务器 `bridge_client`/API/server-ops、5/5 重启 + 安全/回退验证；新增 [33 MVP 实施记录](docs/50-bridge/33-Android-Bridge-MVP实施记录.md)（历史快照：debug 签名） |
-| 2026-11-11 | v1.46 | **Console 改版**：总览摘要 + `?view=details` 详情页（服务/检查/审计/账号/备份/入口/运维），导航/回滚/截图；新增 [34 总览详情改版](docs/40-console/34-Console总览详情改版.md) |
-| 2026-11-11 | v1.47 | **release 升级**（`debuggable=false`/token 保留）+ **Phase 2 字段**（屏幕/锁屏/亮度/前台应用/网络累计/uptime）接入 API/UI；记录 MIUI 权限重置（POST_NOTIFICATIONS→ignore、GET_USAGE_STATS→default）；1/1 release 重启通过；**24h soak 未完成** |
-| 2026-11-11 | v1.48 | **仓库与文档结构重构**：仓库更名为 `haydn-server`（原目录名含中文导致 aapt2 构建失败）→ `docs` 按主题分组（`00-overview`/`10-device`/`20-server`/`30-dsh`/`40-console`/`50-bridge`/`90-archive`/`assets`）→ `scripts` 按运行侧分组（`adb`/`termux`/`server`/`dev`）→ `android-bridge/build.ps1` 去 ASCII junction（自动探测 JDK/SDK、非 ASCII 路径直接报错）→ 新增 [当前状态](docs/00-overview/当前状态.md) 与变更记录（本文件）、README/docs 索引重写、旧编号/范围引用与坏链接修复；重构评审与遗留见 [29 §8](docs/00-overview/29-项目文档评审报告.md) |
-| 2026-11-11 | v1.49 | **仓库升级为「安卓手机改造通用方法论」v2.0**：新增 `methodology/`（MTH-001..010）、`pitfalls/`（PIT-001..020）、`guardrails/`（GRD-001..014）、`toolkit/`（零依赖 Python CLI + schema/模板/Termux 脚本/单元测试）、`cases/haydn-k40pro/`（案例 `profile.json` + OEM profile）、根 [AGENTS.md](AGENTS.md)（Agent 工作协议）、[backlog.json](backlog.json)（机器可读待办）、`agent-manifest.json`（生成式内容索引）；旧 `docs/scripts/android-bridge` 保留为案例冻结证据；[scripts/dev/check-links.py](scripts/dev/check-links.py) 扫描范围扩展至新层；`.gitignore` 增加 `/profiles/` 与全局密钥兜底 |
+| 2026-11-11 | v1.51 | **文档归档与 Agent 上下文预算治理**：CHANGELOG 改为当前窗口 ≤8 条 + 按月归档到 `changelog/`（默认不读、只读）；新增 [MTH-011 文档生命周期与上下文预算](methodology/10-document-lifecycle.md)、[changelog/README.md](changelog/README.md)；AGENTS/README 增加阅读预算、分层加载与停止条件；`agent-manifest.json` 拆为根摘要 + `agent-manifest.d/` 按层分片；toolkit `validate` 依据 [doc-policy](toolkit/schema/doc-policy.json) 检查体积/窗口上限 |
 | 2026-11-11 | v1.50 | **Agent 可读性独立审计修复**：权威优先级调整为 用户 > AGENTS > 红线 > 方法论 > PIT > toolkit > 案例；新增 [toolkit/README.md](toolkit/README.md) TOOL-001..010 工具登记表（新增工具先登记）；backlog 增加 requires/owner/updated/result 与 BL-015 机器校验项；统一 front matter 表述（头部而非首尾）、depends 可选、PIT/GRD 额外必需键（strict 校验）；修正 README fixture 示例、案例"部分验收"口径、`scripts/dev/check-links.py` 冻结例外；模板增加"示例 ID 不占号/正式 H2 无编号"警告 |
+| 2026-11-11 | v1.49 | **仓库升级为「安卓手机改造通用方法论」v2.0**：新增 `methodology/`（MTH-001..010）、`pitfalls/`（PIT-001..020）、`guardrails/`（GRD-001..014）、`toolkit/`（零依赖 Python CLI + schema/模板/Termux 脚本/单元测试）、`cases/haydn-k40pro/`（案例 `profile.json` + OEM profile）、根 [AGENTS.md](AGENTS.md)（Agent 工作协议）、[backlog.json](backlog.json)（机器可读待办）、`agent-manifest.json`（生成式内容索引）；旧 `docs/scripts/android-bridge` 保留为案例冻结证据；[scripts/dev/check-links.py](scripts/dev/check-links.py) 扫描范围扩展至新层；`.gitignore` 增加 `/profiles/` 与全局密钥兜底 |
+| 2026-11-11 | v1.48 | **仓库与文档结构重构**：仓库更名为 `haydn-server`（原目录名含中文导致 aapt2 构建失败）→ `docs` 按主题分组（`00-overview`/`10-device`/`20-server`/`30-dsh`/`40-console`/`50-bridge`/`90-archive`/`assets`）→ `scripts` 按运行侧分组（`adb`/`termux`/`server`/`dev`）→ `android-bridge/build.ps1` 去 ASCII junction（自动探测 JDK/SDK、非 ASCII 路径直接报错）→ 新增 [当前状态](docs/00-overview/当前状态.md) 与变更记录（本文件）、README/docs 索引重写、旧编号/范围引用与坏链接修复；重构评审与遗留见 [29 §8](docs/00-overview/29-项目文档评审报告.md) |
+| 2026-11-11 | v1.47 | **release 升级**（`debuggable=false`/token 保留）+ **Phase 2 字段**（屏幕/锁屏/亮度/前台应用/网络累计/uptime）接入 API/UI；记录 MIUI 权限重置（POST_NOTIFICATIONS→ignore、GET_USAGE_STATS→default）；1/1 release 重启通过；**24h soak 未完成** |
+| 2026-11-11 | v1.46 | **Console 改版**：总览摘要 + `?view=details` 详情页（服务/检查/审计/账号/备份/入口/运维），导航/回滚/截图；新增 [34 总览详情改版](docs/40-console/34-Console总览详情改版.md) |
+| 2026-11-11 | v1.45 | **Bridge MVP 实施完成（debug）**：SDK/构建、APK、MIUI 自启动、服务器 `bridge_client`/API/server-ops、5/5 重启 + 安全/回退验证；新增 [33 MVP 实施记录](docs/50-bridge/33-Android-Bridge-MVP实施记录.md)（历史快照：debug 签名） |
+| 2026-11-11 | v1.44 | 用户批准 **D1–D10** 推荐；Bridge Phase 0/1 开工；[28 规范](docs/00-overview/28-全栈整体方案规范.md) v1.2、[31 拍板事项](docs/10-device/31-拍板事项决策分析与Root升级路线.md) 决策状态更新 |
+
+## 4. 归档索引
+
+| 月份 | 条目 | 文件 |
+|---|---|---|
+| 2026-11 | 44 条（v1.0–v1.43，记录日期 2026-11-10） | [changelog/2026-11.md](changelog/2026-11.md) |

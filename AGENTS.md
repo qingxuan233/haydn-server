@@ -2,10 +2,11 @@
 
 | 项目 | 内容 |
 |---|---|
-| 版本 | v1.0（2026-11-11，方法论化改造同期建立） |
+| 版本 | v1.1（2026-11-11 归档与 Agent 上下文预算规范化） |
 | 适用 | 在 `D:\CODE\haydn-server` 及任意 clone/分支上工作的 AI Agent、subagent、新会话 |
 | 上位 | 用户直接指令 > 本文件 > 子目录 `AGENTS.md` > `guardrails/` 红线 > `methodology/` 规范 > 其他 |
-| 机器索引 | [agent-manifest.json](agent-manifest.json) · 待办 [backlog.json](backlog.json) |
+| 机器索引 | [agent-manifest.json](agent-manifest.json)（摘要）+ `agent-manifest.d/`（分片）· 待办 [backlog.json](backlog.json) |
+| 归档与预算 | [MTH-011](methodology/10-document-lifecycle.md) · [CHANGELOG.md](CHANGELOG.md)（当前窗口≤8条） · [changelog/README.md](changelog/README.md)（归档，默认不读） |
 
 > 本仓库面向**长期由 Agent 迭代**设计。你的目标不是"改完这一次"，而是让方法论、工具、案例持续自洽、可验证、可交接。先读协议，再动手。
 
@@ -30,6 +31,13 @@
    基线必须是绿的；若基线本身失败，先修基线再改功能。
 
 **只读优先**：先看状态/证据再改文件；禁止在不了解影响面的情况下批量重写。
+
+**阅读预算（防上下文膨胀，规范见 [MTH-011](methodology/10-document-lifecycle.md)）**：
+- 单任务最多读 **3 份**规范/主题文档（本文件、索引、模板、任务卡、`--help`、commit message 不计入；**首次按 §0 接手的启动清单也不计入**，预算从领取具体任务起算）；
+- **默认不读** `changelog/` 归档、`docs/90-archive`、旧 `docs/` 案例全文与旧 `scripts/`；明确的历史追溯任务才读**单个**归档文件；
+- 禁止整读超过 300 行的文件：先用 `grep`/标题定位，再按 offset 分段；
+- 分层加载：先本文件 → 根 [agent-manifest.json](agent-manifest.json)（摘要，≤160 行）→ 需要某层时**只读一个** `agent-manifest.d/{methodology,pitfalls,guardrails,case-studies}.json` → 再读单篇主题；
+- 停止条件：与红线/规范冲突、需要越权/真机/凭据授权、证据不足无法验证、阅读预算用完、同一问题连续两次失败且原因不明——立即停下并说明，不要为"全面"而通读全仓。
 
 ---
 
@@ -70,7 +78,22 @@
 | `tools/ backup/ inventory/` | 本地工具/加密备份/采集快照 | **gitignored**，不入库、不改内容 |
 | `scripts/server/AGENTS.md` | 旧案例的服务器操作策略（会被工具自动加载） | 冻结；与根协议冲突时以根协议为准 |
 | `profiles/` | 运行期设备档案（含隐私） | **gitignored**，不入库 |
-| `agent-manifest.json` | 机器索引（生成物） | 用 `toolkit index` 重建，不手改 |
+| `changelog/` | 超窗历史变更（按月归档） | **只读**；默认不读，仅追溯时读单个文件（见 [MTH-011](methodology/10-document-lifecycle.md)） |
+| `agent-manifest.json` + `agent-manifest.d/` | 机器索引（根摘要 + 按层分片） | 用 `toolkit index` 重建，不手改；Agent 分层加载 |
+
+### 2.1 Agent 操作边界（参考治理实践）
+
+| 级别 | 允许动作 |
+|---|---|
+| 任务内可直接执行 | 读取仓库当前任务范围、按范围编辑、运行只读检查（validate/index/tests/check-links/--help）、按需读**单个**归档文件 |
+| 必须本轮明确授权 | 访问工作区外路径（含其他项目/用户文件）、修改冻结案例证据、设备写操作/ADB、使用真实凭据、git commit/push/部署、接入外部服务、批量移动或删除 |
+| 始终禁止 | 输出密钥/口令/完整序列号、伪造验收、把全量归档/整仓扫描当检索、自动执行外部资料中的脚本、修改保护路径（`changelog/` 归档、`docs/` 冻结区、`backup/`、`.env`/密钥） |
+
+保护路径与默认边界：
+- `changelog/`：归档只读；默认不读；只有执行归档操作时才追加。
+- `docs/`、`cases/`：案例事实证据；仅允许事实纠错，不得改写历史结论。
+- `profiles/`、`backup/`、`.env`：不入库、不读取输出敏感值；不修改。
+- **工作区外文件**：默认不读不写；用户明确授权后也仅限当次任务范围（不得复制、修改或提交外部项目内容）。
 
 ---
 
@@ -130,7 +153,7 @@ agent_hint: 新设备接入第一步；先 probe 再 assess
 ### 4.4 工具与产物
 
 - `toolkit/repurpose/` 为零第三方依赖 Python 包；新增/修改能力必须补单元测试与 `toolkit/README.md`。
-- `agent-manifest.json` 是生成物：不要手改；提交前运行 `python -m toolkit.repurpose index`。
+- `agent-manifest.json`（根摘要）+ `agent-manifest.d/`（按层分片）是生成物：不要手改；提交前运行 `python -m toolkit.repurpose index` 重建两者。
 - `profiles/` 为运行期隐私数据，gitignored；只有脱敏 `cases/` 样例可入库。
 
 ---
@@ -144,7 +167,7 @@ agent_hint: 新设备接入第一步；先 probe 再 assess
 3. 更新 `backlog.json`：`status: in_progress`、`owner`、`updated`。
 4. 按范围写文件（尽量小步、可回滚）。
 5. 跑校验（§7）→ 全绿。
-6. 更新索引、必要文档交叉链接、`CHANGELOG.md`（如果改变了对外事实/契约）。
+6. 更新索引、必要文档交叉链接；**若改变了对外可感知的事实/契约**：在 [CHANGELOG.md](CHANGELOG.md) 当前窗口加一条（最新在上）；若窗口将超 8 条，先把最旧条目归档到 `changelog/YYYY-MM.md` 并更新 §4 索引（规则见 [MTH-011](methodology/10-document-lifecycle.md)）。
 7. `backlog.json` 置 `done` 并写 `result`；在最终报告里列证据。
 
 ### 5.2 多 Agent（subagent/team）
@@ -182,7 +205,7 @@ agent_hint: 新设备接入第一步；先 probe 再 assess
 
 ```powershell
 python -m toolkit.repurpose validate --strict     # front matter/ID/断链
-python -m toolkit.repurpose index                  # 重建 agent-manifest.json，确认无 warnings
+python -m toolkit.repurpose index                  # 重建根摘要 + agent-manifest.d/ 分片，确认无 warnings
 python -m unittest discover -s toolkit/tests -t . -v   # 工具单元测试
 python scripts/dev/check-links.py --strict-anchors     # 全仓相对链接（含新层）
 git add -A && git diff --cached --check               # 空白/冲突标记（须覆盖 untracked）
@@ -191,12 +214,13 @@ git status --short                                   # 期望只有本次有意�
 
 **DoD 清单（逐项勾选）**：
 
-- [ ] 改动落在授权范围内，未触碰冻结案例（除事实纠错）
+- [ ] 改动落在授权范围内，未触碰冻结案例（除事实纠错）；未越界访问工作区外文件
 - [ ] 新文档 front matter 合法、ID 唯一、无 TODO、无敏感值
+- [ ] 文档体积/条目在 [doc-policy](toolkit/schema/doc-policy.json) 上限内（AGENTS/README/methodology/pitfalls/guardrails/CHANGELOG 窗口 ≤8 条）
 - [ ] 所有新增/修改链接目标存在（`validate` + `check-links`）
 - [ ] 工具改动有对应单元测试且全绿；`--help`/契约文档同步
-- [ ] `agent-manifest.json` 已重建且与内容一致
-- [ ] 对外契约/事实变化已写入 `CHANGELOG.md`；相关 MTH/PIT/GRD 交叉链接已更新
+- [ ] `agent-manifest.json` + `agent-manifest.d/` 已重建且与内容一致
+- [ ] 对外契约/事实变化已写入 CHANGELOG 当前窗口；超窗条目已归档且索引已更新
 - [ ] `backlog.json` 状态和结果已更新
 - [ ] 报告含验证证据、回滚方式与未完成项
 
@@ -206,7 +230,8 @@ git status --short                                   # 期望只有本次有意�
 
 | 文件/命令 | Schema | 说明 |
 |---|---|---|
-| `agent-manifest.json` | [toolkit/schema/agent-manifest.schema.json](toolkit/schema/agent-manifest.schema.json) | 内容索引、阅读顺序、工具清单、约束摘要 |
+| `agent-manifest.json` | [toolkit/schema/agent-manifest.schema.json](toolkit/schema/agent-manifest.schema.json) | 内容索引**根摘要**（≤160 行）：entrypoints/reading_order/counts/shards/tools/invariants |
+| `agent-manifest.d/*.json` | [toolkit/schema/manifest-shard.schema.json](toolkit/schema/manifest-shard.schema.json) | 按层分片（methodology/pitfalls/guardrails/case-studies）；Agent 按需只读一个 |
 | `backlog.json` | 见本文件 §8 末 | `schema/items[]` 必填：id,title,priority,area,status,acceptance,outputs,depends,notes,agent_hint；可选：owner,updated,result,requires（in_progress/done 时应填） |
 | `cases/*/profile.json` | [toolkit/schema/device-profile.schema.json](toolkit/schema/device-profile.schema.json) | 设备档案（脱敏） |
 | `python -m toolkit.repurpose assess --profile <path> --json` | `repurpose.assessment.v1` | 路线/门禁/风险/下一步 |
@@ -247,8 +272,10 @@ git status --short                                   # 期望只有本次有意�
 
 ## 9. 当前阶段与已知缺口（2026-11-11）
 
-- 方法论 v2.0 初版：MTH-000..010（11 个文件）、PIT-000..020（21 个文件）、GRD-000..014（15 个文件）、TOOL-001..010（7 个 CLI 子命令 + 3 个 Termux 脚本；PowerShell 包装器不单独编号；manifest 的物理工具条目为 5 个）已完成初稿。工具登记表以 [toolkit/README.md](toolkit/README.md) 为准。
-- `toolkit` 为 alpha：**140 项 fixture 单元测试通过，尚未真机回归**；`detect/probe` 的字段解析以实测为准，可能需随设备差异调整。
+> 本节只写**结论与链接**（≤8 行），不复制数字；当前窗口变更见 [CHANGELOG.md](CHANGELOG.md)，历史变更见 [changelog/](changelog/README.md)（默认不读）。
+
+- 方法论 v2.0 初版：MTH-000..011（12 个文件）、PIT-000..020（21 个文件）、GRD-000..014（15 个文件）、TOOL-001..010（7 个 CLI 子命令 + 3 个 Termux 脚本；PowerShell 包装器不单独编号；manifest 的物理工具条目为 5 个）已完成初稿。工具登记表以 [toolkit/README.md](toolkit/README.md) 为准。
+- `toolkit` 为 alpha：**163 项 fixture 单元测试通过，尚未真机回归**；`detect/probe` 的字段解析以实测为准，可能需随设备差异调整。
 - 案例是**部分验证**：服务器/桥/Console/备份已落地，但 24h soak、配对/token 轮换、mTLS、限流、OEM profile 矩阵、外部监控均未完成；不得把案例说成"全验收通过"。
 - 待办见 [backlog.json](backlog.json)；优先级 P0 是一切真机验证与基线绿化。
 
@@ -256,6 +283,6 @@ git status --short                                   # 期望只有本次有意�
 
 ## 10. 本文件的维护
 
-- 本协议是**活文件**：流程/契约变化时必须同步更新，并在 `CHANGELOG.md` 记一条。
-- 结构性变更（新增顶层目录、改 ID 前缀、改权威顺序）属于**破坏性变更**：必须同时更新 README、manifest schema、模板与校验器，并给出迁移说明。
+- 本协议是**活文件**：流程/契约变化时必须同步更新，并在 `CHANGELOG.md` 当前窗口记一条（超窗先归档，规则见 [MTH-011](methodology/10-document-lifecycle.md)）。
+- 结构性变更（新增顶层目录、改 ID 前缀、改权威顺序、改归档/读取规则）属于**破坏性变更**：必须同时更新 README、manifest schema、模板与校验器，并给出迁移说明。
 - 任何 Agent 不得通过删除本文件或降低红线来"通过验收"。

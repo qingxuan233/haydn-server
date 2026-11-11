@@ -1,0 +1,45 @@
+{
+  "schema": "repurpose.doc-policy.v1",
+  "description": "文档体积、CHANGELOG 归档窗口与 manifest 分层预算策略；由 validate 读取执行，index 读取 manifest 上限。修改上限属于契约变更：必须同步 docs/AGENTS/MTH-011 与测试。",
+  "archival": {
+    "current_file": "CHANGELOG.md",
+    "archive_dir": "changelog",
+    "pattern": "YYYY-MM.md",
+    "max_current_entries": 8,
+    "default_read": false,
+    "archive_read_only": true,
+    "window_row_pattern": "^\\|\\s*20\\d{2}-\\d{2}-\\d{2}\\s*\\|",
+    "window_note": "当前窗口只保留最近 ≤8 条；更旧条目按月归档到 changelog/YYYY-MM.md（默认不读，仅追溯时读单个文件）"
+  },
+  "status_sections": {
+    "max_lines": 8,
+    "files": ["AGENTS.md", "README.md"],
+    "match_headings": ["当前状态", "现状", "当前阶段", "Status"],
+    "note": "状态段落只写结论与链接，不复制数字/长清单；详细状态指向权威状态源"
+  },
+  "line_limits": {
+    "AGENTS.md": 340,
+    "README.md": 280,
+    "methodology/*.md": 300,
+    "pitfalls/*.md": 90,
+    "guardrails/*.md": 90,
+    "cases/*/README.md": 280,
+    "cases/*/oem-profile.md": 200
+  },
+  "byte_limits": {
+    "changelog/*.md": 262144
+  },
+  "manifest": {
+    "root_max_lines": 160,
+    "root_max_bytes": 16384,
+    "shard_max_lines": 300,
+    "shard_max_bytes": 32768,
+    "shard_max_entries": 40
+  },
+  "reading_budget": {
+    "root_max_lines": 160,
+    "shard_max_entries": 40,
+    "max_topic_docs_per_task": 3,
+    "note": "分层加载：先读根 agent-manifest.json（≤160 行摘要）→ 需要某层时只读一个 agent-manifest.d 分片（≤40 条）→ 再读单篇主题文档；禁止一次性加载全部分片或整个归档目录"
+  }
+}

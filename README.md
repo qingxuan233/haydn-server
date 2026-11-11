@@ -37,16 +37,18 @@
 
 ```text
 AGENTS.md                     Agent 工作协议（新会话/新 Agent 从这里开始）
-agent-manifest.json           机器可读内容索引（由 toolkit index 生成）
+agent-manifest.json           机器可读索引根摘要（≤160 行，由 toolkit index 生成）
+agent-manifest.d/             按层分片（methodology/pitfalls/guardrails/case-studies，按需只读一个）
 backlog.json                  结构化待办（Agent 领取任务用）
 README.md                     本文件：人类入口
-methodology/                  规范层：可迁移的方法论正文（MTH-001..010）
+methodology/                  规范层：可迁移的方法论正文（MTH-001..011）
 pitfalls/                     证据层：踩过的坑（PIT-001..020），每条含根因/规避/验证/证据
 guardrails/                   约束层：红线与注意事项（GRD-001..014），每条含检查方式
 toolkit/                      工具层：零依赖 Python CLI + schema + 模板 + Termux 脚本 + 测试
 cases/                        案例层：真实设备落地记录（haydn K40 Pro）
 docs/ scripts/ android-bridge/  旧项目冻结证据（案例原始文档、脚本、Bridge 源码）
-CHANGELOG.md                  历史变更（含 2026-11-11 方法论化改造）
+CHANGELOG.md                  当前变更窗口（≤8 条，含 2026-11-11 改造摘要）
+changelog/                    历史变更归档（按月，默认不读；规则见 MTH-011）
 ```
 
 **权威优先级**：用户指令 > [AGENTS.md](AGENTS.md) > `guardrails/` 红线 > `methodology/` 规范 > `pitfalls/` 案例证据 > `toolkit/` 实现细节 > `cases/` 与旧目录历史事实。冲突时以更高层为准（红线永远压过"应当"），但必须修正低层并记录。
@@ -63,9 +65,15 @@ CHANGELOG.md                  历史变更（含 2026-11-11 方法论化改造�
 
 ### Agent / 新会话（10 分钟）
 1. [AGENTS.md](AGENTS.md)（工作协议、红线、DoD）
-2. [agent-manifest.json](agent-manifest.json)（机器可读索引与阅读顺序）
-3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md)
+2. [agent-manifest.json](agent-manifest.json)（根摘要与阅读顺序；**不要**一次加载全部分片）
+3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md) → [MTH-011 文档生命周期与上下文预算](methodology/10-document-lifecycle.md)
 4. [backlog.json](backlog.json) 领取任务；变更前跑 `python -m toolkit.repurpose validate --strict`
+
+**上下文预算（防膨胀，详见 [MTH-011](methodology/10-document-lifecycle.md)）**：
+- 单任务最多读 **3 份**规范/主题文档（索引/模板/任务卡/`--help` 不计）；
+- **默认不读** `changelog/` 归档、`docs/90-archive`、旧 `docs/` 案例全文与旧 `scripts/`；追溯时才读**单个**归档文件；
+- 禁止整读 >300 行的文件；先读索引/标题，按需 `grep` + 分段；
+- 分层加载：根 manifest → 需要某层时只读 `agent-manifest.d/<layer>.json` 一个分片 → 再读单篇主题。
 
 ---
 
@@ -116,6 +124,7 @@ python scripts/dev/check-links.py --strict-anchors
 | MTH-008 | [验收与稳定性](methodology/07-validation.md) | 5 重启、24h soak、故障注入、恢复演练 |
 | MTH-009 | [Agent 交接与扩展协议](methodology/08-agent-handoff.md) | 目录/协议/任务/扩展/DoD（Agent 必读） |
 | MTH-010 | [术语表](methodology/09-glossary.md) | proot/FGS/AVB/FBE/soak/Tier 等统一口径 |
+| MTH-011 | [文档生命周期、归档与上下文预算](methodology/10-document-lifecycle.md) | 记录边界、CHANGELOG 归档、阅读预算、分层加载 |
 
 ---
 
@@ -164,15 +173,10 @@ python scripts/dev/check-links.py --strict-anchors
 
 ## 10. 当前状态与成熟度
 
-| 层 | 状态（2026-11-11 v2.0 初版） |
-|---|---|
-| methodology | 10 篇规范初版完成，覆盖评估/路线图/服务器/桥/控制面/安全/验收/交接 |
-| pitfalls / guardrails | 20 + 14 条，来自真实案例与已发现偏差 |
-| toolkit | 零依赖 CLI + schema/模板/Termux 脚本 + fixture 单元测试；**尚未在真机回归**（alpha） |
-| cases | haydn 案例完整可查；案例自身 24h soak 与 Phase 2 加固仍未完成 |
-| Agent 可读性 | 根 AGENTS.md + agent-manifest.json + backlog.json + 模板 + 稳定 ID；`validate`/`check-links` 可自动校验 |
+> 本节只写摘要（≤8 行）；详细状态见 [methodology/README.md 成熟度](methodology/README.md) 与 [CHANGELOG.md](CHANGELOG.md) 当前窗口（≤8 条），历史见 [changelog/](changelog/README.md)（默认不读）。
 
-**已知缺口**（下一步，见 [backlog.json](backlog.json)）：真机跑通 toolkit、CI/secret scan、桥的配对与 token 轮换参考实现、更多 OEM profile、第二个设备案例、多设备（fleet）扩展。
+- 方法论：MTH-000..011 初版完成；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；案例：部分验收（24h soak 等未完成，不得表述为全验收）。
+- 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-011](methodology/10-document-lifecycle.md)。
 
 ---
 
@@ -186,13 +190,14 @@ python scripts/dev/check-links.py --strict-anchors
 - 新增工具能力：实现命令 + 单元测试 + 更新 `toolkit/README.md` 与 schema；
 - 新增设备案例：复制 [toolkit/templates/case-study.md](toolkit/templates/case-study.md) 并填 `profile.json`。
 
-索引不会手工维护：`python -m toolkit.repurpose index` 从各文档 front matter 重建 [agent-manifest.json](agent-manifest.json)；`validate --strict` 校验 ID 唯一、front matter、断链。
+索引不会手工维护：`python -m toolkit.repurpose index` 从各文档 front matter 重建根 [agent-manifest.json](agent-manifest.json) 摘要与 [agent-manifest.d/](agent-manifest.d/) 分片；`validate --strict` 校验 ID 唯一、front matter、断链、文档体积与 CHANGELOG 窗口上限。**同样的变更**若改变对外事实/契约，还要在当前 [CHANGELOG.md](CHANGELOG.md) 窗口加一条；与相邻 `changelog/` 归档规则见 [MTH-011](methodology/10-document-lifecycle.md)。
 
 ---
 
 ## 12. 历史、安全与许可
 
-- **历史**：本仓库前身 `haydn-server`（2026-11-10 ~ 2026-11-11），原始 README 已归档于 [docs/90-archive/README-2026-11-10.md](docs/90-archive/README-2026-11-10.md)；案例状态以 [docs/00-overview/当前状态.md](docs/00-overview/当前状态.md) 为准（仅描述 haydn 案例，不描述方法论层）。
+- **历史**：本仓库前身 `haydn-server`（2026-11-10 ~ 2026-11-11），原始 README 已归档于 [docs/90-archive/README-2026-11-10.md](docs/90-archive/README-2026-11-10.md)；变更历史见 [CHANGELOG.md](CHANGELOG.md)（当前窗口）与 [changelog/](changelog/README.md)（按月归档，默认不读）；案例状态以 [docs/00-overview/当前状态.md](docs/00-overview/当前状态.md) 为准（仅描述 haydn 案例，不描述方法论层）。
+- **归档**：`CHANGELOG.md` 当前窗口 ≤8 条；超窗条目按月移入 `changelog/YYYY-MM.md`（只读、默认不读）；记录边界与操作步骤见 [MTH-011](methodology/10-document-lifecycle.md) 与 [changelog/README.md](changelog/README.md)。
 - **安全**：任何 token/密码/证书私钥/备份口令都不进入仓库、日志、文档、聊天；发现泄露先轮换再清理历史（[GRD-006](guardrails/GRD-006-secret-hygiene.md)）。
 - **许可**：个人自用与研究项目；第三方项目仅按许可证参考/使用，GPL 只读参考不复制（[GRD-010](guardrails/GRD-010-license-compliance.md)）。
 

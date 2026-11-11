@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://haydn-server.local/toolkit/schema/agent-manifest.schema.json",
-  "title": "repurpose.agent-manifest.v1",
-  "description": "由 python -m toolkit.repurpose index 生成的机器索引（仓库根 agent-manifest.json）。生成物不要手改；内容变更后必须重建。本文件是自描述 JSON，供人/Agent/外部校验器阅读。",
+  "title": "repurpose.agent-manifest.v1（根摘要）",
+  "description": "仓库根 agent-manifest.json：机器索引**根摘要**，≤160 行 / ≤16KB。只含 entrypoints/reading_order/counts/shards/tools/invariants/commands 等摘要；完整条目在 agent-manifest.d/ 四层分片（repurpose.manifest-shard.v1）。Agent 先读本摘要，需要某层时只读一个分片。生成物不要手改，用 python -m toolkit.repurpose index 重建。本文件是自描述 JSON Schema（draft-07），校验器不依赖 jsonschema 库。",
   "type": "object",
   "required": [
     "schema",
@@ -10,11 +10,11 @@
     "repo",
     "entrypoints",
     "reading_order",
-    "content",
+    "counts",
+    "shards",
     "tools",
     "invariants",
     "commands",
-    "counts",
     "warnings",
     "errors"
   ],
@@ -37,24 +37,48 @@
     },
     "entrypoints": {
       "type": "array",
-      "items": {"$ref": "#/definitions/readingStep"},
-      "description": "索引/入口文档（MTH-000、TOOL-000、PIT-000、GRD-000、CASE-000）"
+      "items": {"$ref": "#/definitions/entrypoint"},
+      "description": "索引/入口文档（MTH-000、TOOL-000、CASE-000、GRD-000、PIT-000）"
     },
     "reading_order": {
       "type": "array",
-      "items": {"$ref": "#/definitions/readingStep"},
-      "description": "Agent 阅读顺序：方法论 → 工具 → 案例 → 护栏 → 踩坑"
+      "items": {"$ref": "#/definitions/readingGroup"},
+      "description": "按层分组的阅读顺序（方法论→工具→案例→护栏→踩坑）；组内 id 升序，具体 path 见分片"
     },
-    "content": {
+    "counts": {
       "type": "object",
-      "required": ["methodology", "pitfalls", "guardrails", "case_studies"],
+      "required": [
+        "methodology",
+        "pitfalls",
+        "guardrails",
+        "case_studies",
+        "tools",
+        "entrypoints",
+        "reading_order"
+      ],
       "properties": {
-        "methodology": {"type": "array", "items": {"$ref": "#/definitions/entry"}},
-        "pitfalls": {"type": "array", "items": {"$ref": "#/definitions/entry"}},
-        "guardrails": {"type": "array", "items": {"$ref": "#/definitions/entry"}},
-        "case_studies": {"type": "array", "items": {"$ref": "#/definitions/entry"}}
+        "methodology": {"type": "integer", "minimum": 0},
+        "pitfalls": {"type": "integer", "minimum": 0},
+        "guardrails": {"type": "integer", "minimum": 0},
+        "case_studies": {"type": "integer", "minimum": 0},
+        "tools": {"type": "integer", "minimum": 0},
+        "entrypoints": {"type": "integer", "minimum": 0},
+        "reading_order": {"type": "integer", "minimum": 0},
+        "total_entry_docs": {"type": "integer", "minimum": 0}
       },
       "additionalProperties": true
+    },
+    "shards": {
+      "type": "object",
+      "description": "层 → 分片映射；四层必须齐全，path 相对仓库根且对应文件存在",
+      "required": ["methodology", "pitfalls", "guardrails", "case_studies"],
+      "properties": {
+        "methodology": {"$ref": "#/definitions/shardMapping"},
+        "pitfalls": {"$ref": "#/definitions/shardMapping"},
+        "guardrails": {"$ref": "#/definitions/shardMapping"},
+        "case_studies": {"$ref": "#/definitions/shardMapping"}
+      },
+      "additionalProperties": false
     },
     "tools": {
       "type": "array",
@@ -90,58 +114,43 @@
         "additionalProperties": true
       }
     },
-    "counts": {
-      "type": "object",
-      "required": ["methodology", "pitfalls", "guardrails", "case_studies", "tools", "entrypoints", "reading_order"],
-      "properties": {
-        "methodology": {"type": "integer", "minimum": 0},
-        "pitfalls": {"type": "integer", "minimum": 0},
-        "guardrails": {"type": "integer", "minimum": 0},
-        "case_studies": {"type": "integer", "minimum": 0},
-        "tools": {"type": "integer", "minimum": 0},
-        "entrypoints": {"type": "integer", "minimum": 0},
-        "reading_order": {"type": "integer", "minimum": 0},
-        "total_entry_docs": {"type": "integer", "minimum": 0}
-      },
-      "additionalProperties": true
-    },
     "warnings": {"type": "array", "items": {"type": "string"}},
     "errors": {"type": "array", "items": {"type": "string"}}
   },
   "definitions": {
-    "entry": {
+    "entrypoint": {
       "type": "object",
-      "required": ["id", "title", "type", "status", "audience", "tags", "updated", "agent_hint", "path"],
+      "required": ["id", "title", "path", "type"],
       "properties": {
         "id": {"type": "string"},
         "title": {"type": "string"},
-        "type": {"type": "string"},
-        "status": {"type": "string"},
-        "audience": {"type": "array", "items": {"type": "string"}},
-        "tags": {"type": "array", "items": {"type": "string"}},
-        "updated": {"type": "string"},
-        "agent_hint": {"type": "string"},
-        "depends": {"type": "array", "items": {"type": "string"}},
-        "path": {"type": "string", "description": "仓库相对路径（POSIX 分隔符）"},
-        "severity": {"type": "string"},
-        "domain": {"type": "string"},
-        "scope": {"type": "string"},
-        "oem": {"type": "string"}
+        "path": {"type": "string", "description": "仓库相对 POSIX 路径；禁止绝对路径"},
+        "type": {"type": "string"}
       },
       "additionalProperties": true
     },
-    "readingStep": {
+    "readingGroup": {
       "type": "object",
-      "required": ["step", "id", "path", "title", "reason"],
+      "required": ["layer", "count", "ids"],
       "properties": {
-        "step": {"type": "integer", "minimum": 1},
-        "id": {"type": "string"},
-        "path": {"type": "string"},
-        "title": {"type": "string"},
+        "layer": {"enum": ["methodology", "tools", "case_studies", "guardrails", "pitfalls"]},
+        "count": {"type": "integer", "minimum": 0},
+        "ids": {"type": "array", "items": {"type": "string"}},
         "reason": {"type": "string"}
       },
       "additionalProperties": true
+    },
+    "shardMapping": {
+      "type": "object",
+      "required": ["path", "count"],
+      "properties": {
+        "path": {"type": "string", "description": "仓库相对 POSIX 路径；禁止绝对路径"},
+        "count": {"type": "integer", "minimum": 0},
+        "lines": {"type": "integer", "minimum": 0},
+        "bytes": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

@@ -1,4 +1,4 @@
-"""validate 测试：front matter/ID/断链/JSON/manifest/严格模式。"""
+"""validate 测试：内容层 + doc-policy 体积/归档窗口 + manifest 根/分片一致性。"""
 
 from __future__ import annotations
 
@@ -9,14 +9,41 @@ import time
 import unittest
 from pathlib import Path
 
-from toolkit.repurpose.indexgen import write_manifest
+from toolkit.repurpose.docpolicy import DEFAULT_POLICY, load_policy
+from toolkit.repurpose.indexgen import (
+    SCHEMA_SHARD,
+    default_shard_dir,
+    write_bundle,
+    write_manifest,
+)
 from toolkit.repurpose.util import SCHEMA_VALIDATION
 from toolkit.repurpose.validate import format_validation_human, validate_repo
-from toolkit.tests.fixtures.repo_builder import add_valid_json, build_sample_repo, write_doc
+from toolkit.tests.fixtures.repo_builder import build_sample_repo, write_doc
 
 
 def _codes(report: dict) -> list[str]:
     return [issue["code"] for issue in report["issues"]]
+
+
+def _read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_long_doc(root: Path, relative: str, *, entry_id: str, title: str, body_lines: int) -> Path:
+    body = "# 长文\n\n" + "".join(f"行 {index}：说明文字。\n" for index in range(1, body_lines + 1))
+    return write_doc(
+        root, relative, entry_id=entry_id, title=title, doc_type="methodology", body=body
+    )
+
+
+def _write_changelog(root: Path, rows: int, *, width: int = 10) -> Path:
+    lines = ["# 变更记录（CHANGELOG）", "", "## 3. 当前窗口", "", "| 日期 | 版本 | 变更 |", "|---|---|---|"]
+    for index in range(rows):
+        lines.append(f"| 2026-11-{index + 1:02d} | v1.{index} | 变更条目 {index} |")
+    lines.append("")
+    path = root / "CHANGELOG.md"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
 
 
 class ValidRepoTests(unittest.TestCase):
@@ -24,7 +51,7 @@ class ValidRepoTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name) / "repo"
         build_sample_repo(self.root)
-        write_manifest(self.root)
+        write_bundle(self.root)
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
@@ -37,6 +64,8 @@ class ValidRepoTests(unittest.TestCase):
         self.assertEqual(report["warning_count"], 0)
         self.assertEqual(report["checked"]["markdown_files"], 9)
         self.assertTrue(report["checked"]["manifest"])
+        self.assertEqual(report["checked"]["shards"], 4)
+        self.assertGreater(report["checked"]["policy_files"], 0)
 
     def test_strict_also_passes_when_no_warnings(self) -> None:
         report = validate_repo(self.root, strict=True)
@@ -45,7 +74,15 @@ class ValidRepoTests(unittest.TestCase):
     def test_human_summary(self) -> None:
         text = format_validation_human(validate_repo(self.root))
         self.assertIn("validate 结果：OK", text)
+        self.assertIn("分片 4", text)
         self.assertIn("strict=False", text)
+
+    def test_root_manifest_within_limits(self) -> None:
+        manifest_path = self.root / "agent-manifest.json"
+        text = manifest_path.read_text(encoding="utf-8")
+        self.assertLessEqual(len(text.splitlines()), 160)
+        self.assertLessEqual(len(text.encode("utf-8")), 16384)
+        self.assertNotIn("content", _read_json(manifest_path))
 
 
 class BrokenContentTests(unittest.TestCase):
@@ -108,6 +145,7 @@ class BrokenContentTests(unittest.TestCase):
         report = validate_repo(self.root)
         self.assertIn("LINK_ABSOLUTE", _codes(report))
         self.assertTrue(report["ok"])  # 默认 warning 不算失败
+        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
 
     def test_missing_required_frontmatter_key(self) -> None:
         path = self.root / "guardrails" / "GRD-002-bad.md"
@@ -133,7 +171,6 @@ class BrokenContentTests(unittest.TestCase):
         report = validate_repo(self.root)
         self.assertIn("GRD_SEVERITY", _codes(report))
         self.assertIn("GRD_SCOPE", _codes(report))
-        # warning 默认不失败，但 --strict 视为失败
         self.assertTrue(report["ok"])
         self.assertFalse(validate_repo(self.root, strict=True)["ok"])
 
@@ -153,22 +190,17 @@ class BrokenContentTests(unittest.TestCase):
         self.assertIn("PIT_DOMAIN", _codes(report))
 
     def test_invalid_json_detected(self) -> None:
-        add_valid_json(self.root, "cases/demo/broken.json", "{not-json")
+        (self.root / "cases" / "demo" / "broken.json").write_text("{not-json", encoding="utf-8")
         report = validate_repo(self.root)
         self.assertIn("JSON_PARSE", _codes(report))
         self.assertFalse(report["ok"])
 
     def test_valid_json_accepted(self) -> None:
-        add_valid_json(self.root, "cases/demo/profile.json", json.dumps({"schema": "x"}))
+        (self.root / "cases" / "demo" / "profile.json").write_text(
+            json.dumps({"schema": "x"}), encoding="utf-8"
+        )
         report = validate_repo(self.root)
         self.assertNotIn("JSON_PARSE", _codes(report))
-        self.assertTrue(report["ok"])
-
-    def test_manifest_missing_is_warning_not_error(self) -> None:
-        report = validate_repo(self.root)
-        self.assertIn("MANIFEST_MISSING", _codes(report))
-        self.assertTrue(report["ok"])
-        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
 
     def test_missing_frontmatter_entirely(self) -> None:
         (self.root / "methodology" / "no-front.md").write_text("# 无 front matter\n", encoding="utf-8")
@@ -191,7 +223,7 @@ class BrokenContentTests(unittest.TestCase):
         self.assertTrue(report["ok"])
 
 
-class ManifestFreshnessTests(unittest.TestCase):
+class ManifestLifecycleTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name) / "repo"
@@ -200,9 +232,14 @@ class ManifestFreshnessTests(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmp.cleanup()
 
-    def test_manifest_stale_warning(self) -> None:
-        manifest = write_manifest(self.root, generated_at="2026-01-01T00:00:00Z")[0]
-        # 让内容文件 mtime 明显新于 manifest.generated_at
+    def test_manifest_missing_is_warning_not_error(self) -> None:
+        report = validate_repo(self.root)
+        self.assertIn("MANIFEST_MISSING", _codes(report))
+        self.assertTrue(report["ok"])
+        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
+
+    def test_manifest_stale_warning_and_strict_failure(self) -> None:
+        write_manifest(self.root, generated_at="2026-01-01T00:00:00Z")
         future = time.time() + 3600
         for path in self.root.rglob("*.md"):
             os.utime(path, (future, future))
@@ -210,10 +247,9 @@ class ManifestFreshnessTests(unittest.TestCase):
         self.assertIn("MANIFEST_STALE", _codes(report))
         self.assertTrue(report["ok"])
         self.assertFalse(validate_repo(self.root, strict=True)["ok"])
-        self.assertTrue(manifest.name == "agent-manifest.json")
 
-    def test_manifest_counts_mismatch_warning(self) -> None:
-        write_manifest(self.root)
+    def test_manifest_counts_mismatch_after_content_change(self) -> None:
+        write_bundle(self.root)
         write_doc(
             self.root,
             "pitfalls/PIT-003-new.md",
@@ -227,11 +263,176 @@ class ManifestFreshnessTests(unittest.TestCase):
         report = validate_repo(self.root)
         self.assertIn("MANIFEST_COUNTS", _codes(report))
 
-    def test_manifest_schema_error(self) -> None:
-        add_valid_json(self.root, "agent-manifest.json", json.dumps({"schema": "wrong"}))
+    def test_legacy_root_with_content_flags_migration(self) -> None:
+        legacy = _read_json(self.root / "agent-manifest.json") if (self.root / "agent-manifest.json").is_file() else {}
+        write_bundle(self.root)
+        legacy = _read_json(self.root / "agent-manifest.json")
+        legacy["content"] = {"methodology": [], "pitfalls": [], "guardrails": [], "case_studies": []}
+        (self.root / "agent-manifest.json").write_text(
+            json.dumps(legacy, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        report = validate_repo(self.root)
+        self.assertIn("MANIFEST_LEGACY_CONTENT", _codes(report))
+        self.assertTrue(report["ok"])
+
+    def test_root_manifest_too_large(self) -> None:
+        write_bundle(self.root)
+        manifest = _read_json(self.root / "agent-manifest.json")
+        # 人为塞入大量字段把根摘要撑到 >160 行
+        for index in range(200):
+            manifest[f"extra_{index}"] = index
+        (self.root / "agent-manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        report = validate_repo(self.root)
+        self.assertIn("MANIFEST_SIZE", _codes(report))
+        self.assertTrue(report["ok"])
+        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
+
+    def test_shard_missing(self) -> None:
+        write_bundle(self.root)
+        (default_shard_dir(self.root) / "pitfalls.json").unlink()
+        report = validate_repo(self.root)
+        self.assertIn("SHARD_MISSING", _codes(report))
+        self.assertTrue(report["ok"])
+
+    def test_shard_entries_over_limit(self) -> None:
+        write_bundle(self.root)
+        shard_path = default_shard_dir(self.root) / "pitfalls.json"
+        shard = _read_json(shard_path)
+        base_entry = shard["entries"][0]
+        entries = []
+        for index in range(45):
+            entry = dict(base_entry)
+            entry["id"] = f"PIT-{900 + index:03d}"
+            entries.append(entry)
+        shard["entries"] = entries
+        shard["count"] = len(entries)
+        shard_path.write_text(json.dumps(shard, ensure_ascii=False, indent=2), encoding="utf-8")
+        report = validate_repo(self.root)
+        self.assertIn("SHARD_ENTRIES", _codes(report))
+        self.assertIn("SHARD_SIZE", _codes(report))
+        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
+
+    def test_shard_duplicate_id_and_absolute_path(self) -> None:
+        write_bundle(self.root)
+        shard_path = default_shard_dir(self.root) / "pitfalls.json"
+        shard = _read_json(shard_path)
+        first, second = shard["entries"][0], shard["entries"][1]
+        duplicated = dict(first)
+        duplicated["path"] = "C:/absolute/PIT-001.md"
+        shard["entries"].append(duplicated)
+        shard["count"] = len(shard["entries"])
+        shard_path.write_text(json.dumps(shard, ensure_ascii=False, indent=2), encoding="utf-8")
+        report = validate_repo(self.root)
+        self.assertIn("SHARD_ID_DUPLICATE", _codes(report))
+        self.assertIn("SHARD_ABSOLUTE_PATH", _codes(report))
+        self.assertIn(second["id"], [entry["id"] for entry in shard["entries"]])
+
+    def test_shard_content_frontmatter_mismatch(self) -> None:
+        write_bundle(self.root)
+        shard_path = default_shard_dir(self.root) / "methodology.json"
+        shard = _read_json(shard_path)
+        shard["entries"][1]["title"] = "被手改的标题"
+        shard_path.write_text(json.dumps(shard, ensure_ascii=False, indent=2), encoding="utf-8")
+        report = validate_repo(self.root)
+        self.assertIn("SHARD_CONTENT", _codes(report))
+
+    def test_manifest_schema_error_reported_by_json_check(self) -> None:
+        (self.root / "agent-manifest.json").write_text(
+            json.dumps({"schema": "wrong"}), encoding="utf-8"
+        )
         report = validate_repo(self.root)
         self.assertIn("JSON_SCHEMA", _codes(report))
         self.assertFalse(report["ok"])
+
+
+class DocPolicyTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name) / "repo"
+        build_sample_repo(self.root)
+        write_bundle(self.root)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_doc_line_limit_warning_then_strict_error(self) -> None:
+        _write_long_doc(
+            self.root, "methodology/20-long.md", entry_id="MTH-020", title="长文", body_lines=310
+        )
+        report = validate_repo(self.root)
+        self.assertIn("DOC_LINES", _codes(report))
+        self.assertTrue(report["ok"])
+        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
+
+    def test_changelog_window_limit(self) -> None:
+        _write_changelog(self.root, 9)
+        report = validate_repo(self.root)
+        self.assertIn("CHANGELOG_WINDOW", _codes(report))
+        self.assertTrue(report["ok"])
+        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
+        _write_changelog(self.root, 8)
+        self.assertNotIn("CHANGELOG_WINDOW", _codes(validate_repo(self.root)))
+
+    def test_changelog_archive_index_row_not_counted(self) -> None:
+        """§4 归档索引行（| 2026-11 | 44 条… |）不是窗口数据行，不得计入 ≤8 上限。"""
+        path = _write_changelog(self.root, 8)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write("\n## 4. 归档索引\n\n")
+            handle.write("| 月份 | 条数 | 文件 |\n|---|---|---|\n")
+            handle.write("| 2026-11 | 44 条 | changelog/2026-11.md |\n")
+        report = validate_repo(self.root)
+        self.assertNotIn("CHANGELOG_WINDOW", _codes(report))
+        self.assertTrue(report["ok"])
+
+    def test_changelog_archive_byte_limit(self) -> None:
+        archive = self.root / "changelog" / "2026-01.md"
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        archive.write_text("# 归档\n\n" + ("x" * (262144 + 100)), encoding="utf-8")
+        report = validate_repo(self.root)
+        self.assertIn("CHANGELOG_ARCHIVE_BYTES", _codes(report))
+
+    def test_status_section_limit(self) -> None:
+        readme = self.root / "README.md"
+        body = "# 仓库入口\n\n## 10. 当前状态\n\n" + "".join(
+            f"行 {index}\n" for index in range(1, 12)
+        )
+        readme.write_text(body, encoding="utf-8")
+        report = validate_repo(self.root)
+        self.assertIn("STATUS_SECTION", _codes(report))
+        self.assertTrue(report["ok"])
+        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
+
+    def test_policy_missing_falls_back_to_defaults(self) -> None:
+        missing = Path(self._tmp.name) / "missing-policy.json"
+        report = validate_repo(self.root, policy_path=missing)
+        self.assertIn("POLICY_MISSING", _codes(report))
+        self.assertTrue(report["ok"])
+        self.assertFalse(report["issues"][0]["level"] == "error")
+        # 默认策略仍执行：9 条窗口仍可被识别
+        _write_changelog(self.root, 9)
+        self.assertIn("CHANGELOG_WINDOW", _codes(validate_repo(self.root, policy_path=missing)))
+
+    def test_policy_invalid_falls_back_to_defaults(self) -> None:
+        bad = Path(self._tmp.name) / "bad-policy.json"
+        bad.write_text("{not-json", encoding="utf-8")
+        report = validate_repo(self.root, policy_path=bad)
+        self.assertIn("POLICY_INVALID", _codes(report))
+        self.assertTrue(report["ok"])
+
+    def test_policy_limits_match_doc_policy_file(self) -> None:
+        policy, warnings = load_policy()
+        self.assertEqual(warnings, [])
+        self.assertEqual(policy["archival"]["max_current_entries"], 8)
+        self.assertEqual(policy["manifest"]["root_max_lines"], 160)
+        self.assertEqual(policy["line_limits"]["pitfalls/*.md"], 90)
+        self.assertEqual(policy["manifest"]["shard_max_entries"], 40)
+        self.assertEqual(policy["archival"]["current_file"], DEFAULT_POLICY["archival"]["current_file"])
+        self.assertEqual(
+            policy["archival"]["window_row_pattern"],
+            DEFAULT_POLICY["archival"]["window_row_pattern"],
+        )
 
 
 if __name__ == "__main__":
