@@ -1,0 +1,150 @@
+{
+  "schema": "repurpose.device-profile.v1",
+  "generated_at": "2026-11-11T00:00:00Z",
+  "source": {
+    "mode": "documented",
+    "commands": [],
+    "notes": "fixture：由文档实测记录整理（脱敏）；用于 assess/plan 离线测试，不依赖真机"
+  },
+  "identity": {
+    "codename": "haydn",
+    "model": "M2012K11C",
+    "market_name": "Redmi K40 Pro",
+    "manufacturer": "Xiaomi",
+    "brand": "Redmi",
+    "product": "haydn",
+    "fingerprint": "Redmi/haydn/haydn:14/UKQ1.231207.002/V816.0.15.0.UKKCNXM:user/release-keys",
+    "android_version": "14",
+    "sdk": 34,
+    "build_id": "UKQ1.231207.002",
+    "build_type": "user",
+    "security_patch": "2025-03-01",
+    "serial": null,
+    "serial_redacted": true
+  },
+  "boot": {
+    "bootloader_unlocked": false,
+    "verified_boot_state": "green",
+    "vbmeta_device_state": "locked",
+    "dm_verity_mode": "enforcing",
+    "selinux": "Enforcing",
+    "slot_suffix": "_a",
+    "partition_style": "A/B",
+    "has_init_boot": false,
+    "oem_unlock_policy": "closed",
+    "oem_unlock_evidence": "国行官方解锁入口关闭（案例实证，见 docs/10-device/31 与 02）"
+  },
+  "root": {
+    "state": "none",
+    "su_available": false,
+    "root_manager_packages": [],
+    "adb_uid": "uid=2000(shell)",
+    "ro_secure": true,
+    "ro_debuggable": false
+  },
+  "kernel": {
+    "release": "5.4.274-qgki-gcc3ec22f5061",
+    "version_string": "Linux 5.4.274-qgki-gcc3ec22f5061 #1 SMP PREEMPT aarch64",
+    "arch": "aarch64",
+    "gki_generation": "gki-1.x",
+    "config_source": "none",
+    "config_readable": false
+  },
+  "hardware": {
+    "soc": {
+      "manufacturer": "QTI",
+      "platform": "lahaina",
+      "model": "SM8350",
+      "marketing_name": "Snapdragon 888"
+    },
+    "cpu": {
+      "cores": 8,
+      "abi": ["arm64-v8a", "armeabi-v7a", "armeabi"],
+      "governors": ["conservative", "powersave", "performance", "schedutil"],
+      "clusters": []
+    },
+    "memory": {
+      "total_kb": 7471124,
+      "available_kb": null,
+      "swap_total_kb": null
+    },
+    "display": {
+      "width_px": 1080,
+      "height_px": 2400,
+      "density_dpi": 440,
+      "refresh_hz": null
+    },
+    "battery": {
+      "design_capacity_mah": 4520,
+      "charge_full_mah": null,
+      "level_pct": null,
+      "temperature_c": null,
+      "health": null,
+      "status": null,
+      "voltage_mv": null,
+      "charge_control_nodes": []
+    },
+    "thermal": {
+      "zone_count": 92,
+      "status": 0,
+      "max_temp_c": null
+    }
+  },
+  "storage": {
+    "data_total_kb": 236234732,
+    "data_used_kb": 33896612,
+    "data_available_kb": 202207048,
+    "data_filesystem": "f2fs",
+    "external_sdcard": false,
+    "external_expandable": false,
+    "zram": true,
+    "zram_total_kb": 4194300
+  },
+  "crypto": {
+    "userdata_encrypted": true,
+    "encryption_type": "FBE",
+    "keystore": "tee",
+    "play_integrity_required": true,
+    "play_integrity_level": null
+  },
+  "features": {
+    "user_ns": false,
+    "pid_ns": false,
+    "mount_ns": true,
+    "net_ns": true,
+    "uts_ns": true,
+    "ipc_ns": null,
+    "cgroup_v1": true,
+    "cgroup_v2": false,
+    "cgroup_v2_delegation": false,
+    "overlay_fs": true,
+    "binfmt_misc": true,
+    "seccomp_filter": true,
+    "kallsyms": null,
+    "modules": null,
+    "ptrace_allowed": null,
+    "native_linux_port": false,
+    "custom_kernel": null,
+    "termux_available": true,
+    "shizuku_available": null,
+    "boot_completed_receiver": true
+  },
+  "constraints": {
+    "external_storage": "none",
+    "oem_autostart": "manual-required",
+    "background_execution": "restricted",
+    "battery_long_term_plugged": "risky",
+    "root_required_capabilities": [
+      "precise_cpu",
+      "raw_network_bytes",
+      "battery_sysfs",
+      "charge_limit_shell",
+      "dumpsys",
+      "appops"
+    ],
+    "notes": ["无 Root 下系统级字段不可得（案例实测）"]
+  },
+  "unknowns": ["features.ipc_ns", "features.custom_kernel", "crypto.play_integrity_level"],
+  "evidence_refs": ["docs/10-device/01-设备档案.md", "docs/10-device/02-可行性分析.md"],
+  "warnings": []
+}

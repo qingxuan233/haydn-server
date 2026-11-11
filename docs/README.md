@@ -3,6 +3,9 @@
 > **这是全部文档的唯一导航入口。** 项目概览与快速命令见 [根 README](../README.md)；权威状态见 [当前状态](00-overview/当前状态.md)。
 > 文档按主题分组、按编号前缀排序；文件名保留中文，目录一律英文（跨平台/工具安全）。
 
+> **证据层指针（2026-11-11 重构起）**：本目录是 **haydn K40 Pro 实证案例的证据层**（冻结，仅修事实错误），不再是通用方法论入口；通用方法论见 [methodology/README.md](../methodology/README.md)，项目总入口 [根 README](../README.md)，Agent 入口 [AGENTS.md](../AGENTS.md)。
+> 新增通用内容请写入 `methodology/`、`pitfalls/`、`guardrails/`、`toolkit/`；本目录只保留该案例的原始证据。
+
 ---
 
 ## 1. 文档体系

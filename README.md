@@ -1,141 +1,199 @@
-# haydn-server
+# 安卓手机改造通用方法论（Android Phone Repurpose Methodology）
 
-> 一台闲置的 **Redmi K40 Pro（`M2012K11C` / `haydn` / Snapdragon 888）**，改造成低功耗、可远程维护的家用 Linux 服务器 + Android Bridge 宿主状态桥 + DSH 控制面。
+> **把一台闲置 Android 手机改造成低功耗、可远程维护、可观测的家用 Linux 服务器**的一套可迁移方法论、工具链与安全护栏。
 >
-> **2026-11-11 仓库更名**：`手机优化` → `haydn-server`。原因：aapt2 在 Windows 下无法处理含中文的路径，导致 Android Bridge APK 构建失败；同时统一 ASCII 路径，避免后续构建/CI 工具踩坑。旧版 README 已归档在 [docs/90-archive](docs/90-archive/README-2026-11-10.md)。
+> 本仓库由 `haydn-server` 实战项目升级而来（2026-11-11）。Redmi K40 Pro 的完整落地过程保留为**实证案例（部分验收，24h soak 等未完成）**：[cases/haydn-k40pro/README.md](cases/haydn-k40pro/README.md)；旧文档/脚本/APK 源码作为**冻结证据**保留在 [docs/](docs/README.md)、[scripts/](scripts/README.md)、[android-bridge/](android-bridge/README.md)。仓库名沿用历史名称，不影响新的通用定位。
 
 ---
 
-## 当前状态（2026-11-11）
+## 1. 这是什么 / 不是什么
 
-| 项目 | 状态 |
+| 是 | 不是 |
 |---|---|
-| 设备 | Android 14 / HyperOS / 8GB / 256GB；Bootloader 锁定、AVB green、**无 Root** |
-| 服务器 | Termux + proot Ubuntu；**12/12 supervisord 服务 RUNNING** |
-| 自启 | Termux:Boot → `00-server.sh` → `ubuntu.sh` → `server-up` + `server-watch`；实测 ADB 32s / 8080 45s / 完整服务+DSH 111s |
-| DSH | 127.0.0.1:3081 + dsh-login 3082 + dsh-guard；公网 `/app-login` 302 |
-| Console | 8080/8443；总览 + `?view=details` 详情双视图 |
-| 备份 | `server-backup` + `server-backup-sessions` 每日；加密；可校验恢复 |
-| Bridge APK | **release 版运行中**（debuggable=false）；5/5 debug 重启 + 1/1 release 重启；Phase 2 字段（display/usage/network/uptime）已接入；**24h soak 待完成** |
-| 构建 | JDK 17/21（`build.ps1` 自动探测）+ `tools/android-sdk`（platforms android-35 / build-tools 35.0.0）；无 Gradle，手工构建 |
-| 外部服务 | 未接 Uptime Kuma / 异地备份 / MFA / Tailscale；公网仅现有 frp 受控入口 |
+| 一套设备无关的改造方法论：评估 → 决策 → 服务器栈 → 遥测桥 → 控制面 → 验收 | 某个机型的刷机教程 |
+| 可直接运行的工具链：设备探测、能力矩阵、路线评估、阶段计划、索引/校验 | 一键"全自动改造"脚本（改造必须分阶段、可回退、有人工门禁） |
+| 可被后续 Agent 长期维护的知识库：踩坑库 + 红线护栏 + 机器可读索引 + 待办队列 | 通用 Linux 服务器教程（默认场景是 Android 宿主 + 无 Root） |
+| 一个真实的端到端案例（haydn K40 Pro）作为证据与回归样例 | 对任何机型都保证可行的承诺 |
 
-> 权威状态源：[docs/00-overview/当前状态.md](docs/00-overview/当前状态.md)。README 只做概览，不重复维护细节。
-
-**已知限制**
-- 无 Root：全局 `/proc/stat`、`/proc/net/dev`、`dumpsys`/`settings`/冻结/停用不可得；
-- MIUI/HyperOS 重启后会把 `POST_NOTIFICATIONS` 重置为 ignore（FGS 仍运行，通知不可见）；
-- `GET_USAGE_STATS` 重启后回到 default，`usage_foreground` 为空，需用户/ADB 再授权；
-- DSH 不能启动 Android App；不要让 DSH 控制 Bridge 生命周期。
+**默认边界**：不 Root、不刷机、不解锁 BL；不承诺 Android 系统级特权数据；不接未授权的外部服务；所有变更必须可回退。
 
 ---
 
-## 总体架构（三轨）
+## 2. 30 秒路线判断
 
-| 轨道 | 内容 | 状态 |
+| 设备/需求条件 | 推荐路线 | 要点 |
 |---|---|---|
-| **A. 服务器栈** | Termux + proot Ubuntu + supervisord + nginx + DSH + Console + 备份/审计 | ✅ 运行中 |
-| **B. Android Bridge APK** | BootReceiver + specialUse FGS + loopback HTTPS + 电池/WiFi/宿主状态 | ✅ release 运行中 |
-| **C. 集成层** | `bridge_client.py` + `/api/sysinfo` + `server-ops bridge status` + Console | ✅ 已接入 |
+| Bootloader 锁定 / 无法解锁 / 需要保 Play Integrity / 不愿清数据 | **A（Termux + proot，无 Root）** | 默认路线；零解锁风险，当天可用 |
+| 同上，但想压低温度/功耗、提高稳定性 | **A+（A 的优化档）** | 系统设置 + 包治理 + 看门狗；仍无 Root |
+| BL 可解锁、接受清数据/失保/Play Integrity 风险、需要 chroot/特权 | **B（解锁 + Root + chroot）** | 必须先过 G-B0 解锁门；能力上限更高 |
+| 需要内核级能力且有社区移植/自编译条件 | **C（自定义内核/ROM）** | 高风险，非默认 |
+| 该机型存在可用的原生 Linux 移植（postmarketOS 等） | **D（原生 Linux）** | 先验证社区支持与硬件可用性 |
 
-原则：
-- **Server 是唯一聚合/存储/展示方**；Bridge 只提供宿主状态；
-- **DSH 是控制面/解释层**：只读 Server API + `server-ops`，不持有 Bridge token、不控制 Bridge；
-- **Bridge 失败自动回退 Termux 采集**；DSH 故障不影响采集；
-- **无 Root**：不承诺系统级特权字段，ADB/Shizuku 仅维护通道。
+> 判定必须基于**探测数据**而非感觉。先跑 [MTH-002 评估与可行性决策](methodology/01-assessment.md)，再用 `toolkit assess` 得到结构化结论与门禁。
 
 ---
 
-## 从这里开始
+## 3. 仓库地图（四层 + 一案例）
 
-| 入口 | 用途 |
-|---|---|
-| **[docs/README.md 文档索引](docs/README.md)** | 全部文档的唯一导航入口（含旧编号对照） |
-| **[当前状态](docs/00-overview/当前状态.md)** | 单页事实：设备/服务/Bridge/构建/限制 |
-| **[30 新会话接手指南](docs/00-overview/30-新会话接手指南.md)** | 新对话先读；读序、下一步、护栏、验收 |
-| **[28 全栈整体方案规范](docs/00-overview/28-全栈整体方案规范.md)** | 当前规范总纲（架构/接口/数据/安全/可靠性/部署/ADR） |
-| **[27 Android Bridge 调研](docs/50-bridge/27-Android-Bridge-APK架构调研.md)** | 为什么是 Bridge APK、开源对比、Android 14/15 证据 |
-| **[17 研究平台环境构建手册](docs/20-server/17-研究平台环境构建手册.md)** | 换机/重置时从零重建服务器 |
+```text
+AGENTS.md                     Agent 工作协议（新会话/新 Agent 从这里开始）
+agent-manifest.json           机器可读内容索引（由 toolkit index 生成）
+backlog.json                  结构化待办（Agent 领取任务用）
+README.md                     本文件：人类入口
+methodology/                  规范层：可迁移的方法论正文（MTH-001..010）
+pitfalls/                     证据层：踩过的坑（PIT-001..020），每条含根因/规避/验证/证据
+guardrails/                   约束层：红线与注意事项（GRD-001..014），每条含检查方式
+toolkit/                      工具层：零依赖 Python CLI + schema + 模板 + Termux 脚本 + 测试
+cases/                        案例层：真实设备落地记录（haydn K40 Pro）
+docs/ scripts/ android-bridge/  旧项目冻结证据（案例原始文档、脚本、Bridge 源码）
+CHANGELOG.md                  历史变更（含 2026-11-11 方法论化改造）
+```
+
+**权威优先级**：用户指令 > [AGENTS.md](AGENTS.md) > `guardrails/` 红线 > `methodology/` 规范 > `pitfalls/` 案例证据 > `toolkit/` 实现细节 > `cases/` 与旧目录历史事实。冲突时以更高层为准（红线永远压过"应当"），但必须修正低层并记录。
 
 ---
 
-## 仓库结构
+## 4. 阅读路径
 
-```
-haydn-server/
-├── README.md                 # 本文件：项目概览与入口
-├── CHANGELOG.md              # 全部变更记录（唯一变更日志）
-├── docs/
-│   ├── README.md             # 文档索引（唯一导航）
-│   ├── 00-overview/          # 规划、规范、评审、接手指南、当前状态
-│   ├── 10-device/            # 设备档案、可行性、风险、OEM 适配、Root 路线
-│   ├── 20-server/            # 服务器重建/运维/性能/优化/复盘
-│   ├── 30-dsh/               # DSH 部署、配置、性能、控制面、蓝绿、sessions
-│   ├── 40-console/           # Console 功能/移动端/保险库/手机状态/IA 改版
-│   ├── 50-bridge/            # Bridge 调研与实施记录
-│   ├── 90-archive/           # 已归档历史（B 路线、非官方 Root、旧 README、原始笔记）
-│   └── assets/               # 文档截图
-├── scripts/
-│   ├── README.md             # 脚本索引（用途/用法/运行位置）
-│   ├── adb/                  # PC 侧 ADB/设备脚本（采集、优化、安装、探测）
-│   ├── termux/               # Termux 侧 shell
-│   ├── server/               # proot 服务器脚本与配置（server-ops/备份/DSH/Console）
-│   └── dev/                  # 开发校验工具（check-links.py）
-├── android-bridge/           # Bridge APK 源码 + 手工构建脚本
-├── tools/                    # 本地工具（多数 gitignored，见 tools/README）
-├── inventory/                # 采集快照（gitignored，见 inventory/README）
-└── backup/                   # 个人加密备份（gitignored，勿入库）
-```
+### 人类（约 30 分钟）
+1. 本文 → [MTH-001 边界与原则](methodology/00-foundations.md)
+2. [MTH-002 评估与决策](methodology/01-assessment.md) → [MTH-003 路线图](methodology/02-roadmap.md)
+3. 按兴趣选读：[MTH-004 服务器栈](methodology/03-server-stack.md)、[MTH-005 遥测桥](methodology/04-telemetry-bridge.md)、[MTH-006 控制面](methodology/05-control-plane.md)
+4. 动手前必读：[MTH-007 安全](methodology/06-security.md)、[guardrails/README](guardrails/README.md)
+
+### Agent / 新会话（10 分钟）
+1. [AGENTS.md](AGENTS.md)（工作协议、红线、DoD）
+2. [agent-manifest.json](agent-manifest.json)（机器可读索引与阅读顺序）
+3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md)
+4. [backlog.json](backlog.json) 领取任务；变更前跑 `python -m toolkit.repurpose validate --strict`
 
 ---
 
-## 常用命令
-
-```bash
-# 服务器只读检查（在 proot Ubuntu 内）
-server-ops status
-server-ops health
-server-ops logs dsh --lines 100
-curl -s http://127.0.0.1:8080/api/sysinfo | head
-curl -s http://127.0.0.1:8080/api/ops?n=5 | head
-```
+## 5. 快速开始
 
 ```powershell
-# 构建 Bridge APK（Windows，仓库路径必须为 ASCII）
-powershell -NoProfile -ExecutionPolicy Bypass -File android-bridge\build.ps1
-# 产物：android-bridge\build\bridge.apk + build\bridge.crt（均 gitignored）
+# 在仓库根目录执行（需要 Python 3.10+；ADB 相关子命令需要本机安装 platform-tools）
+python -m toolkit.repurpose --help
 
-# 文档链接检查
-python scripts\dev\check-links.py --strict-anchors
+# 设备探测：有真机时只读采集（默认脱敏，不写序列号）
+python -m toolkit.repurpose detect --out profiles/<codename>.json
+python -m toolkit.repurpose probe --base profiles/<codename>.json --out profiles/<codename>.capabilities.json
+
+# 无真机时：用 fixture 离线跑通完整链路
+python -m toolkit.repurpose detect --adb-fixture toolkit/tests/fixtures/adb-haydn.json --out profiles/demo.json
+python -m toolkit.repurpose probe --base profiles/demo.json --adb-fixture toolkit/tests/fixtures/adb-haydn.json --out profiles/demo-probed.json
+
+# 路线评估与阶段计划（离线，不依赖设备）
+python -m toolkit.repurpose assess --profile profiles/<codename>.json --json
+python -m toolkit.repurpose plan --profile profiles/<codename>.json --route auto --format md
+
+# 内容索引与一致性校验
+python -m toolkit.repurpose index
+python -m toolkit.repurpose validate --strict
+
+# 单元测试（fixture 模式，不需要真机）
+python -m unittest discover -s toolkit/tests -t . -v
+
+# 文档链接检查（已覆盖新方法论层）
+python scripts/dev/check-links.py --strict-anchors
 ```
 
-> 公网入口/DSH token 不在此列出，使用 `/app-login` 或控制台管理入口。
+> ⚠️ 运行期设备档案默认放在 `profiles/`（已 gitignore，含序列号等隐私）；仅脱敏后的 `cases/` 样例可入库。
 
 ---
 
-## 边界与护栏（必须）
+## 6. 方法论文档（MTH）
 
-1. **不 Root、不刷机、不解锁 BL**；不装系统/priv-app。
-2. **不卸载系统包**；不执行 `am kill-all`；不改 Android 系统设置（ADB 优化除外）。
-3. **不把 Bridge token / 证书 / DSH token / 备份口令**写入日志、聊天、公网页面。
-4. **DSH 不直连 Bridge、不持 token、不试图启动 App**；只走 Server API/`server-ops`。
-5. 写操作走 `server-ops` Tier2（`--confirm` + 快照 + 审计）；Tier3 只人工 SSH。
-6. 外部服务（Uptime Kuma/异地备份/MFA/Tailscale）未获确认不做。
-7. 服务器重装/重置前先备份并按 [17 重建手册](docs/20-server/17-研究平台环境构建手册.md)。
-
----
-
-## 文档维护约定
-
-1. **状态唯一源**：[docs/00-overview/当前状态.md](docs/00-overview/当前状态.md)；其他文档引用它，不复制状态数字。
-2. **变更记录唯一源**：[CHANGELOG.md](CHANGELOG.md)；按日期追加，版本号只增不复用。
-3. **新文档**：放入对应 `docs/<group>/`，同步更新 [docs/README.md](docs/README.md) 索引；不再使用旧 `docs/NN` 编号。
-4. **链接**：一律相对路径 Markdown 链接；提交前跑 `python scripts\dev\check-links.py --strict-anchors`。
-5. **敏感信息**：token/密码/证书/备份口令不进仓库、不进文档、不进日志。
-6. 历史实现记录保留证据，但标注“历史记录（日期）”，不写成当前状态。
+| ID | 文档 | 解决什么问题 |
+|---|---|---|
+| MTH-001 | [边界与原则](methodology/00-foundations.md) | 适用/不适用、三轨架构、设计原则、DoD |
+| MTH-002 | [评估与可行性决策](methodology/01-assessment.md) | 探测字段、A/A+/B/C/D 决策树、门禁、assess 输出 |
+| MTH-003 | [通用路线图](methodology/02-roadmap.md) | P0–P6 阶段、交付物、门禁、回滚 |
+| MTH-004 | [服务器栈](methodology/03-server-stack.md) | Termux+proot 启动链、服务集、网络、备份 |
+| MTH-005 | [宿主遥测桥](methodology/04-telemetry-bridge.md) | 何时需要桥、FGS/loopback/数据契约/安全 |
+| MTH-006 | [AI 控制面](methodology/05-control-plane.md) | Tier1/2/3、自愈、审计、蓝绿、边界 |
+| MTH-007 | [安全与密钥生命周期](methodology/06-security.md) | 威胁模型、秘密管理、轮换、暴露面 |
+| MTH-008 | [验收与稳定性](methodology/07-validation.md) | 5 重启、24h soak、故障注入、恢复演练 |
+| MTH-009 | [Agent 交接与扩展协议](methodology/08-agent-handoff.md) | 目录/协议/任务/扩展/DoD（Agent 必读） |
+| MTH-010 | [术语表](methodology/09-glossary.md) | proot/FGS/AVB/FBE/soak/Tier 等统一口径 |
 
 ---
 
-## 许可
+## 7. 踩坑库与护栏（先读这里再动手）
 
-个人项目，仅供自用与研究。第三方开源项目仅按许可证使用/参考，详见 [28 规范 §13](docs/00-overview/28-全栈整体方案规范.md#13-开源选型与许可)。
+- **踩坑库** [pitfalls/README.md](pitfalls/README.md)：20 条真实踩坑 + 通用风险，按 S1–S4 分级；每条都给出症状、根因、修复步骤、验证方法与证据链接。
+  高频必读：[S1 系统包卸载 bootloop](pitfalls/PIT-002-system-package-uninstall-bootloop.md)、[无 USER_NS 容器不可用](pitfalls/PIT-006-no-user-ns-containers.md)、[明文凭据入库](pitfalls/PIT-015-plaintext-credentials.md)、[伪证书 pin](pitfalls/PIT-019-fake-pinning-bridge.md)、[快照无回滚](pitfalls/PIT-017-snapshot-without-rollback.md)。
+- **护栏层** [guardrails/README.md](guardrails/README.md)：14 条不可协商红线与检查方式；Agent 每次变更前逐条对照。
+  高频必读：[不 Root/不解锁默认](guardrails/GRD-001-no-root-no-unlock-default.md)、[不卸载系统包](guardrails/GRD-002-no-system-package-uninstall.md)、[变更前备份](guardrails/GRD-004-backup-before-change.md)、[密钥卫生](guardrails/GRD-006-secret-hygiene.md)、[Agent 行为红线](guardrails/GRD-012-agent-operating-rules.md)。
+
+---
+
+## 8. 工具链（TOOL）
+
+| ID | 能力 | 命令 |
+|---|---|---|
+| TOOL-001 | 设备身份探测（脱敏） | `python -m toolkit.repurpose detect` |
+| TOOL-002 | 能力矩阵探测（NS/cgroup/分区/FBE/权限） | `python -m toolkit.repurpose probe` |
+| TOOL-003 | 路线评估与门禁判定 | `python -m toolkit.repurpose assess` |
+| TOOL-004 | 阶段计划生成 | `python -m toolkit.repurpose plan` |
+| TOOL-005 | 新设备档案脚手架 | `python -m toolkit.repurpose new-profile` |
+| TOOL-006 | Agent 清单生成 | `python -m toolkit.repurpose index` |
+| TOOL-007 | 内容一致性校验 | `python -m toolkit.repurpose validate` |
+| TOOL-008 | 服务器只读健康检查 | [toolkit/termux/healthcheck.sh](toolkit/termux/healthcheck.sh) |
+| TOOL-009 | 24h soak 观测记录 | [toolkit/termux/soak.sh](toolkit/termux/soak.sh) |
+| TOOL-010 | Termux:Boot 自启引导（幂等/dry-run） | [toolkit/termux/boot-starter.sh](toolkit/termux/boot-starter.sh) |
+
+> **工具登记表以 [toolkit/README.md](toolkit/README.md) 为准**（含 CLI 契约、退出码、schema、扩展 SOP）；上表是给人类的总览。新增工具必须先在该登记表分配 `TOOL-<下一个号>` 再实现。
+
+详见 [toolkit/README.md](toolkit/README.md)：CLI 契约、JSON schema、模板、扩展方式与测试。
+
+---
+
+## 9. 实证案例：Redmi K40 Pro（部分验收）
+
+[cases/haydn-k40pro/README.md](cases/haydn-k40pro/README.md) 记录了完整落地：无 Root、Termux + proot Ubuntu、supervisord 12 服务、Android Bridge APK（release）、Console/DSH 控制面、每日加密备份；也诚实记录了**未完成项与偏差**（24h soak、mTLS/配对/限流、曾出现的明文凭据与"伪 pin"等）。
+
+用途：
+- **验证方法论**：哪些 MTH 结论被实测支持，哪些仍是待验证假设；
+- **回归样例**：`cases/haydn-k40pro/profile.json` 可直接跑 `toolkit assess` / `plan`；
+- **反面教材**：偏差项已沉淀为 PIT/GRD，避免换机重蹈覆辙。
+
+> 案例目录冻结（frozen evidence）：只允许修正事实错误，不允许为了"看起来更好"改写历史结论。
+
+---
+
+## 10. 当前状态与成熟度
+
+| 层 | 状态（2026-11-11 v2.0 初版） |
+|---|---|
+| methodology | 10 篇规范初版完成，覆盖评估/路线图/服务器/桥/控制面/安全/验收/交接 |
+| pitfalls / guardrails | 20 + 14 条，来自真实案例与已发现偏差 |
+| toolkit | 零依赖 CLI + schema/模板/Termux 脚本 + fixture 单元测试；**尚未在真机回归**（alpha） |
+| cases | haydn 案例完整可查；案例自身 24h soak 与 Phase 2 加固仍未完成 |
+| Agent 可读性 | 根 AGENTS.md + agent-manifest.json + backlog.json + 模板 + 稳定 ID；`validate`/`check-links` 可自动校验 |
+
+**已知缺口**（下一步，见 [backlog.json](backlog.json)）：真机跑通 toolkit、CI/secret scan、桥的配对与 token 轮换参考实现、更多 OEM profile、第二个设备案例、多设备（fleet）扩展。
+
+---
+
+## 11. 如何扩展（人或 Agent）
+
+统一流程：**读 AGENTS.md → 领取 backlog 任务 → 按模板新建内容 → 跑校验 → 更新索引/变更记录 → 完成定义（DoD）**。
+
+- 新增一篇方法论：使用 [toolkit/templates/methodology-doc.md](toolkit/templates/methodology-doc.md)，ID 取 MTH 未用号；
+- 新增一条踩坑：使用 [toolkit/templates/pitfall.md](toolkit/templates/pitfall.md)，必须含证据与验证；
+- 新增一条护栏：使用 [toolkit/templates/guardrail.md](toolkit/templates/guardrail.md)，必须含可执行检查方式；
+- 新增工具能力：实现命令 + 单元测试 + 更新 `toolkit/README.md` 与 schema；
+- 新增设备案例：复制 [toolkit/templates/case-study.md](toolkit/templates/case-study.md) 并填 `profile.json`。
+
+索引不会手工维护：`python -m toolkit.repurpose index` 从各文档 front matter 重建 [agent-manifest.json](agent-manifest.json)；`validate --strict` 校验 ID 唯一、front matter、断链。
+
+---
+
+## 12. 历史、安全与许可
+
+- **历史**：本仓库前身 `haydn-server`（2026-11-10 ~ 2026-11-11），原始 README 已归档于 [docs/90-archive/README-2026-11-10.md](docs/90-archive/README-2026-11-10.md)；案例状态以 [docs/00-overview/当前状态.md](docs/00-overview/当前状态.md) 为准（仅描述 haydn 案例，不描述方法论层）。
+- **安全**：任何 token/密码/证书私钥/备份口令都不进入仓库、日志、文档、聊天；发现泄露先轮换再清理历史（[GRD-006](guardrails/GRD-006-secret-hygiene.md)）。
+- **许可**：个人自用与研究项目；第三方项目仅按许可证参考/使用，GPL 只读参考不复制（[GRD-010](guardrails/GRD-010-license-compliance.md)）。
+
+> 本仓库默认不提供任何"一键 Root/刷机/破解"内容；所有高风险路径都必须先过评估门禁并取得设备所有者明确授权。

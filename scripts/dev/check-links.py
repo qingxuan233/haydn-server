@@ -45,7 +45,8 @@ from collections import defaultdict
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))).replace("\\", "/")
 
-SCAN_ROOTS = ["README.md", "CHANGELOG.md", "docs", "android-bridge", "scripts",
+SCAN_ROOTS = ["README.md", "AGENTS.md", "CHANGELOG.md", "docs", "android-bridge",
+              "scripts", "methodology", "pitfalls", "guardrails", "toolkit", "cases",
               "tools/README.md", "inventory/README.md"]
 SKIP_DIR_NAMES = {".git", "backup", "inventory", "tools", "node_modules",
                   "__pycache__", "build", "android-sdk", "platform-tools",
@@ -79,6 +80,8 @@ def group_of(relpath):
             return "scripts/" + parts[1]
         return "scripts"
     if parts[0] in ("tools", "inventory"):
+        return parts[0]
+    if parts[0] in ("methodology", "pitfalls", "guardrails", "toolkit", "cases"):
         return parts[0]
     return "repo-root"
 

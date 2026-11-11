@@ -1,0 +1,261 @@
+{
+  "schema": "repurpose.backlog.v1",
+  "updated": "2026-11-11",
+  "owner": "maintainers / agents",
+  "notes": [
+    "本文件是 Agent 领取任务的机器可读队列；状态取值 pending/in_progress/done/blocked。",
+    "完成一项后更新 status、result、updated，并在 CHANGELOG.md 记录对外契约变化。"
+  ],
+  "items": [
+    {
+      "id": "BL-001",
+      "title": "真机回归 toolkit detect/probe 并产出至少两台设备 profile",
+      "priority": "P0",
+      "area": "toolkit",
+      "status": "pending",
+      "acceptance": "在至少两台不同 OEM 的 Android 设备上运行 detect 与 probe，profile 通过 schema 校验，assess 输出稳定且与人工判断一致；fixture 测试同步更新。",
+      "outputs": [
+        "profiles/（本地不入库）",
+        "toolkit/tests/fixtures/",
+        "toolkit/README.md"
+      ],
+      "depends": [],
+      "notes": "需要 ADB 与用户授权；序列号不得入库。",
+      "agent_hint": "先在一台设备跑 detect，人工核对每个字段，再补 probe 的失败分支。",
+      "requires": "真机 + 用户授权（ADB 可用）",
+      "owner": "",
+      "updated": "",
+      "result": ""
+    },
+    {
+      "id": "BL-002",
+      "title": "补齐 CI 质量门（链接/单测/秘密扫描/front matter）",
+      "priority": "P1",
+      "area": "repo",
+      "status": "pending",
+      "acceptance": "任意 CI（GitHub Actions 或等价）在 push/PR 上运行：unittest、validate --strict、check-links --strict-anchors、secret scan；全绿才可合并。",
+      "outputs": [
+        ".github/workflows/（或等价 CI 配置）",
+        "toolkit/README.md"
+      ],
+      "depends": [
+        "BL-003"
+      ],
+      "notes": "仓库无 remote 时也可先提供本地脚本 `toolkit/preflight`。",
+      "agent_hint": "先确认仓库托管平台，再写最小 workflow。"
+    },
+    {
+      "id": "BL-003",
+      "title": "toolkit 增加 preflight 子命令并统一校验入口",
+      "priority": "P1",
+      "area": "toolkit",
+      "status": "pending",
+      "acceptance": "`python -m toolkit.repurpose preflight` 串行运行 validate、index 一致性、unittest、check-links，输出简洁汇总与失败定位，退出码可被 CI 消费。",
+      "outputs": [
+        "toolkit/repurpose/",
+        "toolkit/tests/",
+        "AGENTS.md"
+      ],
+      "depends": [],
+      "notes": "避免 CI 与文档命令漂移。",
+      "agent_hint": "复用现有 validate/index 实现，不要复制逻辑。"
+    },
+    {
+      "id": "BL-004",
+      "title": "遥测桥参考实现：配对、token 轮换、mTLS、限流/上限",
+      "priority": "P1",
+      "area": "bridge",
+      "status": "pending",
+      "acceptance": "在 MTH-005 中补齐设计（含协议/失败/回滚），toolkit 提供可复用的服务端校验清单或脚本；明确与 PIT-019 的闭环。",
+      "outputs": [
+        "methodology/04-telemetry-bridge.md",
+        "pitfalls/PIT-019-fake-pinning-bridge.md"
+      ],
+      "depends": [],
+      "notes": "案例中这些尚未落地，参考设计必须标注为未实测。",
+      "agent_hint": "先写威胁模型与威胁到控制的映射，再决定实现顺序。"
+    },
+    {
+      "id": "BL-005",
+      "title": "OEM profile 矩阵补齐（Samsung/ColorOS/OriginOS/EMUI/HyperOS）",
+      "priority": "P2",
+      "area": "device",
+      "status": "pending",
+      "acceptance": "每类 OEM 有案例或模板：自启/省电/后台/通知/权限重置/安装器差异 + 验证步骤；由 [cases/haydn-k40pro/oem-profile.md] 作为 HyperOS 实例。",
+      "outputs": [
+        "cases/<codename>/oem-profile.md",
+        "toolkit/templates/oem-profile.md",
+        "MTH-002"
+      ],
+      "depends": [],
+      "notes": "不同 OEM 结论必须标注来源（实测/官方文档/社区证据）。",
+      "agent_hint": "先补模板字段，再补 1-2 个有把握的 OEM。"
+    },
+    {
+      "id": "BL-006",
+      "title": "第二个设备案例：验证方法论可迁移性",
+      "priority": "P2",
+      "area": "case",
+      "status": "pending",
+      "acceptance": "新增一个非小米设备案例（profile + README + oem-profile），走完 A 路线关键门禁，并记录与 haydn 案例的差异；至少发现并沉淀 1 条新 PIT 或修订 1 条 MTH。",
+      "outputs": [
+        "cases/<codename>/",
+        "pitfalls/",
+        "methodology/"
+      ],
+      "depends": [
+        "BL-001"
+      ],
+      "notes": "用户需提供设备与授权；否则先做 documented 案例并标注未实测。",
+      "agent_hint": "优先选不同 OEM、不同 Android 大版本，差异才有价值。"
+    },
+    {
+      "id": "BL-007",
+      "title": "多设备（fleet）扩展方法论与最小实现",
+      "priority": "P2",
+      "area": "methodology",
+      "status": "pending",
+      "acceptance": "MTH 新增或扩展 fleet 章节：设备注册/命名/凭据隔离/集中观测/批量升级/退役流程；工具侧至少 profile 目录约定与校验。",
+      "outputs": [
+        "methodology/",
+        "toolkit/"
+      ],
+      "depends": [
+        "BL-006"
+      ],
+      "notes": "先方法论后实现，避免过早平台化。",
+      "agent_hint": "明确 fleet 不是必需目标，个人场景单设备即可。"
+    },
+    {
+      "id": "BL-008",
+      "title": "24h soak 观测自动化增强（证据归档与判定）",
+      "priority": "P1",
+      "area": "validation",
+      "status": "pending",
+      "acceptance": "`toolkit/termux/soak.sh` 支持输出 JSONL、失败计数、可用率汇总；MTH-008 给出样例报告格式与判定规则；案例补一次实际 soak 记录（如用户执行）。",
+      "outputs": [
+        "toolkit/termux/soak.sh",
+        "methodology/07-validation.md",
+        "cases/haydn-k40pro/"
+      ],
+      "depends": [],
+      "notes": "不得伪造 soak 结果；未执行为 pending。",
+      "agent_hint": "先定观测字段与成功标准，再改脚本输出。"
+    },
+    {
+      "id": "BL-009",
+      "title": "模板与 schema 一致性测试",
+      "priority": "P2",
+      "area": "toolkit",
+      "status": "pending",
+      "acceptance": "单元测试校验所有 toolkit/templates 生成的 front matter/JSON 能通过 validate/schema；模板字段与 MTH 文档字段表一致。",
+      "outputs": [
+        "toolkit/tests/",
+        "toolkit/templates/"
+      ],
+      "depends": [],
+      "notes": "防止模板与校验器漂移。",
+      "agent_hint": "参数化测试每个模板，别只测一个。"
+    },
+    {
+      "id": "BL-010",
+      "title": "安全基线自动检查（secret scan / 端口 / 权限 / 证书有效期）",
+      "priority": "P2",
+      "area": "security",
+      "status": "pending",
+      "acceptance": "提供只读检查脚本或清单：仓库秘密扫描、监听端口、Android 权限清单、证书到期、备份口令存在性；MTH-007/GRD-006 给出通过标准。",
+      "outputs": [
+        "toolkit/",
+        "methodology/06-security.md"
+      ],
+      "depends": [],
+      "notes": "检查工具不得采集/打印秘密值。",
+      "agent_hint": "先做仓库内可离线执行的部分。"
+    },
+    {
+      "id": "BL-011",
+      "title": "案例迁移评估：旧 docs/scripts 是否结构化进 cases/",
+      "priority": "P3",
+      "area": "repo",
+      "status": "pending",
+      "acceptance": "产出迁移评估（成本/断链/历史保真/收益），默认结论可以是「保留不动」；若迁移必须给完整链接映射与一次演练。",
+      "outputs": [
+        "cases/README.md",
+        "docs/README.md",
+        "scripts/README.md"
+      ],
+      "depends": [],
+      "notes": "高风险低收益；需明确用户授权。",
+      "agent_hint": "先写评估报告，不要直接搬文件。"
+    },
+    {
+      "id": "BL-012",
+      "title": "第二个验证入口：真机-fixture 双模式回归脚本",
+      "priority": "P2",
+      "area": "toolkit",
+      "status": "pending",
+      "acceptance": "提供 `toolkit/tests/run_all.py` 或等价：无真机时 fixture 全绿，有真机时自动记录差异报告；不因真机缺失而失败。",
+      "outputs": [
+        "toolkit/tests/",
+        "toolkit/README.md"
+      ],
+      "depends": [
+        "BL-001"
+      ],
+      "notes": "真机测试需显式 opt-in。",
+      "agent_hint": "先做 fixture 快照对比，再考虑真机。"
+    },
+    {
+      "id": "BL-013",
+      "title": "英文摘要与 i18n 索引（便于更广 Agent 复用）",
+      "priority": "P3",
+      "area": "docs",
+      "status": "pending",
+      "acceptance": "提供英文 README 摘要或 `*-en.md` 关键文档；不改变中文权威版本；索引同时列出。",
+      "outputs": [
+        "README.md",
+        "agent-manifest.json"
+      ],
+      "depends": [],
+      "notes": "用户当前中文优先；英文作为可选扩展。",
+      "agent_hint": "先做摘要级，不做全文翻译。"
+    },
+    {
+      "id": "BL-014",
+      "title": "仓库品牌/命名调整评估（haydn-server → android-phone-repurpose）",
+      "priority": "P3",
+      "area": "repo",
+      "status": "pending",
+      "acceptance": "给出改名影响评估（工作区/链接/git 历史/文档引用）与执行清单；默认不执行，除非用户明确要求。",
+      "outputs": [
+        "README.md"
+      ],
+      "depends": [],
+      "notes": "目录名变更会影响 open 中的会话与脚本；先评估。",
+      "agent_hint": "不要直接改名；先列影响面。"
+    },
+    {
+      "id": "BL-015",
+      "title": "backlog/工具登记表的机器校验（schema + validate 联动）",
+      "priority": "P2",
+      "area": "repo",
+      "status": "pending",
+      "acceptance": "backlog.json 有正式 JSON Schema（必填/可选字段、status/priority 枚举）；toolkit validate 校验 backlog 语义与 TOOL 登记表（toolkit/README）一致性；新增/修改时自动发现缺字段、非法优先级、未登记 TOOL。",
+      "outputs": [
+        "toolkit/schema/backlog.schema.json",
+        "toolkit/repurpose/validate.py",
+        "toolkit/tests/",
+        "AGENTS.md"
+      ],
+      "depends": [
+        "BL-003"
+      ],
+      "notes": "当前 validate 只检查 backlog JSON 可解析；登记表与索引仍靠人工/约定。",
+      "agent_hint": "先冻结 backlog schema，再把 validate 的 warning 升级为 strict error。",
+      "requires": "",
+      "owner": "",
+      "updated": "",
+      "result": ""
+    }
+  ]
+}

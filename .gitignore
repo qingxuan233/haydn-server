@@ -25,6 +25,19 @@
 /android-bridge/certs/
 /android-bridge/_tmp*
 
+# ---- 通用方法论层：运行期设备档案（含序列号/位置等隐私，绝不入库）----
+/profiles/
+/agent-manifest.json.tmp
+
+# ---- 全局密钥/凭据兜底（即使某目录规则遗漏也不入库）----
+*.p12
+*.pem
+*.key
+*.token
+*.htpasswd
+.env
+.env.*
+
 # ---- 本地临时文件 / 编辑器 / OS ----
 *.log
 *.tmp

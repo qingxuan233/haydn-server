@@ -1,0 +1,162 @@
+{
+  "schema": "repurpose.device-profile.v1",
+  "generated_at": "2026-11-11T00:00:00Z",
+  "source": {
+    "mode": "manual",
+    "commands": [],
+    "notes": "模板示例：复制后逐项补证据；未实测字段保持 null 并列入 unknowns"
+  },
+  "identity": {
+    "codename": null,
+    "model": null,
+    "market_name": null,
+    "manufacturer": null,
+    "brand": null,
+    "product": null,
+    "fingerprint": null,
+    "android_version": null,
+    "sdk": null,
+    "build_id": null,
+    "build_type": null,
+    "security_patch": null,
+    "serial": null,
+    "serial_redacted": true
+  },
+  "boot": {
+    "bootloader_unlocked": null,
+    "verified_boot_state": null,
+    "vbmeta_device_state": null,
+    "dm_verity_mode": null,
+    "selinux": null,
+    "slot_suffix": null,
+    "partition_style": null,
+    "has_init_boot": null,
+    "oem_unlock_policy": "unknown",
+    "oem_unlock_evidence": null
+  },
+  "root": {
+    "state": "unknown",
+    "su_available": null,
+    "root_manager_packages": [],
+    "adb_uid": null,
+    "ro_secure": null,
+    "ro_debuggable": null
+  },
+  "kernel": {
+    "release": null,
+    "version_string": null,
+    "arch": null,
+    "gki_generation": "unknown",
+    "config_source": "unknown",
+    "config_readable": null
+  },
+  "hardware": {
+    "soc": {
+      "manufacturer": null,
+      "platform": null,
+      "model": null,
+      "marketing_name": null
+    },
+    "cpu": {
+      "cores": null,
+      "abi": [],
+      "governors": [],
+      "clusters": []
+    },
+    "memory": {
+      "total_kb": null,
+      "available_kb": null,
+      "swap_total_kb": null
+    },
+    "display": {
+      "width_px": null,
+      "height_px": null,
+      "density_dpi": null,
+      "refresh_hz": null
+    },
+    "battery": {
+      "design_capacity_mah": null,
+      "charge_full_mah": null,
+      "level_pct": null,
+      "temperature_c": null,
+      "health": null,
+      "status": null,
+      "voltage_mv": null,
+      "charge_control_nodes": []
+    },
+    "thermal": {
+      "zone_count": null,
+      "status": null,
+      "max_temp_c": null
+    }
+  },
+  "storage": {
+    "data_total_kb": null,
+    "data_used_kb": null,
+    "data_available_kb": null,
+    "data_filesystem": null,
+    "external_sdcard": null,
+    "external_expandable": null,
+    "zram": null,
+    "zram_total_kb": null
+  },
+  "crypto": {
+    "userdata_encrypted": null,
+    "encryption_type": "unknown",
+    "keystore": "unknown",
+    "play_integrity_required": null,
+    "play_integrity_level": null
+  },
+  "features": {
+    "user_ns": null,
+    "pid_ns": null,
+    "mount_ns": null,
+    "net_ns": null,
+    "uts_ns": null,
+    "ipc_ns": null,
+    "cgroup_v1": null,
+    "cgroup_v2": null,
+    "cgroup_v2_delegation": null,
+    "overlay_fs": null,
+    "binfmt_misc": null,
+    "seccomp_filter": null,
+    "kallsyms": null,
+    "modules": null,
+    "ptrace_allowed": null,
+    "native_linux_port": null,
+    "custom_kernel": null,
+    "termux_available": null,
+    "shizuku_available": null,
+    "boot_completed_receiver": null
+  },
+  "constraints": {
+    "external_storage": "unknown",
+    "oem_autostart": "unknown",
+    "background_execution": "unknown",
+    "battery_long_term_plugged": "unknown",
+    "root_required_capabilities": [
+      "precise_cpu",
+      "raw_network_bytes",
+      "battery_sysfs",
+      "charge_limit_shell",
+      "dumpsys",
+      "appops"
+    ],
+    "notes": []
+  },
+  "unknowns": [
+    "boot.bootloader_unlocked",
+    "boot.oem_unlock_policy",
+    "root.state",
+    "features.user_ns",
+    "features.pid_ns",
+    "features.cgroup_v2_delegation",
+    "features.native_linux_port",
+    "crypto.play_integrity_required",
+    "constraints.oem_autostart"
+  ],
+  "evidence_refs": [],
+  "warnings": [
+    "模板示例：除结构外全部为 unknown，assess 前必须补证据"
+  ]
+}

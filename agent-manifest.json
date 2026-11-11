@@ -1,0 +1,1814 @@
+{
+  "schema": "repurpose.agent-manifest.v1",
+  "generated_at": "2026-11-11T03:16:44Z",
+  "repo": {
+    "name": "haydn-server",
+    "root": ".",
+    "protocol": [
+      "AGENTS.md",
+      "backlog.json",
+      "README.md"
+    ]
+  },
+  "entrypoints": [
+    {
+      "step": 1,
+      "id": "MTH-000",
+      "path": "methodology/README.md",
+      "title": "方法论门户：定位、路径与文档地图",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 12,
+      "id": "TOOL-000",
+      "path": "toolkit/README.md",
+      "title": "通用改造工具链 toolkit（CLI / schema / 模板 / Termux 脚本 / 测试）",
+      "reason": "工具与契约（再读——知道用什么命令做事）"
+    },
+    {
+      "step": 13,
+      "id": "CASE-000",
+      "path": "cases/README.md",
+      "title": "案例层索引：设备实证案例的目录约定与登记流程",
+      "reason": "案例证据（看真实设备如何落地）"
+    },
+    {
+      "step": 16,
+      "id": "GRD-000",
+      "path": "guardrails/README.md",
+      "title": "护栏索引与使用规范",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 31,
+      "id": "PIT-000",
+      "path": "pitfalls/README.md",
+      "title": "踩坑库索引（Pitfalls Index）",
+      "reason": "踩坑证据（避免重复历史错误）"
+    }
+  ],
+  "reading_order": [
+    {
+      "step": 1,
+      "id": "MTH-000",
+      "path": "methodology/README.md",
+      "title": "方法论门户：定位、路径与文档地图",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 2,
+      "id": "MTH-001",
+      "path": "methodology/00-foundations.md",
+      "title": "方法论边界与原则",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 3,
+      "id": "MTH-002",
+      "path": "methodology/01-assessment.md",
+      "title": "评估与可行性决策",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 4,
+      "id": "MTH-003",
+      "path": "methodology/02-roadmap.md",
+      "title": "通用路线图（P0–P6）",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 5,
+      "id": "MTH-004",
+      "path": "methodology/03-server-stack.md",
+      "title": "服务器栈（Track A）",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 6,
+      "id": "MTH-005",
+      "path": "methodology/04-telemetry-bridge.md",
+      "title": "宿主遥测桥（Track B）",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 7,
+      "id": "MTH-006",
+      "path": "methodology/05-control-plane.md",
+      "title": "AI 控制面（Track C）",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 8,
+      "id": "MTH-007",
+      "path": "methodology/06-security.md",
+      "title": "安全与密钥生命周期",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 9,
+      "id": "MTH-008",
+      "path": "methodology/07-validation.md",
+      "title": "验收与稳定性",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 10,
+      "id": "MTH-009",
+      "path": "methodology/08-agent-handoff.md",
+      "title": "Agent 交接与扩展协议",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 11,
+      "id": "MTH-010",
+      "path": "methodology/09-glossary.md",
+      "title": "术语表（统一口径）",
+      "reason": "方法论规范（先读——定义做什么与怎么做）"
+    },
+    {
+      "step": 12,
+      "id": "TOOL-000",
+      "path": "toolkit/README.md",
+      "title": "通用改造工具链 toolkit（CLI / schema / 模板 / Termux 脚本 / 测试）",
+      "reason": "工具与契约（再读——知道用什么命令做事）"
+    },
+    {
+      "step": 13,
+      "id": "CASE-000",
+      "path": "cases/README.md",
+      "title": "案例层索引：设备实证案例的目录约定与登记流程",
+      "reason": "案例证据（看真实设备如何落地）"
+    },
+    {
+      "step": 14,
+      "id": "CASE-002",
+      "path": "cases/haydn-k40pro/oem-profile.md",
+      "title": "小米 / HyperOS OEM 适配 profile（以 haydn K40 Pro 为实例）",
+      "reason": "案例证据（看真实设备如何落地）"
+    },
+    {
+      "step": 15,
+      "id": "CASE-001",
+      "path": "cases/haydn-k40pro/README.md",
+      "title": "haydn K40 Pro 实证案例：无 Root 手机改造为家用 Linux 服务器",
+      "reason": "案例证据（看真实设备如何落地）"
+    },
+    {
+      "step": 16,
+      "id": "GRD-000",
+      "path": "guardrails/README.md",
+      "title": "护栏索引与使用规范",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 17,
+      "id": "GRD-001",
+      "path": "guardrails/GRD-001-no-root-no-unlock-default.md",
+      "title": "默认不 Root、不刷机、不解锁 Bootloader",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 18,
+      "id": "GRD-002",
+      "path": "guardrails/GRD-002-no-system-package-uninstall.md",
+      "title": "禁止卸载系统包，只允许受控禁用",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 19,
+      "id": "GRD-003",
+      "path": "guardrails/GRD-003-no-kill-all.md",
+      "title": "禁止 kill-all 与误杀服务器进程",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 20,
+      "id": "GRD-004",
+      "path": "guardrails/GRD-004-backup-before-change.md",
+      "title": "变更前必须备份、快照并准备回滚",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 21,
+      "id": "GRD-005",
+      "path": "guardrails/GRD-005-tiered-ops-confirmation.md",
+      "title": "Tier1/Tier2/Tier3 分级确认",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 22,
+      "id": "GRD-006",
+      "path": "guardrails/GRD-006-secret-hygiene.md",
+      "title": "密钥与凭据卫生",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 23,
+      "id": "GRD-007",
+      "path": "guardrails/GRD-007-network-least-exposure.md",
+      "title": "网络最小暴露",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 24,
+      "id": "GRD-008",
+      "path": "guardrails/GRD-008-power-thermal-safety.md",
+      "title": "供电与热安全",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 25,
+      "id": "GRD-009",
+      "path": "guardrails/GRD-009-external-services-consent.md",
+      "title": "外部服务须用户明确同意",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 26,
+      "id": "GRD-010",
+      "path": "guardrails/GRD-010-license-compliance.md",
+      "title": "开源许可合规",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 27,
+      "id": "GRD-011",
+      "path": "guardrails/GRD-011-privacy-inventory.md",
+      "title": "隐私数据采集与脱敏",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 28,
+      "id": "GRD-012",
+      "path": "guardrails/GRD-012-agent-operating-rules.md",
+      "title": "Agent 行为红线",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 29,
+      "id": "GRD-013",
+      "path": "guardrails/GRD-013-no-fake-acceptance.md",
+      "title": "不伪造验收",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 30,
+      "id": "GRD-014",
+      "path": "guardrails/GRD-014-firmware-freeze-ota.md",
+      "title": "固件冻结与受控升级",
+      "reason": "红线（动手前必须确认不能做什么）"
+    },
+    {
+      "step": 31,
+      "id": "PIT-000",
+      "path": "pitfalls/README.md",
+      "title": "踩坑库索引（Pitfalls Index）",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 32,
+      "id": "PIT-001",
+      "path": "pitfalls/PIT-001-ascii-path-aapt2.md",
+      "title": "非 ASCII 路径导致 aapt2 构建失败",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 33,
+      "id": "PIT-002",
+      "path": "pitfalls/PIT-002-system-package-uninstall-bootloop.md",
+      "title": "卸载系统包导致 bootloop",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 34,
+      "id": "PIT-003",
+      "path": "pitfalls/PIT-003-kill-all-proot.md",
+      "title": "kill-all 杀死 proot 服务栈",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 35,
+      "id": "PIT-004",
+      "path": "pitfalls/PIT-004-fbe-lockscreen-boot.md",
+      "title": "FBE 锁屏凭据阻断开机自启",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 36,
+      "id": "PIT-005",
+      "path": "pitfalls/PIT-005-no-root-proc-metrics.md",
+      "title": "无 Root 读不到全局 proc 指标",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 37,
+      "id": "PIT-006",
+      "path": "pitfalls/PIT-006-no-user-ns-containers.md",
+      "title": "内核缺 USER_NS/PID_NS 容器不可用",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 38,
+      "id": "PIT-007",
+      "path": "pitfalls/PIT-007-proot-overhead-thermal.md",
+      "title": "proot ptrace 税与热降频",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 39,
+      "id": "PIT-008",
+      "path": "pitfalls/PIT-008-miui-permission-reset.md",
+      "title": "MIUI 重启重置通知/用量权限",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 40,
+      "id": "PIT-009",
+      "path": "pitfalls/PIT-009-oem-fgs-killer.md",
+      "title": "OEM 后台清理杀死 FGS",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 41,
+      "id": "PIT-010",
+      "path": "pitfalls/PIT-010-cn-oem-unlock-closed.md",
+      "title": "国行/运营商 ROM 官方解锁关闭",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 42,
+      "id": "PIT-011",
+      "path": "pitfalls/PIT-011-battery-sysfs-unreadable.md",
+      "title": "电池 sysfs 不可读，无法脚本限充",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 43,
+      "id": "PIT-012",
+      "path": "pitfalls/PIT-012-oem-installer-ui-automation.md",
+      "title": "厂商安装器弹窗让 ADB 安装脆弱",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 44,
+      "id": "PIT-013",
+      "path": "pitfalls/PIT-013-adb-fragility.md",
+      "title": "ADB 授权/无线调试脆弱",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 45,
+      "id": "PIT-014",
+      "path": "pitfalls/PIT-014-config-reload-lockout.md",
+      "title": "未测试就 reload 配置导致自锁失联",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 46,
+      "id": "PIT-015",
+      "path": "pitfalls/PIT-015-plaintext-credentials.md",
+      "title": "明文凭据进入脚本/日志/历史",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 47,
+      "id": "PIT-016",
+      "path": "pitfalls/PIT-016-generated-signing-keys-repro.md",
+      "title": "签名/TLS 密钥缺省生成导致不可复现",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 48,
+      "id": "PIT-017",
+      "path": "pitfalls/PIT-017-snapshot-without-rollback.md",
+      "title": "只做快照不回滚/不演练=假安全",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 49,
+      "id": "PIT-018",
+      "path": "pitfalls/PIT-018-proot-mount-assumptions.md",
+      "title": "proot 挂载假设错误导致服务全灭",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 50,
+      "id": "PIT-019",
+      "path": "pitfalls/PIT-019-fake-pinning-bridge.md",
+      "title": "“证书 pin”名不副实的安全承诺缺口",
+      "reason": "踩坑证据（避免重复历史错误）"
+    },
+    {
+      "step": 51,
+      "id": "PIT-020",
+      "path": "pitfalls/PIT-020-watchdog-selfheal-cascade.md",
+      "title": "看门狗误判/自救级联重启风暴",
+      "reason": "踩坑证据（避免重复历史错误）"
+    }
+  ],
+  "content": {
+    "methodology": [
+      {
+        "id": "MTH-000",
+        "title": "方法论门户：定位、路径与文档地图",
+        "type": "index",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "methodology",
+          "portal",
+          "index",
+          "navigation"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "先读本页确认定位与阅读路径；Agent 的完整启动顺序以根 AGENTS.md 为准，本页不是工作协议。",
+        "depends": [],
+        "path": "methodology/README.md"
+      },
+      {
+        "id": "MTH-001",
+        "title": "方法论边界与原则",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "methodology",
+          "foundations",
+          "scope",
+          "principles",
+          "architecture"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "任何改造任务开工前先读本页；确认适用前提与三轨边界，再按 MTH-002 评估设备。",
+        "depends": [
+          "MTH-000"
+        ],
+        "path": "methodology/00-foundations.md"
+      },
+      {
+        "id": "MTH-002",
+        "title": "评估与可行性决策",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "assessment",
+          "feasibility",
+          "decision",
+          "gate",
+          "oem",
+          "profile"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "新设备接入第一步；先 detect 再 probe，然后 assess；未知字段一律走保守路线并降置信度。",
+        "depends": [
+          "MTH-001"
+        ],
+        "path": "methodology/01-assessment.md"
+      },
+      {
+        "id": "MTH-003",
+        "title": "通用路线图（P0–P6）",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "roadmap",
+          "phases",
+          "gates",
+          "change-management",
+          "rollback"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "开工前先按本页定位当前阶段；门禁未通过不得进入下一阶段，一次只推进一个变更。",
+        "depends": [
+          "MTH-001",
+          "MTH-002"
+        ],
+        "path": "methodology/02-roadmap.md"
+      },
+      {
+        "id": "MTH-004",
+        "title": "服务器栈（Track A）",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "server",
+          "termux",
+          "proot",
+          "supervisord",
+          "backup",
+          "network"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "实现 Track A 前先读\"为什么 proot\"与启动链；服务集按最小核心起步，网络先局域网，备份先于服务。",
+        "depends": [
+          "MTH-001",
+          "MTH-002",
+          "MTH-003"
+        ],
+        "path": "methodology/03-server-stack.md"
+      },
+      {
+        "id": "MTH-005",
+        "title": "宿主遥测桥（Track B）",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "telemetry",
+          "bridge",
+          "android",
+          "fgs",
+          "data-contract",
+          "no-root"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "先判定是否真的需要桥，再按数据契约与安全最低要求实现；无实测证据不得标验收通过；Android 14/15 FGS 规则以本文件约束表为准",
+        "depends": [
+          "MTH-001",
+          "MTH-004"
+        ],
+        "path": "methodology/04-telemetry-bridge.md"
+      },
+      {
+        "id": "MTH-006",
+        "title": "AI 控制面（Track C）",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "control-plane",
+          "agent",
+          "ops",
+          "tiering",
+          "audit",
+          "watchdog",
+          "blue-green"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "控制面是解释层与受控运维层而非运行时必需；先落地 Tier1 只读与审计，再谈 Tier2；Tier3 永不对 Agent 开放",
+        "depends": [
+          "MTH-004",
+          "MTH-005"
+        ],
+        "path": "methodology/05-control-plane.md"
+      },
+      {
+        "id": "MTH-007",
+        "title": "安全与密钥生命周期",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "security",
+          "secrets",
+          "tls",
+          "pinning",
+          "least-exposure",
+          "audit"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "任何涉及 token/证书/口令/备份/公网入口/日志的改动先读本文件；敏感值绝不入库；泄露处置顺序是止损→轮换→排查→记录",
+        "depends": [
+          "MTH-001",
+          "MTH-005"
+        ],
+        "path": "methodology/06-security.md"
+      },
+      {
+        "id": "MTH-008",
+        "title": "验收与稳定性",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "validation",
+          "acceptance",
+          "soak",
+          "fault-injection",
+          "recovery",
+          "evidence"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "没有证据就没有完成；先定证据类型与门禁，再跑 5 次重启/24h soak/故障注入；soak 期间禁止变更，结果不得伪造",
+        "depends": [
+          "MTH-001",
+          "MTH-005",
+          "MTH-006"
+        ],
+        "path": "methodology/07-validation.md"
+      },
+      {
+        "id": "MTH-009",
+        "title": "Agent 交接与扩展协议",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "agent-handoff",
+          "protocol",
+          "extension",
+          "lifecycle",
+          "cli-contract",
+          "governance"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；任何扩展先查本文件 SOP",
+        "depends": [
+          "MTH-000",
+          "MTH-001",
+          "MTH-002",
+          "MTH-003",
+          "MTH-008"
+        ],
+        "path": "methodology/08-agent-handoff.md"
+      },
+      {
+        "id": "MTH-010",
+        "title": "术语表（统一口径）",
+        "type": "methodology",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "glossary",
+          "terminology",
+          "conventions"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "遇到不确定术语先查本表；新增术语必须一句定义+为何重要，并回链唯一出处文档。",
+        "depends": [],
+        "path": "methodology/09-glossary.md"
+      }
+    ],
+    "pitfalls": [
+      {
+        "id": "PIT-000",
+        "title": "踩坑库索引（Pitfalls Index）",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "index",
+          "pitfalls",
+          "severity",
+          "evidence"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "先按严重度与域检索，再读对应 PIT；新增条目必须带可复现证据与验证步骤",
+        "depends": [
+          "MTH-001",
+          "GRD-013"
+        ],
+        "path": "pitfalls/README.md",
+        "severity": "S4",
+        "domain": "docs"
+      },
+      {
+        "id": "PIT-001",
+        "title": "非 ASCII 路径导致 aapt2 构建失败",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "build",
+          "aapt2",
+          "windows",
+          "ascii-path"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "构建报 aapt2 路径错误时先验证仓库与 SDK 路径字符集，禁止用 junction 绕行",
+        "depends": [
+          "MTH-005"
+        ],
+        "path": "pitfalls/PIT-001-ascii-path-aapt2.md",
+        "severity": "S3",
+        "domain": "docs"
+      },
+      {
+        "id": "PIT-002",
+        "title": "卸载系统包导致 bootloop",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "system-package",
+          "bootloop",
+          "rescueparty",
+          "debloat"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "系统包只 disable 不 uninstall；出现无限开机动画先查系统必需包缺失，不要在线硬修",
+        "depends": [
+          "GRD-002"
+        ],
+        "path": "pitfalls/PIT-002-system-package-uninstall-bootloop.md",
+        "severity": "S1",
+        "domain": "device",
+        "oem": "xiaomi"
+      },
+      {
+        "id": "PIT-003",
+        "title": "kill-all 杀死 proot 服务栈",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "kill-all",
+          "force-stop",
+          "termux",
+          "proot",
+          "service-outage"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "任何清理脚本执行前先 grep kill-all/force-stop；误杀后优先跑恢复脚本而不是反复重启",
+        "depends": [
+          "GRD-003"
+        ],
+        "path": "pitfalls/PIT-003-kill-all-proot.md",
+        "severity": "S2",
+        "domain": "server"
+      },
+      {
+        "id": "PIT-004",
+        "title": "FBE 锁屏凭据阻断开机自启",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "fbe",
+          "lockscreen",
+          "termux-boot",
+          "unattended",
+          "boot"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "自启验收失败先确认设备是否设置了锁屏凭据与是否已解锁一次",
+        "depends": [
+          "MTH-004"
+        ],
+        "path": "pitfalls/PIT-004-fbe-lockscreen-boot.md",
+        "severity": "S2",
+        "domain": "boot"
+      },
+      {
+        "id": "PIT-005",
+        "title": "无 Root 读不到全局 proc 指标",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "procfs",
+          "telemetry",
+          "null-semantics",
+          "no-root",
+          "metrics"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "指标读不到时输出 null + 能力声明，绝不填 0；面板要显示来源与新鲜度",
+        "depends": [
+          "MTH-005"
+        ],
+        "path": "pitfalls/PIT-005-no-root-proc-metrics.md",
+        "severity": "S3",
+        "domain": "device"
+      },
+      {
+        "id": "PIT-006",
+        "title": "内核缺 USER_NS/PID_NS 容器不可用",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "container",
+          "namespace",
+          "kernel-config",
+          "docker",
+          "capability"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "先 probe 再决策；USER_NS/PID_NS 为 not set 时直接否决容器路线，不要用 root 再试",
+        "depends": [
+          "MTH-002"
+        ],
+        "path": "pitfalls/PIT-006-no-user-ns-containers.md",
+        "severity": "S3",
+        "domain": "device"
+      },
+      {
+        "id": "PIT-007",
+        "title": "proot ptrace 税与热降频",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "proot",
+          "ptrace",
+          "cpu-overhead",
+          "thermal-throttle",
+          "watchdog"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "规划服务数/采集频率时先计入 proot 常驻 CPU，并给热降频留余量",
+        "depends": [
+          "MTH-004"
+        ],
+        "path": "pitfalls/PIT-007-proot-overhead-thermal.md",
+        "severity": "S2",
+        "domain": "server"
+      },
+      {
+        "id": "PIT-008",
+        "title": "MIUI 重启重置通知/用量权限",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "permission-reset",
+          "notifications",
+          "usage-stats",
+          "fgs",
+          "miui"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "重启后通知不可见/usage 字段为空是预期重置，按能力降级展示并给人工恢复步骤",
+        "depends": [
+          "MTH-005"
+        ],
+        "path": "pitfalls/PIT-008-miui-permission-reset.md",
+        "severity": "S3",
+        "domain": "bridge",
+        "oem": "xiaomi"
+      },
+      {
+        "id": "PIT-009",
+        "title": "OEM 后台清理杀死 FGS",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "oem",
+          "fgs",
+          "autostart",
+          "battery-optimization",
+          "miui",
+          "oneui",
+          "coloros"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "跨 OEM 只保证标准基线 + 人工 profile；appops/deviceidle 单独不足以保活 FGS",
+        "depends": [
+          "MTH-005"
+        ],
+        "path": "pitfalls/PIT-009-oem-fgs-killer.md",
+        "severity": "S2",
+        "domain": "bridge",
+        "oem": "xiaomi, samsung, oppo, vivo, huawei"
+      },
+      {
+        "id": "PIT-010",
+        "title": "国行/运营商 ROM 官方解锁关闭",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "unlock",
+          "bootloader",
+          "root",
+          "decision-gate",
+          "china-rom"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "解锁决策门必须在任何破坏性操作之前完成；失败即转无 Root 路线，禁止非官方解锁",
+        "depends": [
+          "MTH-002"
+        ],
+        "path": "pitfalls/PIT-010-cn-oem-unlock-closed.md",
+        "severity": "S3",
+        "domain": "device",
+        "oem": "xiaomi"
+      },
+      {
+        "id": "PIT-011",
+        "title": "电池 sysfs 不可读，无法脚本限充",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "battery",
+          "charging-limit",
+          "sysfs",
+          "long-term-power",
+          "safety"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "无 Root 时限充只能靠厂商 UI + 物理散热，脚本写入一律先探测权限、失败即报不可得",
+        "depends": [
+          "MTH-002"
+        ],
+        "path": "pitfalls/PIT-011-battery-sysfs-unreadable.md",
+        "severity": "S1",
+        "domain": "device"
+      },
+      {
+        "id": "PIT-012",
+        "title": "厂商安装器弹窗让 ADB 安装脆弱",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "installer",
+          "adb-install",
+          "ui-automation",
+          "miui",
+          "uiautomator"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "优先人工一次性安装；若用 UI 自动化必须有超时/失败判定/恢复屏幕设置，不能只看命令返回码",
+        "depends": [
+          "MTH-003"
+        ],
+        "path": "pitfalls/PIT-012-oem-installer-ui-automation.md",
+        "severity": "S3",
+        "domain": "device",
+        "oem": "xiaomi"
+      },
+      {
+        "id": "PIT-013",
+        "title": "ADB 授权/无线调试脆弱",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "adb",
+          "authorization",
+          "wireless-debugging",
+          "maintenance-window",
+          "recovery"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "ADB 只作维护窗口通道；先把恢复清单与第二通道准备好，再改任何依赖 ADB 的设置",
+        "depends": [
+          "MTH-003"
+        ],
+        "path": "pitfalls/PIT-013-adb-fragility.md",
+        "severity": "S2",
+        "domain": "ops"
+      },
+      {
+        "id": "PIT-014",
+        "title": "未测试就 reload 配置导致自锁失联",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "config-reload",
+          "nginx",
+          "lockout",
+          "rollback",
+          "maintenance"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "改入口配置前先备份并确认第二通道可用；reload 必须紧跟健康验证与失败回滚",
+        "depends": [
+          "GRD-004"
+        ],
+        "path": "pitfalls/PIT-014-config-reload-lockout.md",
+        "severity": "S2",
+        "domain": "server"
+      },
+      {
+        "id": "PIT-015",
+        "title": "明文凭据进入脚本/日志/历史",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "secrets",
+          "plaintext-credentials",
+          "rotation",
+          "git-history",
+          "secret-scan"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "发现明文凭据先轮换再清理；只删当前文件不等于修复，历史/日志/备份都要按已泄露处理",
+        "depends": [
+          "GRD-006"
+        ],
+        "path": "pitfalls/PIT-015-plaintext-credentials.md",
+        "severity": "S1",
+        "domain": "security"
+      },
+      {
+        "id": "PIT-016",
+        "title": "签名/TLS 密钥缺省生成导致不可复现",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "signing",
+          "keystore",
+          "tls",
+          "reproducibility",
+          "upgrade"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "密钥是长期资产不是构建产物；缺失应失败而不是自动生成，构建后核对指纹与 checksum",
+        "depends": [
+          "GRD-006"
+        ],
+        "path": "pitfalls/PIT-016-generated-signing-keys-repro.md",
+        "severity": "S2",
+        "domain": "bridge"
+      },
+      {
+        "id": "PIT-017",
+        "title": "只做快照不回滚/不演练=假安全",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "backup",
+          "snapshot",
+          "restore",
+          "drill",
+          "rollback"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "快照/备份的验收标准是“能恢复”，不是“生成成功”；没有演练记录就当没有回滚",
+        "depends": [
+          "GRD-004"
+        ],
+        "path": "pitfalls/PIT-017-snapshot-without-rollback.md",
+        "severity": "S1",
+        "domain": "ops"
+      },
+      {
+        "id": "PIT-018",
+        "title": "proot 挂载假设错误导致服务全灭",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "proot",
+          "mounts",
+          "bind",
+          "sdcard",
+          "sigabrt",
+          "service-outage"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "不绑定共享存储、启动做挂载断言、固定 Termux 启动上下文；服务消失先看 proot 断言日志",
+        "depends": [
+          "MTH-004"
+        ],
+        "path": "pitfalls/PIT-018-proot-mount-assumptions.md",
+        "severity": "S2",
+        "domain": "server"
+      },
+      {
+        "id": "PIT-019",
+        "title": "“证书 pin”名不副实的安全承诺缺口",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "tls",
+          "pinning",
+          "token",
+          "mtls",
+          "pairing",
+          "security-gap"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "先逐条核对“安全承诺 vs 已落地实现”，未落地的 mTLS/配对/轮换/限流必须标为缺口",
+        "depends": [
+          "MTH-007"
+        ],
+        "path": "pitfalls/PIT-019-fake-pinning-bridge.md",
+        "severity": "S2",
+        "domain": "security"
+      },
+      {
+        "id": "PIT-020",
+        "title": "看门狗误判/自救级联重启风暴",
+        "type": "pitfall",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "watchdog",
+          "self-healing",
+          "restart-storm",
+          "backoff",
+          "observation"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "看门狗必须有状态机/宽限期/退避/重启上限与自身观测；先修误判再谈自愈",
+        "depends": [
+          "MTH-006"
+        ],
+        "path": "pitfalls/PIT-020-watchdog-selfheal-cascade.md",
+        "severity": "S2",
+        "domain": "server"
+      }
+    ],
+    "guardrails": [
+      {
+        "id": "GRD-000",
+        "title": "护栏索引与使用规范",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "guardrails",
+          "index",
+          "checklist",
+          "governance"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "每次变更前后按本索引逐条自检；命中 blocker 红线立即停止，改用「允许的替代」或走授权评审，不得以效率为由破例。",
+        "depends": [
+          "MTH-001",
+          "MTH-007"
+        ],
+        "path": "guardrails/README.md",
+        "severity": "warning",
+        "scope": "repo"
+      },
+      {
+        "id": "GRD-001",
+        "title": "默认不 Root、不刷机、不解锁 Bootloader",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "root",
+          "bootloader",
+          "flash",
+          "default-route",
+          "authorization"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "遇到 Root、解锁、刷机、改系统分区的请求先停下，要求风险评估结论与用户明确授权；未授权一律拒绝执行。",
+        "depends": [
+          "MTH-002",
+          "MTH-007"
+        ],
+        "path": "guardrails/GRD-001-no-root-no-unlock-default.md",
+        "severity": "blocker",
+        "scope": "device"
+      },
+      {
+        "id": "GRD-002",
+        "title": "禁止卸载系统包，只允许受控禁用",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "system-package",
+          "debloat",
+          "disable-user",
+          "protection-list",
+          "bootloop"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "任何 debloat/清理需求只允许 disable-user 或 suspend；系统包 uninstall 一律拒绝，并要求保护名单与变更前后包状态证据。",
+        "depends": [
+          "MTH-004",
+          "MTH-008"
+        ],
+        "path": "guardrails/GRD-002-no-system-package-uninstall.md",
+        "severity": "blocker",
+        "scope": "device"
+      },
+      {
+        "id": "GRD-003",
+        "title": "禁止 kill-all 与误杀服务器进程",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "kill-all",
+          "force-stop",
+          "background-clean",
+          "server-process",
+          "availability"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "禁止执行 kill-all/批量清后台；需要重启某个服务时只允许受控 CLI 单服务操作，并先确认目标不是服务器进程。",
+        "depends": [
+          "MTH-004",
+          "MTH-006"
+        ],
+        "path": "guardrails/GRD-003-no-kill-all.md",
+        "severity": "blocker",
+        "scope": "device"
+      },
+      {
+        "id": "GRD-004",
+        "title": "变更前必须备份、快照并准备回滚",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "backup",
+          "snapshot",
+          "rollback",
+          "restore-drill",
+          "tier2"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "开始任何 Tier2 写、升级、迁移或恢复前，先要求\"备份+快照+回滚路径+恢复校验\"四项证据，缺一项即停止。",
+        "depends": [
+          "MTH-004",
+          "MTH-008"
+        ],
+        "path": "guardrails/GRD-004-backup-before-change.md",
+        "severity": "blocker",
+        "scope": "server"
+      },
+      {
+        "id": "GRD-005",
+        "title": "Tier1/Tier2/Tier3 分级确认",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "tier",
+          "confirmation",
+          "audit",
+          "snapshot",
+          "control-plane",
+          "privilege"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "任何写操作先判定 Tier；Tier2 必须走受控 CLI 的 --confirm+快照+审计+人工同意；Tier3 禁止 Agent/网页执行，只接受人工 SSH 双重确认。",
+        "depends": [
+          "MTH-006",
+          "MTH-007"
+        ],
+        "path": "guardrails/GRD-005-tiered-ops-confirmation.md",
+        "severity": "blocker",
+        "scope": "server"
+      },
+      {
+        "id": "GRD-006",
+        "title": "密钥与凭据卫生",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "secrets",
+          "token",
+          "private-key",
+          "rotation",
+          "gitignore",
+          "logging"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "发现任何真实 token/口令/私钥/证书/备份口令时，先停止复制与回显，按生命周期处理并要求轮换；文档中只保留占位符。",
+        "depends": [
+          "MTH-007"
+        ],
+        "path": "guardrails/GRD-006-secret-hygiene.md",
+        "severity": "blocker",
+        "scope": "repo"
+      },
+      {
+        "id": "GRD-007",
+        "title": "网络最小暴露",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "network",
+          "loopback",
+          "firewall",
+          "adb",
+          "public-entry",
+          "exposure"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "新增监听/入口/隧道前先判定是否必要；默认只允许回环与受控局域网，公网只留一个受控入口，ADB 维护结束必须关闭。",
+        "depends": [
+          "MTH-007"
+        ],
+        "path": "guardrails/GRD-007-network-least-exposure.md",
+        "severity": "blocker",
+        "scope": "server"
+      },
+      {
+        "id": "GRD-008",
+        "title": "供电与热安全",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "power",
+          "thermal",
+          "battery",
+          "charging",
+          "unattended",
+          "availability"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "7×24 运行前必须确认通风、充电保护、温度阈值与告警路径；出现发热异常/电池膨胀立即停用并报告。",
+        "depends": [
+          "MTH-004",
+          "MTH-008"
+        ],
+        "path": "guardrails/GRD-008-power-thermal-safety.md",
+        "severity": "blocker",
+        "scope": "device"
+      },
+      {
+        "id": "GRD-009",
+        "title": "外部服务须用户明确同意",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "external-service",
+          "consent",
+          "monitoring",
+          "backup",
+          "vpn",
+          "dependency"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "任何外部托管服务、云监控、异地备份、MFA、VPN/隧道、云推送接入前，先说明数据流与代价并取得用户明确同意，未同意不实施。",
+        "depends": [
+          "MTH-006",
+          "MTH-007"
+        ],
+        "path": "guardrails/GRD-009-external-services-consent.md",
+        "severity": "warning",
+        "scope": "server"
+      },
+      {
+        "id": "GRD-010",
+        "title": "开源许可合规",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "license",
+          "gpl",
+          "notice",
+          "third-party",
+          "supply-chain"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "引入任何第三方代码/依赖/资产前先确认许可证与来源；GPL 只参考语义不复制代码；发布前必须完成许可审查。",
+        "depends": [
+          "MTH-001",
+          "MTH-007"
+        ],
+        "path": "guardrails/GRD-010-license-compliance.md",
+        "severity": "warning",
+        "scope": "repo"
+      },
+      {
+        "id": "GRD-011",
+        "title": "隐私数据采集与脱敏",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "privacy",
+          "serial",
+          "pii",
+          "redaction",
+          "gitignore",
+          "retention"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "采集或引用设备数据前先判定是否含隐私字段；默认脱敏、默认不入库，报告中只写占位符与聚合结论。",
+        "depends": [
+          "MTH-007"
+        ],
+        "path": "guardrails/GRD-011-privacy-inventory.md",
+        "severity": "blocker",
+        "scope": "repo"
+      },
+      {
+        "id": "GRD-012",
+        "title": "Agent 行为红线",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "agent",
+          "protocol",
+          "scope",
+          "honesty",
+          "rollback",
+          "dod"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "动手前只读核对现状与写范围；不越权、不伪造、不改案例证据；高风险操作与契约变更必须人工批准，失败立即回滚并报告。",
+        "depends": [
+          "MTH-009"
+        ],
+        "path": "guardrails/GRD-012-agent-operating-rules.md",
+        "severity": "blocker",
+        "scope": "agent"
+      },
+      {
+        "id": "GRD-013",
+        "title": "不伪造验收",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "acceptance",
+          "evidence",
+          "target-vs-measured",
+          "soak",
+          "honesty"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "任何\"完成/通过\"结论必须有当场实测的命令、输出、时间与环境；目标值写目标，实测值写实测，未知只能标待验证。",
+        "depends": [
+          "MTH-008"
+        ],
+        "path": "guardrails/GRD-013-no-fake-acceptance.md",
+        "severity": "blocker",
+        "scope": "agent"
+      },
+      {
+        "id": "GRD-014",
+        "title": "固件冻结与受控升级",
+        "type": "guardrail",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "firmware",
+          "ota",
+          "freeze",
+          "upgrade",
+          "regression",
+          "permissions"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "禁止开启自动 OTA；固件升级必须走\"评估→备份→维护窗口→人工批准→升级→全量回归验收→记录/回滚\"流程。",
+        "depends": [
+          "MTH-002",
+          "MTH-008"
+        ],
+        "path": "guardrails/GRD-014-firmware-freeze-ota.md",
+        "severity": "blocker",
+        "scope": "device"
+      }
+    ],
+    "case_studies": [
+      {
+        "id": "CASE-000",
+        "title": "案例层索引：设备实证案例的目录约定与登记流程",
+        "type": "index",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "cases",
+          "index",
+          "evidence",
+          "device-profile",
+          "onboarding"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "新增设备案例先读本页：复制模板 → 填 profile → 标注证据 → toolkit assess/validate → 登记清单",
+        "depends": [
+          "MTH-000",
+          "MTH-002"
+        ],
+        "path": "cases/README.md"
+      },
+      {
+        "id": "CASE-002",
+        "title": "小米 / HyperOS OEM 适配 profile（以 haydn K40 Pro 为实例）",
+        "type": "oem-profile",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "oem-profile",
+          "xiaomi",
+          "redmi",
+          "hyperos",
+          "miui",
+          "autostart",
+          "battery-optimization",
+          "fbe",
+          "firmware-freeze"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "换小米/HyperOS 设备时逐项照做并以 5 次重启验收；其他 OEM 按 §2 模板结构另填，不要照抄小米设置名",
+        "depends": [
+          "CASE-001",
+          "MTH-004",
+          "MTH-005",
+          "PIT-008",
+          "GRD-002"
+        ],
+        "path": "cases/haydn-k40pro/oem-profile.md"
+      },
+      {
+        "id": "CASE-001",
+        "title": "haydn K40 Pro 实证案例：无 Root 手机改造为家用 Linux 服务器",
+        "type": "case-study",
+        "status": "current",
+        "audience": [
+          "human",
+          "agent"
+        ],
+        "tags": [
+          "case",
+          "haydn",
+          "redmi-k40-pro",
+          "hyperos",
+          "android14",
+          "termux",
+          "proot",
+          "bridge-apk",
+          "no-root"
+        ],
+        "updated": "2026-11-11",
+        "agent_hint": "已冻结案例，仅修事实错误；复用前先读“关键事实”“方法论验证（未验证清单）”和“已知偏差与教训”",
+        "depends": [
+          "MTH-001",
+          "MTH-002",
+          "MTH-003",
+          "MTH-004",
+          "MTH-005",
+          "MTH-006",
+          "MTH-007",
+          "MTH-008",
+          "PIT-008",
+          "PIT-015",
+          "PIT-017",
+          "PIT-019",
+          "GRD-006"
+        ],
+        "path": "cases/haydn-k40pro/README.md"
+      }
+    ]
+  },
+  "tools": [
+    {
+      "name": "repurpose",
+      "kind": "cli",
+      "path": "toolkit/README.md",
+      "entry": "python -m toolkit.repurpose",
+      "commands": [
+        "detect",
+        "probe",
+        "assess",
+        "plan",
+        "new-profile",
+        "index",
+        "validate"
+      ]
+    },
+    {
+      "name": "repurpose-ps1",
+      "kind": "wrapper",
+      "path": "toolkit/repurpose.ps1",
+      "description": "PowerShell 包装（转发到 python -m）"
+    },
+    {
+      "name": "termux-healthcheck",
+      "kind": "termux",
+      "path": "toolkit/termux/healthcheck.sh",
+      "description": "只读健康检查"
+    },
+    {
+      "name": "termux-soak",
+      "kind": "termux",
+      "path": "toolkit/termux/soak.sh",
+      "description": "24h soak 观测（可中断）"
+    },
+    {
+      "name": "termux-boot-starter",
+      "kind": "termux",
+      "path": "toolkit/termux/boot-starter.sh",
+      "description": "Termux:Boot 自启引导（幂等/可 dry-run）"
+    }
+  ],
+  "invariants": [
+    "不 Root/不刷机/不解锁 BL：除非用户对具体设备明确授权且评估门禁通过",
+    "不卸载系统包：只允许 disable-user 并维护保护名单",
+    "禁止 am kill-all 或随意 force-stop 服务器相关进程",
+    "任何写操作先备份/快照并给出回滚路径；恢复未演练等价于没有回滚",
+    "Tier2 写操作必须显式确认 + 快照 + 审计；Tier3 仅人工",
+    "token/口令/私钥/证书/备份口令不进入仓库、日志、文档、聊天",
+    "网络最小暴露：仅 loopback/局域网；ADB 维护后关闭",
+    "不伪造验收：未实测不标完成，文档声称不算证据",
+    "构建路径必须 ASCII（aapt2 不支持中文路径）"
+  ],
+  "commands": [
+    {
+      "name": "detect",
+      "cmd": "python -m toolkit.repurpose detect --out profiles/<codename>.json",
+      "note": "只读采集 profile 骨架（默认脱敏；无设备时用 --adb-fixture 回放）"
+    },
+    {
+      "name": "probe",
+      "cmd": "python -m toolkit.repurpose probe --base profiles/<codename>.json --out profiles/<codename>-probed.json",
+      "note": "补齐 12 项 capabilities/verdicts"
+    },
+    {
+      "name": "assess",
+      "cmd": "python -m toolkit.repurpose assess --profile profiles/<codename>-probed.json --json",
+      "note": "离线路线评估（A/B/C/D + 门禁）"
+    },
+    {
+      "name": "plan",
+      "cmd": "python -m toolkit.repurpose plan --profile profiles/<codename>-probed.json --format md",
+      "note": "生成 P0–P6 阶段计划"
+    },
+    {
+      "name": "index",
+      "cmd": "python -m toolkit.repurpose index",
+      "note": "重建 agent-manifest.json"
+    },
+    {
+      "name": "validate",
+      "cmd": "python -m toolkit.repurpose validate --strict",
+      "note": "front matter/ID/断链/JSON/manifest 校验"
+    },
+    {
+      "name": "unittest",
+      "cmd": "python -m unittest discover -s toolkit/tests -t . -v",
+      "note": "工具链单元测试（离线、无真机）"
+    },
+    {
+      "name": "healthcheck",
+      "cmd": "bash toolkit/termux/healthcheck.sh --once",
+      "note": "Termux 侧只读健康检查"
+    },
+    {
+      "name": "soak",
+      "cmd": "bash toolkit/termux/soak.sh --duration 24h --interval 300 --out soak.csv",
+      "note": "24h soak 观测（可 Ctrl-C 中断并落盘汇总）"
+    }
+  ],
+  "counts": {
+    "methodology": 11,
+    "pitfalls": 21,
+    "guardrails": 15,
+    "case_studies": 3,
+    "tools": 5,
+    "entrypoints": 5,
+    "reading_order": 51,
+    "total_entry_docs": 50
+  },
+  "warnings": [],
+  "errors": []
+}

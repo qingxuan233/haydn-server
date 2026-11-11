@@ -1,0 +1,211 @@
+{
+  "schema": "repurpose.device-profile.v1",
+  "generated_at": "2026-11-11",
+  "source": {
+    "mode": "documented",
+    "commands": [],
+    "notes": "由案例文档整理，未经工具重新探测（证据链见 evidence_refs 与 CASE-001）"
+  },
+  "identity": {
+    "codename": "haydn",
+    "model": "M2012K11C",
+    "market_name": "Redmi K40 Pro",
+    "manufacturer": "Xiaomi",
+    "brand": "Redmi",
+    "product": "haydn",
+    "fingerprint": "Redmi/haydn/haydn:14/UKQ1.231207.002/V816.0.15.0.UKKCNXM:user/release-keys",
+    "android_version": "14",
+    "sdk": 34,
+    "build_id": "UKQ1.231207.002",
+    "build_type": "user",
+    "security_patch": "2025-03-01",
+    "serial": null,
+    "serial_redacted": true
+  },
+  "boot": {
+    "bootloader_unlocked": false,
+    "verified_boot_state": "green",
+    "vbmeta_device_state": "locked",
+    "dm_verity_mode": "enforcing",
+    "selinux": "Enforcing",
+    "slot_suffix": null,
+    "partition_style": "A/B",
+    "has_init_boot": false,
+    "oem_unlock_policy": "closed",
+    "oem_unlock_evidence": "Bootloader 锁定（flash.locked=1）且国行官方解锁入口关闭（2026-11-10 用户确认；CASE-001 实证）"
+  },
+  "root": {
+    "state": "none",
+    "su_available": false,
+    "root_manager_packages": [],
+    "adb_uid": "uid=2000(shell)",
+    "ro_secure": true,
+    "ro_debuggable": false
+  },
+  "kernel": {
+    "release": "5.4.274-qgki-gcc3ec22f5061",
+    "version_string": "Linux 5.4.274-qgki-gcc3ec22f5061 #1 SMP PREEMPT ... f2fs-hash aarch64",
+    "arch": "aarch64",
+    "gki_generation": "gki-1.x",
+    "config_source": "proc-config.gz",
+    "config_readable": true
+  },
+  "hardware": {
+    "soc": {
+      "manufacturer": "QTI",
+      "platform": "lahaina",
+      "model": "SM8350",
+      "marketing_name": "Snapdragon 888"
+    },
+    "cpu": {
+      "cores": 8,
+      "abi": [
+        "arm64-v8a",
+        "armeabi-v7a",
+        "armeabi"
+      ],
+      "governors": [
+        "conservative",
+        "powersave",
+        "performance",
+        "schedutil"
+      ],
+      "clusters": []
+    },
+    "memory": {
+      "total_kb": 7471124,
+      "available_kb": null,
+      "swap_total_kb": null
+    },
+    "display": {
+      "width_px": 1080,
+      "height_px": 2400,
+      "density_dpi": 440,
+      "refresh_hz": null
+    },
+    "battery": {
+      "design_capacity_mah": 4520,
+      "charge_full_mah": null,
+      "level_pct": null,
+      "temperature_c": null,
+      "health": null,
+      "status": null,
+      "voltage_mv": null,
+      "charge_control_nodes": []
+    },
+    "thermal": {
+      "zone_count": 92,
+      "status": 0,
+      "max_temp_c": null
+    }
+  },
+  "storage": {
+    "data_total_kb": 236234732,
+    "data_used_kb": 33896612,
+    "data_available_kb": 202207048,
+    "data_filesystem": "f2fs",
+    "external_sdcard": false,
+    "external_expandable": false,
+    "zram": null,
+    "zram_total_kb": null
+  },
+  "crypto": {
+    "userdata_encrypted": true,
+    "encryption_type": "FBE",
+    "keystore": null,
+    "play_integrity_required": true,
+    "play_integrity_level": null
+  },
+  "features": {
+    "user_ns": false,
+    "pid_ns": false,
+    "mount_ns": true,
+    "net_ns": true,
+    "uts_ns": true,
+    "ipc_ns": false,
+    "cgroup_v1": true,
+    "cgroup_v2": false,
+    "cgroup_v2_delegation": false,
+    "overlay_fs": true,
+    "binfmt_misc": true,
+    "seccomp_filter": true,
+    "kallsyms": true,
+    "modules": null,
+    "ptrace_allowed": null,
+    "native_linux_port": false,
+    "custom_kernel": null,
+    "termux_available": true,
+    "shizuku_available": null,
+    "boot_completed_receiver": true
+  },
+  "constraints": {
+    "external_storage": "none",
+    "oem_autostart": "manual-required",
+    "background_execution": "restricted",
+    "battery_long_term_plugged": "risky",
+    "root_required_capabilities": [
+      "precise_cpu",
+      "raw_network_bytes",
+      "battery_sysfs",
+      "settings_appops",
+      "system_package_freeze",
+      "charge_limit_shell"
+    ],
+    "notes": [
+      "data_wipe_acceptable=false：解锁会清空用户数据，案例拒绝（04 R-01）。",
+      "warranty_loss_acceptable=false：解锁/刷机影响保修，案例拒绝（04 R-12）。",
+      "play_integrity_required=true：保持未 Root 以维持完整性，见 crypto.play_integrity_required。",
+      "external_services_allowed=false：Uptime Kuma/异地备份/MFA/Tailscale 均未接入（当前状态 §8）。",
+      "public_exposure=frp-controlled：仅经现有受控公网入口，不新增监听面。",
+      "containers_needed=false：内核缺 USER_NS/PID_NS，容器路线不可用（02 §13）。",
+      "privileged_metrics_needed=true：无 Root 不可得，缺失字段一律 null，不伪造 0。",
+      "native_linux_port=false：无 haydn 原生 Linux 移植（02 §3）。",
+      "oem_unlock_policy=closed_cn：国行官方解锁关闭，boot.oem_unlock_policy 记为 closed。",
+      "adb_wireless=true：ADB（含无线调试）仅作装机/维护通道，不长期开启（04 R-11）。"
+    ]
+  },
+  "unknowns": [
+    "boot.slot_suffix（当前 slot 未在案例文档中记录）",
+    "hardware.memory.available_kb（当前值随负载变化，文档仅有 T0 快照）",
+    "hardware.display.refresh_hz",
+    "hardware.battery.charge_full_mah",
+    "hardware.battery.level_pct",
+    "hardware.battery.temperature_c",
+    "hardware.battery.health",
+    "hardware.battery.status",
+    "hardware.battery.voltage_mv",
+    "storage.zram",
+    "storage.zram_total_kb",
+    "crypto.keystore",
+    "crypto.play_integrity_level",
+    "features.modules",
+    "features.ptrace_allowed",
+    "features.shizuku_available"
+  ],
+  "evidence_refs": [
+    "docs/10-device/01-设备档案.md",
+    "docs/10-device/02-可行性分析.md",
+    "docs/10-device/04-风险与回滚.md",
+    "docs/10-device/31-拍板事项决策分析与Root升级路线.md",
+    "docs/10-device/32-多厂商Android适配与迁移指南.md",
+    "docs/00-overview/当前状态.md",
+    "docs/20-server/06-A+优化方案.md",
+    "docs/20-server/08-事故复盘与重置重建报告.md",
+    "docs/50-bridge/27-Android-Bridge-APK架构调研.md",
+    "docs/50-bridge/33-Android-Bridge-MVP实施记录.md",
+    "android-bridge/README.md",
+    "scripts/README.md"
+  ],
+  "warnings": [
+    "锁定 + 国行官方解锁通道关闭：评估路线必须为 A（Termux + proot），Gate B0 已失败，不得按解锁/Root 路线评估。",
+    "内核缺 USER_NS/PID_NS；cgroup 为混合模式（v2 有挂载但无控制器/无委派）：容器（Docker/Podman）不可用、systemd 不保证，除非自编译内核（C 路线，不推荐）。",
+    "无 Root 能力边界：全局 /proc/stat、/proc/net/dev、dumpsys/settings/冻结/停用不可得；缺失字段必须为 null，不得伪造 0。",
+    "features.user_ns/pid_ns=false 是容器门禁 G-B2 的硬阻断；cgroup_v2=false 表示无可用控制器委派，不代表内核无 cgroup v2 挂载。",
+    "24h soak 未完成；mTLS/配对/token 轮换/Keystore/限流未落地，稳定性与安全结论有保留（CASE-001 §6.1）。",
+    "storage/memory/battery 数值为 2026-11-10 T0 快照口径；source.mode=documented，当前值需重新探测。",
+    "电池 4520 mAh 为官方标称值；charge_full/sysfs 对 shell 不可读，需 Root 后验证，长期插电存在电池老化风险。",
+    "FBE + 锁屏凭据：设置锁屏后 BOOT_COMPLETED 在解锁前不下发，开机自启需先解锁一次；研究机保持无锁屏凭据。",
+    "文档-实现偏差：规范要求限流、Keystore、onTaskRemoved 兜底，MVP 未实现；引用本档案时不得把目标值当已实现。",
+    "案例已冻结（2026-11-11）：仅允许修正事实错误；偏差与教训见 PIT/GRD，不得改写结论或删除未验证项。"
+  ]
+}

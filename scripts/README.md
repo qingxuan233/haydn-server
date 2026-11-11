@@ -4,6 +4,9 @@
 
 > 2026-11-11 重构：原先直挂 `scripts/*.ps1|py|sh` 的脚本已移入分组子目录，仓库改名为 `haydn-server`；本文所有用法使用新路径。旧路径对照见 §6。
 
+> **证据层指针（2026-11-11 重构起）**：本目录是 **haydn K40 Pro 实证案例的实现证据**（冻结，仅修事实错误），不是通用方法论入口；通用方法论见 [methodology/README.md](../methodology/README.md)，项目总入口 [根 README](../README.md)，Agent 入口 [AGENTS.md](../AGENTS.md)。
+> 脚本是历史实现，换机/通用化时优先按 `methodology/` 与 `toolkit/` 重新生成，不要直接套用本目录的 MIUI 专用脚本。
+
 | 文档 ID | `HB-OPS-001` |
 |---|---|
 | 版本 | v1.0（2026-11-11 新建） |

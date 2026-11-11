@@ -1,0 +1,329 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://haydn-server.local/toolkit/schema/device-profile.schema.json",
+  "title": "repurpose.device-profile.v1",
+  "description": "安卓手机改造通用设备档案。detect 生成骨架，probe 追加 capabilities/verdicts/probe；cases/*/profile.json 复用同一 schema（脱敏）。未证实字段必须为 null 并列入 unknowns，禁止臆测。本文件是自描述 JSON（不依赖 jsonschema 库，供人/Agent/外部校验器阅读）。",
+  "type": "object",
+  "required": [
+    "schema",
+    "generated_at",
+    "source",
+    "identity",
+    "boot",
+    "root",
+    "kernel",
+    "hardware",
+    "storage",
+    "crypto",
+    "features",
+    "constraints",
+    "unknowns",
+    "evidence_refs",
+    "warnings"
+  ],
+  "properties": {
+    "schema": {
+      "const": "repurpose.device-profile.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "采集时间（UTC ISO-8601，如 2026-11-11T02:30:00Z）"
+    },
+    "source": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": ["adb", "fixture", "documented", "manual"],
+          "description": "adb=只读采集；fixture=离线回放；documented=由文档/案例整理；manual=人工填写"
+        },
+        "commands": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "证据命令清单（逻辑命令，不含序列号等敏感值）"
+        },
+        "notes": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "identity": {
+      "type": "object",
+      "properties": {
+        "codename": {"type": ["string", "null"], "description": "内部代号（ro.product.device）"},
+        "model": {"type": ["string", "null"]},
+        "market_name": {"type": ["string", "null"]},
+        "manufacturer": {"type": ["string", "null"]},
+        "brand": {"type": ["string", "null"]},
+        "product": {"type": ["string", "null"]},
+        "fingerprint": {"type": ["string", "null"]},
+        "android_version": {"type": ["string", "null"]},
+        "sdk": {"type": ["integer", "null"], "minimum": 1},
+        "build_id": {"type": ["string", "null"]},
+        "build_type": {"type": ["string", "null"]},
+        "security_patch": {"type": ["string", "null"]},
+        "serial": {
+          "type": ["string", "null"],
+          "description": "默认必须为 null（脱敏）；仅 --include-serial 时保留，且不得入库/入文档"
+        },
+        "serial_redacted": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "boot": {
+      "type": "object",
+      "properties": {
+        "bootloader_unlocked": {"type": ["boolean", "null"], "description": "G-B0 的直接证据"},
+        "verified_boot_state": {"type": ["string", "null"], "enum": ["green", "yellow", "orange", "red", null]},
+        "vbmeta_device_state": {"type": ["string", "null"], "enum": ["locked", "unlocked", null]},
+        "dm_verity_mode": {"type": ["string", "null"]},
+        "selinux": {"type": ["string", "null"], "enum": ["Enforcing", "Permissive", "Disabled", null]},
+        "slot_suffix": {"type": ["string", "null"]},
+        "partition_style": {"type": ["string", "null"], "enum": ["A/B", "A-only", null]},
+        "has_init_boot": {"type": ["boolean", "null"]},
+        "oem_unlock_policy": {"enum": ["open", "available", "closed", "unknown"]},
+        "oem_unlock_evidence": {"type": ["string", "null"], "description": "解锁政策证据（不得含敏感值）"}
+      },
+      "additionalProperties": true
+    },
+    "root": {
+      "type": "object",
+      "properties": {
+        "state": {"enum": ["none", "magisk", "kernelsu", "apatch", "unknown"]},
+        "su_available": {"type": ["boolean", "null"]},
+        "root_manager_packages": {"type": "array", "items": {"type": "string"}},
+        "adb_uid": {"type": ["string", "null"]},
+        "ro_secure": {"type": ["boolean", "null"]},
+        "ro_debuggable": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "kernel": {
+      "type": "object",
+      "properties": {
+        "release": {"type": ["string", "null"]},
+        "version_string": {"type": ["string", "null"]},
+        "arch": {"type": ["string", "null"]},
+        "gki_generation": {"enum": ["gki-2.x", "gki-1.x", "legacy", "unknown"]},
+        "config_source": {"enum": ["proc-config-gz", "boot-config", "none", "unknown"]},
+        "config_readable": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "hardware": {
+      "type": "object",
+      "properties": {
+        "soc": {
+          "type": "object",
+          "properties": {
+            "manufacturer": {"type": ["string", "null"]},
+            "platform": {"type": ["string", "null"]},
+            "model": {"type": ["string", "null"]},
+            "marketing_name": {"type": ["string", "null"]}
+          },
+          "additionalProperties": true
+        },
+        "cpu": {
+          "type": "object",
+          "properties": {
+            "cores": {"type": ["integer", "null"]},
+            "abi": {"type": "array", "items": {"type": "string"}},
+            "governors": {"type": "array", "items": {"type": "string"}},
+            "clusters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "policy": {"type": ["string", "null"]},
+                  "cpus": {"type": ["string", "null"]},
+                  "governor": {"type": ["string", "null"]},
+                  "scaling_max_freq_khz": {"type": ["integer", "null"]},
+                  "hw_max_freq_khz": {"type": ["integer", "null"]}
+                },
+                "additionalProperties": true
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "memory": {
+          "type": "object",
+          "properties": {
+            "total_kb": {"type": ["integer", "null"]},
+            "available_kb": {"type": ["integer", "null"]},
+            "swap_total_kb": {"type": ["integer", "null"]}
+          },
+          "additionalProperties": true
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "width_px": {"type": ["integer", "null"]},
+            "height_px": {"type": ["integer", "null"]},
+            "density_dpi": {"type": ["integer", "null"]},
+            "refresh_hz": {"type": ["number", "null"]}
+          },
+          "additionalProperties": true
+        },
+        "battery": {
+          "type": "object",
+          "properties": {
+            "design_capacity_mah": {"type": ["integer", "null"]},
+            "charge_full_mah": {"type": ["integer", "null"]},
+            "level_pct": {"type": ["integer", "null"], "minimum": 0, "maximum": 100},
+            "temperature_c": {"type": ["number", "null"]},
+            "health": {"type": ["string", "null"]},
+            "status": {"type": ["string", "null"]},
+            "voltage_mv": {"type": ["integer", "null"]},
+            "charge_control_nodes": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": true
+        },
+        "thermal": {
+          "type": "object",
+          "properties": {
+            "zone_count": {"type": ["integer", "null"]},
+            "status": {"type": ["integer", "null"]},
+            "max_temp_c": {"type": ["number", "null"]}
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "data_total_kb": {"type": ["integer", "null"]},
+        "data_used_kb": {"type": ["integer", "null"]},
+        "data_available_kb": {"type": ["integer", "null"]},
+        "data_filesystem": {"type": ["string", "null"]},
+        "external_sdcard": {"type": ["boolean", "null"]},
+        "external_expandable": {"type": ["boolean", "null"]},
+        "zram": {"type": ["boolean", "null"]},
+        "zram_total_kb": {"type": ["integer", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "crypto": {
+      "type": "object",
+      "properties": {
+        "userdata_encrypted": {"type": ["boolean", "null"]},
+        "encryption_type": {"enum": ["FBE", "FDE", "none", "unknown"]},
+        "keystore": {"enum": ["tee", "strongbox", "software", "unknown"]},
+        "play_integrity_required": {
+          "type": ["boolean", "null"],
+          "description": "用户是否要求 Play Integrity；true 时 assess 会在 risks 中提示 Root/解锁风险"
+        },
+        "play_integrity_level": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "features": {
+      "type": "object",
+      "description": "内核/系统能力事实；未知用 null（禁止用 false 冒充未知）。键名固定，便于 assess/probe 消费。",
+      "properties": {
+        "user_ns": {"type": ["boolean", "null"]},
+        "pid_ns": {"type": ["boolean", "null"]},
+        "mount_ns": {"type": ["boolean", "null"]},
+        "net_ns": {"type": ["boolean", "null"]},
+        "uts_ns": {"type": ["boolean", "null"]},
+        "ipc_ns": {"type": ["boolean", "null"]},
+        "cgroup_v1": {"type": ["boolean", "null"]},
+        "cgroup_v2": {"type": ["boolean", "null"]},
+        "cgroup_v2_delegation": {"type": ["boolean", "null"]},
+        "overlay_fs": {"type": ["boolean", "null"]},
+        "binfmt_misc": {"type": ["boolean", "null"]},
+        "seccomp_filter": {"type": ["boolean", "null"]},
+        "kallsyms": {"type": ["boolean", "null"]},
+        "modules": {"type": ["boolean", "null"]},
+        "ptrace_allowed": {"type": ["boolean", "null"]},
+        "native_linux_port": {"type": ["boolean", "null"], "description": "是否存在设备原生 Linux 移植（D 路线唯一入口）"},
+        "custom_kernel": {"type": ["boolean", "null"], "description": "是否存在社区自定义内核/第三方 ROM（C 路线入口）"},
+        "termux_available": {"type": ["boolean", "null"]},
+        "shizuku_available": {"type": ["boolean", "null"]},
+        "boot_completed_receiver": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "external_storage": {"enum": ["none", "expandable", "unknown"]},
+        "oem_autostart": {"enum": ["manual-required", "supported", "blocked", "unknown"]},
+        "background_execution": {"enum": ["restricted", "normal", "unknown"]},
+        "battery_long_term_plugged": {"enum": ["unknown", "acceptable", "risky"]},
+        "root_required_capabilities": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "未证实字段路径；每个 unknown 都应有补证计划"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "证据引用：只读命令或仓库相对路径；禁止 IP/端口/token/序列号"
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "capabilities": {
+      "type": "object",
+      "description": "probe 仅追加；12 项固定能力，每项 {status, evidence}",
+      "properties": {
+        "proot": {"$ref": "#/definitions/capability"},
+        "containers": {"$ref": "#/definitions/capability"},
+        "systemd": {"$ref": "#/definitions/capability"},
+        "native_linux": {"$ref": "#/definitions/capability"},
+        "precise_cpu": {"$ref": "#/definitions/capability"},
+        "raw_network_bytes": {"$ref": "#/definitions/capability"},
+        "battery_sysfs": {"$ref": "#/definitions/capability"},
+        "charge_limit_shell": {"$ref": "#/definitions/capability"},
+        "dumpsys": {"$ref": "#/definitions/capability"},
+        "appops": {"$ref": "#/definitions/capability"},
+        "usage_stats": {"$ref": "#/definitions/capability"},
+        "boot_autostart": {"$ref": "#/definitions/capability"}
+      },
+      "additionalProperties": false
+    },
+    "verdicts": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "pass": {"type": "integer", "minimum": 0},
+            "fail": {"type": "integer", "minimum": 0},
+            "unknown": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "route_hint": {"enum": ["A", "B", "C", "D", "unknown"]},
+        "items": {"type": "object", "additionalProperties": {"enum": ["pass", "fail", "unknown"]}}
+      },
+      "additionalProperties": true
+    },
+    "probe": {
+      "type": "object",
+      "properties": {
+        "probed_at": {"type": ["string", "null"]},
+        "mode": {"enum": ["adb", "fixture", "offline", "none"]},
+        "commands": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "capability": {
+      "type": "object",
+      "required": ["status", "evidence"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "unknown"]},
+        "evidence": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

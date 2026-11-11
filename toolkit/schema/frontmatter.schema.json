@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://haydn-server.local/toolkit/schema/frontmatter.schema.json",
+  "title": "新层 Markdown front matter（flat YAML）",
+  "description": "methodology/、pitfalls/、guardrails/、cases/ 与 toolkit/README.md 的 front matter 契约。必须为 flat YAML（key: value），不支持嵌套；列表用逗号分隔（[a, b] 也兼容）。本文件是自描述 JSON，parse/validate 由 toolkit.repurpose.frontmatter + validate 实现（零第三方依赖）。",
+  "type": "object",
+  "required": ["id", "title", "type", "status", "audience", "tags", "updated", "agent_hint"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3}$",
+      "description": "PREFIX-000 形式，全局唯一；索引/README 用 *-000"
+    },
+    "title": {"type": "string", "minLength": 1},
+    "type": {
+      "enum": [
+        "index",
+        "methodology",
+        "pitfall",
+        "guardrail",
+        "case-study",
+        "oem-profile",
+        "acceptance",
+        "runbook",
+        "agent-task",
+        "tool"
+      ]
+    },
+    "status": {
+      "enum": ["current", "draft", "deprecated", "archived", "frozen", "proposed"]
+    },
+    "audience": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "逗号分隔列表：human, agent"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "逗号分隔列表，用于 manifest 检索"
+    },
+    "depends": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "可选：依赖文档 ID（逗号分隔）"
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "最后更新日期（YYYY-MM-DD）"
+    },
+    "agent_hint": {"type": "string", "minLength": 1},
+    "severity": {
+      "type": "string",
+      "pattern": "^(S[1-4]|blocker|warning)$",
+      "description": "pitfall 用 S1-S4（S1 最严重）；guardrail 用 blocker|warning"
+    },
+    "domain": {
+      "enum": ["device", "boot", "server", "bridge", "security", "ops", "docs"],
+      "description": "pitfall 的分类域（与 pitfalls/README.md 一致）"
+    },
+    "scope": {
+      "enum": ["device", "server", "agent", "repo"],
+      "description": "guardrail 的作用范围（与 guardrails/README.md 一致）"
+    },
+    "oem": {
+      "type": "string",
+      "description": "可选：OEM/ROM 标记（如 xiaomi、samsung）"
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"type": {"const": "pitfall"}}, "required": ["type"]},
+      "then": {"required": ["severity", "domain"]}
+    },
+    {
+      "if": {"properties": {"type": {"const": "guardrail"}}, "required": ["type"]},
+      "then": {"required": ["severity", "scope"]}
+    }
+  ],
+  "additionalProperties": true
+}
