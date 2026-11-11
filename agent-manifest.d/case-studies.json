@@ -1,7 +1,7 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "case_studies",
-  "generated_at": "2026-11-11T04:01:55Z",
+  "generated_at": "2026-11-11T04:08:48Z",
   "count": 3,
   "entries": [
     {"id":"CASE-000","title":"案例层索引：设备实证案例的目录约定与登记流程","path":"cases/README.md","type":"index","status":"current","tags":["cases","index","evidence","device-profile","onboarding"],"agent_hint":"新增设备案例先读本页：复制模板 → 填 profile → 标注证据 → toolkit assess/validate → 登记清单"},

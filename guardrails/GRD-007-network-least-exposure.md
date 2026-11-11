@@ -4,7 +4,7 @@ title: 网络最小暴露
 type: guardrail
 status: current
 audience: human, agent
-tags: network, loopback, firewall, adb, public-entry, exposure
+tags: network, loopback, firewall, adb, public-entry, exposure, dynamic-address, discovery
 depends: MTH-007
 updated: 2026-11-11
 agent_hint: 新增监听/入口/隧道前先判定是否必要；默认只允许回环与受控局域网，公网只留一个受控入口，ADB 维护结束必须关闭。
@@ -24,12 +24,14 @@ scope: server
 4. **R4** **MUST NOT** 把遥测桥、管理 API、控制面或备份接口暴露到局域网/公网；遥测桥只允许回环，控制面不得持有遥测凭据。
 5. **R5** **MUST NOT** 关闭防火墙/允许列表、降级认证（如改用明文 HTTP 管理）、或向公开渠道分发入口与 token。
 6. **R6** **MUST NOT** 让临时调试工具（文件传输、特权 helper、端口转发、抓包代理）跨维护窗口运行；临时监听必须在结束后停止并复核。
+7. **R7** **MUST NOT** 把方案建立在"固定 IP / DHCP 静态租约 / 路由器可管理"之上；移动设备会连不同 Wi-Fi，且很多路由器/访客网络不允许改租约。**必须**使用动态地址读取 + 发现兜底，租约只作可选优化。
 
 ## 为什么（风险与案例）
 
 - 公网控制面约等于把服务器 shell 放到互联网；已有案例入口依赖"TLS + 认证 + 限流 + 单一入口"才勉强可接受，多开一个端口就是多一份风险。
 - ADB 网络通道与特权 helper 是最容易被忽略的暴露面：案例中临时特权服务会监听所有接口，验证后必须显式停止（见 PIT-013 的维护通道失效模式）。
 - 遥测桥的安全模型建立在"仅回环 + TLS + token + 证书 pin"之上；一旦允许局域网监听，同网段设备即可发起重放或伪造请求（见 PIT-019）。
+- 地址假设是隐藏暴露面：硬编码 LAN IP 或用"路由器静态租约"当门禁，会在换网/访客网络/Captive portal/AP 隔离时表现为"服务神秘失效"；应动态发现而非固定地址（见 PIT-021）。
 - 案例实证：[04 风险与回滚](../docs/10-device/04-风险与回滚.md) R-09/R-11/R-18、[14 安卓深度操作调研](../docs/20-server/14-安卓深度操作调研与技能沉淀.md)、[28 全栈规范 §8](../docs/00-overview/28-全栈整体方案规范.md)。
 
 ## 允许的替代（MUST/SHOULD/MAY）
@@ -39,6 +41,7 @@ scope: server
 - **MUST** ADB 只作为维护通道：优先 USB；确需网络调试时限定可信局域网、记录开启与关闭时间，结束立即恢复 USB 模式。
 - **SHOULD** 防火墙默认拒绝入站，只放行明确入口；管理面优先回环/局域网。
 - **MAY** 用 VPN/私网替代公网入口，但必须先取得用户同意（[GRD-009](GRD-009-external-services-consent.md)）并验证与宿主网络的共存。
+- **MUST** 局域网方案必须包含**动态地址 + 发现兜底**（页面显示/扫码/mDNS/广播发现之一），并在换网/重连后验证；不得以"租约可用"作为 pass 条件。
 - **MAY** 对外部可达性做定期只读探测与告警，探测本身不携带 token。
 
 ## 检查方式（Agent 可执行）
@@ -56,10 +59,12 @@ adb shell getprop ro.debuggable
 - 人工核对：ADB 网络通道状态（`service.adb.tcp.port` 非空或设备列表出现网络传输）必须在维护结束后恢复；无线调试开关为关闭。
 - 人工核对：临时 helper/端口转发/抓包进程是否仍在运行；维护窗口外不得存在。
 - 变更核对：本次变更若新增/修改监听、入口、隧道，是否有记录、认证与限流配置、回滚方式。
+- 人工核对：方案/脚本不含硬编码当前 LAN IP；发现入口可用；换一个 Wi-Fi 后能重新定位（历史/归档证据中的旧地址不算违规）。
+- 人工核对：是否把"路由器静态租约/静态 IP"列为门禁或验收前提——是则判违规，改为可选优化。
 
 ## 关联
 
-- 踩坑：[PIT-013 ADB 维护通道脆弱](../pitfalls/PIT-013-adb-fragility.md)、[PIT-019 伪证书 pin](../pitfalls/PIT-019-fake-pinning-bridge.md)
+- 踩坑：[PIT-013 ADB 维护通道脆弱](../pitfalls/PIT-013-adb-fragility.md)、[PIT-019 伪证书 pin](../pitfalls/PIT-019-fake-pinning-bridge.md)、[PIT-021 固定地址假设](../pitfalls/PIT-021-dhcp-lease-assumption.md)
 - 护栏：[GRD-006 密钥卫生](GRD-006-secret-hygiene.md)、[GRD-009 外部服务同意](GRD-009-external-services-consent.md)、[GRD-011 隐私与脱敏](GRD-011-privacy-inventory.md)
 - 方法论：[MTH-007 安全与密钥生命周期](../methodology/06-security.md)、[MTH-004 服务器栈](../methodology/03-server-stack.md)
 - 案例：[haydn K40 Pro 案例](../cases/haydn-k40pro/README.md)

@@ -324,6 +324,31 @@
       "owner": "",
       "updated": "",
       "result": ""
+    },
+    {
+      "id": "BL-019",
+      "title": "网络策略进入 toolkit：profile network 字段 + assess/plan + LAN 发现工具",
+      "priority": "P1",
+      "area": "toolkit",
+      "status": "pending",
+      "acceptance": "profile schema 增加 network 字段（router_admin_available/dhcp_reservation/mac_randomization/multi_ssid/captive_portal/ap_isolation）；assess/plan 输出 network_strategy（dynamic+discovery 默认，租约仅为可选优化）并禁止把无租约判失败；提供可选的 LAN 发现/公告脚本（不硬编码地址、不泄露 token），fixture 测试全绿。",
+      "outputs": [
+        "toolkit/schema/device-profile.schema.json",
+        "toolkit/repurpose/assess.py",
+        "toolkit/repurpose/plan.py",
+        "toolkit/termux/",
+        "toolkit/tests/"
+      ],
+      "depends": [
+        "BL-001",
+        "BL-016"
+      ],
+      "notes": "MTH-002 §5.3.1/MTH-004 §4.1 已先给人工判定规则；工具化前后以人工结论为准。",
+      "agent_hint": "先加 schema 字段与 assess 规则，再做发现脚本；发现优先页面/扫码，广播发现需最小权限与可选签名。",
+      "requires": "",
+      "owner": "",
+      "updated": "",
+      "result": ""
     }
   ]
 }

@@ -76,6 +76,7 @@ domain: docs
 | PIT-018 | proot 挂载假设错误导致服务全灭 | S2 | server | 最小绑定、启动断言、固定启动上下文；不要绑定共享存储 | [PIT-018](PIT-018-proot-mount-assumptions.md) |
 | PIT-019 | "证书 pin"名不副实的安全承诺缺口 | S2 | security | 自签证书+静态口令+明文 token+无配对轮换≈伪加固；按上限说明 | [PIT-019](PIT-019-fake-pinning-bridge.md) |
 | PIT-020 | 看门狗误判/自救级联重启风暴 | S2 | server | 状态机 + 宽限期 + 有界重启 + 退避 + 独立观测 | [PIT-020](PIT-020-watchdog-selfheal-cascade.md) |
+| PIT-021 | 把方案建立在固定 IP/静态租约上 | S2 | ops | 移动设备会换 Wi-Fi、路由器未必可管；用动态地址 + 发现机制，租约只作优化 | [PIT-021](PIT-021-dhcp-lease-assumption.md) |
 
 ## 6. 关系与冻结
 

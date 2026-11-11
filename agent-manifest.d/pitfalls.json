@@ -1,8 +1,8 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "pitfalls",
-  "generated_at": "2026-11-11T04:01:55Z",
-  "count": 21,
+  "generated_at": "2026-11-11T04:08:48Z",
+  "count": 22,
   "entries": [
     {"id":"PIT-000","title":"踩坑库索引（Pitfalls Index）","path":"pitfalls/README.md","type":"pitfall","status":"current","tags":["index","pitfalls","severity","evidence"],"agent_hint":"先按严重度与域检索，再读对应 PIT；新增条目必须带可复现证据与验证步骤","severity":"S4","domain":"docs"},
     {"id":"PIT-001","title":"非 ASCII 路径导致 aapt2 构建失败","path":"pitfalls/PIT-001-ascii-path-aapt2.md","type":"pitfall","status":"current","tags":["build","aapt2","windows","ascii-path"],"agent_hint":"构建报 aapt2 路径错误时先验证仓库与 SDK 路径字符集，禁止用 junction 绕行","severity":"S3","domain":"docs"},
@@ -24,6 +24,7 @@
     {"id":"PIT-017","title":"只做快照不回滚/不演练=假安全","path":"pitfalls/PIT-017-snapshot-without-rollback.md","type":"pitfall","status":"current","tags":["backup","snapshot","restore","drill","rollback"],"agent_hint":"快照/备份的验收标准是“能恢复”，不是“生成成功”；没有演练记录就当没有回滚","severity":"S1","domain":"ops"},
     {"id":"PIT-018","title":"proot 挂载假设错误导致服务全灭","path":"pitfalls/PIT-018-proot-mount-assumptions.md","type":"pitfall","status":"current","tags":["proot","mounts","bind","sdcard","sigabrt","service-outage"],"agent_hint":"不绑定共享存储、启动做挂载断言、固定 Termux 启动上下文；服务消失先看 proot 断言日志","severity":"S2","domain":"server"},
     {"id":"PIT-019","title":"“证书 pin”名不副实的安全承诺缺口","path":"pitfalls/PIT-019-fake-pinning-bridge.md","type":"pitfall","status":"current","tags":["tls","pinning","token","mtls","pairing","security-gap"],"agent_hint":"先逐条核对“安全承诺 vs 已落地实现”，未落地的 mTLS/配对/轮换/限流必须标为缺口","severity":"S2","domain":"security"},
-    {"id":"PIT-020","title":"看门狗误判/自救级联重启风暴","path":"pitfalls/PIT-020-watchdog-selfheal-cascade.md","type":"pitfall","status":"current","tags":["watchdog","self-healing","restart-storm","backoff","observation"],"agent_hint":"看门狗必须有状态机/宽限期/退避/重启上限与自身观测；先修误判再谈自愈","severity":"S2","domain":"server"}
+    {"id":"PIT-020","title":"看门狗误判/自救级联重启风暴","path":"pitfalls/PIT-020-watchdog-selfheal-cascade.md","type":"pitfall","status":"current","tags":["watchdog","self-healing","restart-storm","backoff","observation"],"agent_hint":"看门狗必须有状态机/宽限期/退避/重启上限与自身观测；先修误判再谈自愈","severity":"S2","domain":"server"},
+    {"id":"PIT-021","title":"把方案建立在固定 IP / DHCP 静态租约上","path":"pitfalls/PIT-021-dhcp-lease-assumption.md","type":"pitfall","status":"current","tags":["network","wifi","dhcp","discovery","static-ip","multi-ssid"],"agent_hint":"先确认这是\"地址漂移\"而非服务故障；不要要求用户路由器做租约；用动态地址+发现机制修复","severity":"S2","domain":"ops","oem":"generic"}
   ]
 }

@@ -1,7 +1,7 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "guardrails",
-  "generated_at": "2026-11-11T04:01:55Z",
+  "generated_at": "2026-11-11T04:08:48Z",
   "count": 15,
   "entries": [
     {"id":"GRD-000","title":"护栏索引与使用规范","path":"guardrails/README.md","type":"guardrail","status":"current","tags":["guardrails","index","checklist","governance"],"agent_hint":"每次变更前后按本索引逐条自检；命中 blocker 红线立即停止，改用「允许的替代」或走授权评审，不得以效率为由破例。","severity":"warning","scope":"repo"},
@@ -11,7 +11,7 @@
     {"id":"GRD-004","title":"变更前必须备份、快照并准备回滚","path":"guardrails/GRD-004-backup-before-change.md","type":"guardrail","status":"current","tags":["backup","snapshot","rollback","restore-drill","tier2"],"agent_hint":"开始任何 Tier2 写、升级、迁移或恢复前，先要求\"备份+快照+回滚路径+恢复校验\"四项证据，缺一项即停止。","severity":"blocker","scope":"server"},
     {"id":"GRD-005","title":"Tier1/Tier2/Tier3 分级确认","path":"guardrails/GRD-005-tiered-ops-confirmation.md","type":"guardrail","status":"current","tags":["tier","confirmation","audit","snapshot","control-plane","privilege"],"agent_hint":"任何写操作先判定 Tier；Tier2 必须走受控 CLI 的 --confirm+快照+审计+人工同意；Tier3 禁止 Agent/网页执行，只接受人工 SSH 双重确认。","severity":"blocker","scope":"server"},
     {"id":"GRD-006","title":"密钥与凭据卫生","path":"guardrails/GRD-006-secret-hygiene.md","type":"guardrail","status":"current","tags":["secrets","token","private-key","rotation","gitignore","logging"],"agent_hint":"发现任何真实 token/口令/私钥/证书/备份口令时，先停止复制与回显，按生命周期处理并要求轮换；文档中只保留占位符。","severity":"blocker","scope":"repo"},
-    {"id":"GRD-007","title":"网络最小暴露","path":"guardrails/GRD-007-network-least-exposure.md","type":"guardrail","status":"current","tags":["network","loopback","firewall","adb","public-entry","exposure"],"agent_hint":"新增监听/入口/隧道前先判定是否必要；默认只允许回环与受控局域网，公网只留一个受控入口，ADB 维护结束必须关闭。","severity":"blocker","scope":"server"},
+    {"id":"GRD-007","title":"网络最小暴露","path":"guardrails/GRD-007-network-least-exposure.md","type":"guardrail","status":"current","tags":["network","loopback","firewall","adb","public-entry","exposure","dynamic-address","discovery"],"agent_hint":"新增监听/入口/隧道前先判定是否必要；默认只允许回环与受控局域网，公网只留一个受控入口，ADB 维护结束必须关闭。","severity":"blocker","scope":"server"},
     {"id":"GRD-008","title":"供电与热安全","path":"guardrails/GRD-008-power-thermal-safety.md","type":"guardrail","status":"current","tags":["power","thermal","battery","charging","unattended","availability"],"agent_hint":"7×24 运行前必须确认通风、充电保护、温度阈值与告警路径；出现发热异常/电池膨胀立即停用并报告。","severity":"blocker","scope":"device"},
     {"id":"GRD-009","title":"外部服务须用户明确同意","path":"guardrails/GRD-009-external-services-consent.md","type":"guardrail","status":"current","tags":["external-service","consent","monitoring","backup","vpn","dependency"],"agent_hint":"任何外部托管服务、云监控、异地备份、MFA、VPN/隧道、云推送接入前，先说明数据流与代价并取得用户明确同意，未同意不实施。","severity":"warning","scope":"server"},
     {"id":"GRD-010","title":"开源许可合规","path":"guardrails/GRD-010-license-compliance.md","type":"guardrail","status":"current","tags":["license","gpl","notice","third-party","supply-chain"],"agent_hint":"引入任何第三方代码/依赖/资产前先确认许可证与来源；GPL 只参考语义不复制代码；发布前必须完成许可审查。","severity":"warning","scope":"repo"},

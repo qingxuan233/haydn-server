@@ -38,7 +38,7 @@ agent_hint: 任何改造任务开工前先读本页；确认适用前提与三�
 | Android 版本 | **建议 Android 11+**；遥测桥的 `specialUse` FGS **需 Android 14+** | 设备档案 `identity.android_release` / `sdk_int`（见 [MTH-002](01-assessment.md)） | 低于 11：Termux/自启问题多，降级为实验；14 以下无桥 → 仅 A 路线 + Termux 采集 |
 | 内存 | 建议 ≥4GB，8GB 更稳 | `hardware.ram_mb` | 过小：服务需精简到 1–2 个，避免被 LMK 杀 |
 | 存储 | 建议可用 ≥32GB | `storage.data_free_gb` | 不足：不装大服务，备份与日志必须外置 |
-| 网络 | 有可用 WiFi；能固定 IP（DHCP 保留/静态）或经**受控隧道**访问 | `constraints` 与现场网络核对 | 无法固定 IP：仅局域网临时可用，不作为长期方案 |
+| 网络 | 有可用 WiFi；**地址可动态变化**（不要求 DHCP 保留/静态 IP/路由器管理权限）；能通过**发现机制**（页面显示/扫码/mDNS/广播发现之一）或经用户批准的受控隧道访问 | 现场网络核对 + `constraints`/`assumptions` | 无固定地址并不阻塞 A 路线：用动态地址 + 发现机制；若连稳定发现都不可得，标记"仅临时可用"并写限制 |
 | Root 状态 | **无 Root 即可完成默认路线（A）** | `root.root_available_current` | 有 Root：仍默认走 A，只在门禁通过后选 B |
 | Bootloader | **默认保持锁定** | `boot.bootloader_unlocked` | 已解锁但不想承担代价：仍按 A 路线 |
 | 系统管理预期 | 接受"假 root、无 systemd、无容器（若内核缺 NS）" | `kernel.config` 字段 | 不接受：只能评估 B/C 路线（高风险、需授权） |
