@@ -406,7 +406,7 @@
       "notes": "未实测不得标完成；按 G-L5/G-L6 与 MTH-008 G-R1..G-R5 验收。",
       "agent_hint": "先 Root 最小基线，再 chroot 基准，再救援演练；一次一变更并留回滚证据。",
       "requires": "真机 + 用户授权（解锁/Root）",
-      "owner": "lead", "updated": "2026-11-14", "result": "已完成（截至 2026-11-13）：KernelSU LKM Root、5/5 重启 Root 存活、3/3 救援演练；服务器化准备（Ubuntu 24.04.5 arm64 chroot、supervisord 心跳+loopback HTTP、root 特权遥测、iptables 入站 DROP、KernelSU 开机模块、5/5 重启自启）。P1 管理面（2026-11-14，部分完成）：wake_lock 与 Wi‑Fi 省电关闭并持久化；openssh-server 仅 loopback 密钥登录，临时密钥验证后已生成长期管理员 ed25519 密钥并端到端验证（建议用户替换）；prometheus-node-exporter 仅 loopback；cron 每 5 分钟健康检查（跨重启 OK）；本地告警升级：health FAIL 时设备 Android 通知 + alerts.log 去重记录，受控验证通过；restic/rclone 已安装，**restic 本机加密备份/恢复演练通过**（19 文件、check 无错误、restore 文件 SHA-256 MATCH，临时仓库已删除；非持久备份）；Tailscale 1.104.7 官方 static（SHA-256 校验）已安装并运行，**未登录**（待 auth key）；P1 后 5/5 重启矩阵通过；30 分钟 7 线程满载热测试 180 采样：温区峰值 79.0°C、电池峰值 35.9°C；24h soak 已于 2026-11-13T18:00:03Z 重新计时，**中期 4.91h：0 采样缺口/0 重启/可用率 100%**。未完成：tailnet 登录与 tailnet 访问验证、用户自有 SSH 公钥替换、备份目标/口令与定期恢复演练、24h soak 满期核对、proot vs chroot 基准、资源/电源调优（含充电上限语义）、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接。"
+      "owner": "lead", "updated": "2026-11-14", "result": "已完成（截至 2026-11-13）：KernelSU LKM Root、5/5 重启 Root 存活、3/3 救援演练；服务器化准备（Ubuntu 24.04.5 arm64 chroot、supervisord 心跳+loopback HTTP、root 特权遥测、iptables 入站 DROP、KernelSU 开机模块、5/5 重启自启）。P1 管理面（2026-11-14，部分完成）：wake_lock 与 Wi‑Fi 省电关闭并持久化；openssh-server 仅 loopback 密钥登录，临时密钥验证后已生成长期管理员 ed25519 密钥并端到端验证（建议用户替换）；prometheus-node-exporter 仅 loopback；cron 每 5 分钟健康检查（跨重启 OK）；本地告警升级：health FAIL 时设备 Android 通知 + alerts.log 去重记录，受控验证通过；restic/rclone 已安装，restic 本机加密备份/恢复演练通过（19 文件、check 无错误、restore SHA-256 MATCH，临时仓库已删除；非持久备份）；Tailscale 1.104.7 官方 static（SHA-256 校验）已安装并运行，未登录（待 auth key）；P1 后 5/5 重启矩阵通过；30 分钟 7 线程满载热测试 180 采样：温区峰值 79.0°C、电池峰值 35.9°C。soak：run #1 于 2026-11-13T18:00:03Z 起、4.91h 后因遥测循环脚本语法错误（22:54–23:08Z 缺口）中止（设备未重启）；已改用 LF 文本 + setsid 重启遥测循环并核对采集周期，**soak run #2 于 2026-11-13T23:08:20Z 重新计时**。未完成：tailnet 登录与 tailnet 访问验证、用户自有 SSH 公钥替换、备份目标/口令与定期恢复演练、24h soak run #2 满期核对、proot vs chroot 基准、资源/电源调优（含充电上限语义）、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接。"
     },
     {
       "id": "BL-023",
@@ -589,6 +589,25 @@
       "updated": "",
       "result": "",
       "risk": "M"
+    },
+    {
+      "id": "BL-031",
+      "title": "设备侧 shell 脚本部署加固（LF/sh -n/存活核验 SOP）",
+      "priority": "P2",
+      "area": "ops",
+      "status": "pending",
+      "acceptance": "设备侧脚本统一以 LF 文本经 adb push 部署；部署后 sh -n 校验 + 进程存活/下一采集周期核验；在案例或工具文档记录部署 SOP，避免行尾/转写问题导致后台任务静默退出。",
+      "outputs": [
+        "cases/ace-pro-pgp110/README.md"
+      ],
+      "depends": [],
+      "notes": "2026-11-14 遥测循环曾报 syntax error: unexpected 'done' 并静默退出，造成约 14 分钟遥测缺口；根因尚未复现（疑似行尾/转写），先以 SOP 加固。",
+      "agent_hint": "下次变更设备脚本前按 SOP：本地 LF 校验 → adb push → sh -n → setsid 重启 → 核对 pid 与下一采集周期。",
+      "requires": "真机（实验设备）",
+      "owner": "",
+      "updated": "",
+      "result": "",
+      "risk": "L"
     }
   ]
 }
