@@ -120,12 +120,31 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | 原生 chroot | Ubuntu Base 24.04.5 LTS arm64（官方发布；rootfs SHA-256 `a91d5a93010193712d346d761372b7c9db6dfcf093893161c64ca107f05914f2` 与官方 SHA256SUMS 一致）；解包到 `/data/server/rootfs`；bind `/proc /sys /dev /dev/pts`；apt 使用官方 ports 源且签名校验通过 |
 | 服务基座 | supervisord 4.2.5（daemon 模式）+ Python 3.12.3；服务 `haydn-heartbeat`（心跳/负载/内存 CSV）与 `haydn-local-http`（仅 loopback、端口 18080）；已验证 supervisor 对单个服务的停止/重启自愈 |
 | 开机自启 | KernelSU 模块 `server-chroot`（`service.sh` + `boot-completed.sh`）；5/5 次重启后 supervisor RUNNING、loopback 端口 LISTEN、心跳产生新 boot_id、遥测写入、iptables DROP 生效 |
-| 特权遥测 | root 侧 5 分钟 CSV：uptime/load/CPU jiffies/可用内存/网卡字节/电池/温区/supervisor/HTTP；soak 起点 2026-11-13 23:16（本地） |
+| 特权遥测 | root 侧 5 分钟 CSV：uptime/load/CPU jiffies/可用内存/网卡字节/电池/温区/supervisor/HTTP；历史 soak 起点 2026-11-13 23:16（后因 P1 变更作废，P1 基线见 §6.2） |
 | 入站最小化 | iptables + ip6tables 默认 DROP INPUT/FORWARD；白名单 lo/established/DHCP/NDP；带唯一注释规则可精准回滚（已实测 apply→restore→apply）；局域网入站 10150/18080 实测被阻断，设备出网正常 |
 | chroot 基线 | `dd` 256MB（fsync）≈532 MB/s；chroot 内 uname/nproc/free 正常；proot 对照未做（Termux 未安装） |
 | 观测与约束 | 内核无 `CONFIG_NF_TABLES` → 使用 iptables；无 user_ns/CGROUP_PIDS/NFT，cgroup v2 无委派 → 容器/systemd 仍不可用；电池 100%、电池温度约 28°C、温区峰值观测 82.2°C（只读，未改充电/温控） |
 | 已知限制 | KernelSU 模块脚本运行在私有 mount namespace：chroot 挂载仅对该 namespace 内服务可见，ADB shell 侧需经入口脚本重新挂载；服务管理走 supervisor control socket；遥测循环无外部看门狗（模块仅开机启动一次） |
-| 未完成（不得写"完成"） | 24h soak（已启动计时，未满）、proot vs chroot 基准、资源/电源调优、SSH/局域网管理（需密钥+allowlist）、服务迁移、7 天双跑、生产割接 |
+| 未完成（不得写"完成"） | tailnet/SSH 长期登录（待用户 auth key/pubkey）、备份目标/口令与恢复演练、24h soak（P1 后重新计时中，未满）、proot vs chroot 基准、资源/电源调优、服务迁移、7 天双跑、生产割接 |
+
+### 6.2 P1 管理面准备（2026-11-14，部分完成）
+
+> 依据本地服务器化方案稿（P1：管理面、可观测、备份；方案稿为运行期分析产物，未入库）。本节只记录实测事实；未实测/未完成的项不写"通过"。
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| 常电/唤醒 | `wake_lock=haydn-server` 已持有；屏幕 Asleep；Wi‑Fi power save **off**；三项均由 KernelSU 模块 `service.sh` 在 boot_completed 后重新应用（**5/5 重启验证通过**） | `/sys/power/wake_lock`、`iw dev wlan0 get power_save`、`/data/server/logs/boot.log` 中的 `P1 runtime:` 行 |
+| 远程管理（Tailscale） | tailscale/tailscaled **1.104.7** 官方 static（下载后 SHA-256 校验一致）安装于 `/usr/local/bin`；tailscaled 以 userspace networking 运行（SOCKS 仅 `127.0.0.1:1055`）；`tailscale status` = **Logged out**，登录与 tailnet 访问验证**未完成**（待用户提供 auth key） | 安装日志 `p1-tailscale-install.log`、supervisor status |
+| SSH | openssh-server 9.6p1；仅 `127.0.0.1:22`；`PasswordAuthentication no`、`KbdInteractiveAuthentication no`、`PermitRootLogin prohibit-password`、`X11Forwarding no`；`sshd -t` 通过。已用**临时 ed25519 密钥**经 `adb forward tcp:2222 tcp:22` 完成端到端验证（`uid=0(root)`、`SSH_OK`），验证后即移除临时密钥；`authorized_keys` 现为空，**长期登录待用户公钥** | `sshd -T` 输出、`/etc/ssh/sshd_config.d/99-haydn.conf`、运行期 SSH 验证输出 |
+| 可观测 | prometheus-node-exporter 1.7.0 仅 `127.0.0.1:9100`；cron 每 5 分钟运行 `/usr/local/bin/haydn-healthcheck.sh`（检查 supervisor/http/node_exporter/sshd/disk），OK/FAIL 写 `/var/log/haydn/health.log`；手工运行一次 = OK | supervisor status、`health.log`、curl metrics |
+| 备份工具 | restic 0.16.4 与 rclone 1.60.1 已安装；**备份目标、口令、恢复演练未开始**（待用户选定 NAS/远端与凭据） | `dpkg -l restic rclone` |
+| 定时/日志 | cron 3.0pl1（supervisor `haydn-cron` 运行 `cron -f`）；logrotate 3.21.0，配置 `/etc/logrotate.d/haydn`（weekly/rotate 4/compress） | supervisor status、配置文件 |
+| 30 分钟满载热测试 | 7 线程满载 **1825s / 180 采样**：温区峰值 **79.0°C**（平均 74.4°C）、电池峰值 **35.9°C**、`load1` 峰值 12.32、可用内存最低 9.79GiB；未触发方案阈值（>80°C 暂停重任务 / >85°C 停服务 / 电池 >45°C 停机） | `/data/server/logs/thermal-30min-*.csv`（gitignored） |
+| 重启矩阵（P1 后） | **5/5 重启**：每次 `boot_completed=1`、6 个 supervisor 服务 RUNNING、wake_lock/省电关闭/4 个 loopback 端口/iptables DROP 均符合 | 运行期逐次验证输出 + `boot.log` |
+| 24h soak 基线（重新计时） | 起点 **2026-11-13T18:00:03Z**（本地 2026-11-14 02:00）；旧的 23:16 起点（2026-11-13T15:54:55Z）因 P1 变更作废；**验收未完成**，需 24h 后核对可用率/温电/重启 | `/data/server/logs/soak-baseline.txt`、`telemetry.csv` |
+| 入站最小化（复核） | iptables/ip6tables INPUT 仍为 DROP + lo/established/DHCP/NDP 白名单；新增监听 22/9100/1055/18080 **全部仅 127.0.0.1**；未开放局域网/公网新端口 | `iptables -S INPUT`、`ss -ltn` |
+| 网络地址 | 按 [MTH-002 §5.3.1](../../methodology/01-assessment.md) 与 [PIT-021](../../pitfalls/PIT-021-dhcp-lease-assumption.md) 保持**动态地址 + 发现机制**（当前 DHCP `192.168.31.50/24`）；未固定 DHCP 租约/静态地址（需路由器权限，仅可选优化；与旧方案稿 P1 草案的差异已在此记录） | `ip -4 addr show wlan0` |
+| 偏差/限制 | tailscaled 为 userspace 模式（未验证内核 TUN 模式；`/dev/net/tun` 状态待测）；Uptime Kuma/外部告警未部署（需外部节点与凭据）；ADB 仍保持 USB 维护通道，待 tailnet 登录可用后再关闭 | 运行期记录 |
 
 ---
 
