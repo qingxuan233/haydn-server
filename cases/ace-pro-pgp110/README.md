@@ -147,6 +147,56 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | 网络地址 | 按 [MTH-002 §5.3.1](../../methodology/01-assessment.md) 与 [PIT-021](../../pitfalls/PIT-021-dhcp-lease-assumption.md) 保持**动态地址 + 发现机制**（当前 DHCP `192.168.31.50/24`）；未固定 DHCP 租约/静态地址（需路由器权限，仅可选优化；与旧方案稿 P1 草案的差异已在此记录） | `ip -4 addr show wlan0` |
 | 偏差/限制 | tailscaled 为 userspace 模式（未验证内核 TUN 模式；`/dev/net/tun` 状态待测）；Uptime Kuma 与外部告警通道未部署（需外部节点与凭据）；**充电上限语义未验证**（`charge_control_limit=0` / `max=4`、`charge_type=Standard`，未写测试值，避免误改 7×24 供电策略）；ADB 仍保持 USB 维护通道，待 tailnet 登录可用后再关闭 | 运行期记录 |
 
+### 6.3 P1 配置要点（可复现，不含任何密钥）
+
+> 以下为 2026-11-14 实测配置摘要；完整运行期脚本/日志在 gitignored `inventory/`，改动前快照见 `inventory/device-snapshot-20261114/`。所有改动可按本节末尾命令回滚。
+
+**KernelSU 模块 `service.sh`（开机持久化）**：
+```sh
+# P1: keep CPU awake + disable Wi-Fi power save（可回滚）
+echo haydn-server > /sys/power/wake_lock
+i=0
+while [ "$i" -lt 10 ]; do
+  iw dev wlan0 set power_save off >/dev/null 2>&1 && break
+  i=$((i + 1)); sleep 3
+done
+```
+
+**sshd（仅 loopback、密钥登录）** `/data/server/rootfs/etc/ssh/sshd_config.d/99-haydn.conf`：
+```text
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+PermitRootLogin prohibit-password
+ListenAddress 127.0.0.1
+X11Forwarding no
+PermitEmptyPasswords no
+```
+
+**supervisord 程序**（追加到 `/etc/supervisor/conf.d/haydn.conf`）：
+```text
+haydn-sshd            command=/usr/sbin/sshd -D
+haydn-node-exporter   command=/usr/bin/prometheus-node-exporter --web.listen-address=127.0.0.1:9100
+haydn-cron            command=/usr/sbin/cron -f
+haydn-tailscaled      command=/usr/local/bin/tailscaled --tun=userspace-networking --socks5-server=127.0.0.1:1055 --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock
+```
+
+**健康检查与告警**：cron `*/5 * * * * root /usr/local/bin/haydn-healthcheck.sh`（检查 supervisor/http/node_exporter/sshd/disk，OK/FAIL 写 `/var/log/haydn/health.log`）；telemetry-loop 每 5 分钟调用 `alert-watch.sh`，FAIL 时发 Android 通知并写 `/data/server/logs/alerts.log`（同一 FAIL 行去重，恢复后自动清状态）。
+
+**验收/回滚命令**：
+```sh
+# 验收（只读）
+iw dev wlan0 get power_save                       # 期望 Power save: off
+/data/server/bin/chroot-enter.sh sh -c 'ss -ltn'  # 期望仅 127.0.0.1:22/9100/1055/18080
+/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/supervisor/supervisord.conf status  # 6 服务 RUNNING
+iptables -S INPUT | head                          # 期望 -P INPUT DROP + haydnlab 白名单
+
+# 回滚
+echo haydn-server > /sys/power/wake_unlock
+iw dev wlan0 set power_save on
+# 停用单个服务：supervisorctl -c /etc/supervisor/supervisord.conf stop haydn-tailscaled
+```
+
 ---
 
 ## 7. 风险登记
