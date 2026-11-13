@@ -44,7 +44,7 @@
       "requires": "仓库 push 权限（首次 CI 实跑验证）",
       "owner": "lead",
       "updated": "2026-11-13",
-      "result": "CI 配置已落地并通过本地等价检查：index --check + 完整 preflight；**GitHub Actions 实跑尚未验证**（无 push 权限），不得标 done。"
+      "result": "CI 配置已落地：本地 index --check + 完整 preflight 全绿；GitHub Actions 首次实跑成功（run #43465049307，commit 6c3bf74，2026-11-13T16:40Z，conclusion=success）。secret scan 仍未纳入（BL-010），故保持 in_progress。"
     },
     {
       "id": "BL-003",
@@ -435,7 +435,7 @@
       "requires": "",
       "owner": "lead",
       "updated": "2026-11-13",
-      "result": "已落地并验证：协议 v1.2、ADR-0001/0002、GRD-016、MTH-013/014、模板新增 2 个（adr、request-card）/更新 4 个（acceptance、agent-task、pitfall、runbook）、backlog schema、validate 新检查、preflight/index --check、CI workflow；验收证据：preflight exit 0（index 重建无 warnings；validate --strict 0 error/0 warning；282 项单测 OK；check-links 0 missing）、index --check exit 0。",
+      "result": "已落地并验证：协议 v1.2、ADR-0001/0002、GRD-016、MTH-013/014、模板新增 2 个（adr、request-card）/更新 4 个（acceptance、agent-task、pitfall、runbook）、backlog schema、validate 新检查、preflight/index --check、CI workflow；验收证据：preflight exit 0（index 重建无 warnings；validate --strict 0 error/0 warning；282 项单测 OK；check-links 0 missing）、index --check exit 0；提交 6c3bf74；CI 首跑 success（run #43465049307）。",
       "risk": "H"
     },
     {
