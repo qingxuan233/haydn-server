@@ -12,7 +12,7 @@ from pathlib import Path
 
 from toolkit.repurpose import cli
 from toolkit.repurpose.adb import FixtureTransport
-from toolkit.repurpose.indexgen import write_manifest
+from toolkit.repurpose.indexgen import write_manifest, write_bundle
 from toolkit.repurpose.probe import probe_profile
 from toolkit.repurpose.profile import CAPABILITY_IDS, validate_profile
 from toolkit.repurpose.util import REPO_ROOT, SCHEMA_PROFILE
@@ -21,6 +21,8 @@ from toolkit.tests.fixtures.repo_builder import build_sample_repo, write_doc
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 ADB_FIXTURE = FIXTURES / "adb-haydn.json"
 LOCKED_PROFILE = FIXTURES / "profile-haydn-locked.json"
+ROOT_READY_PROFILE = FIXTURES / "profile-root-lab-ready.json"
+ROOT_RESEARCH_PROFILE = REPO_ROOT / "cases" / "ace-pro-pgp110" / "profile.json"
 
 
 def _run(args: list[str], cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess[str]:
@@ -81,9 +83,12 @@ class HelpAndUsageTests(unittest.TestCase):
             "probe",
             "assess",
             "plan",
+            "rootcheck",
+            "rescue-kit",
             "new-profile",
             "index",
             "validate",
+            "preflight",
         ):
             self.assertIn(command, result.stdout)
         self.assertIn("退出码", result.stdout)
@@ -91,7 +96,18 @@ class HelpAndUsageTests(unittest.TestCase):
         self.assertNotIn(MARKER_PLACEHOLDER, result.stdout)
 
     def test_subcommand_help_exits_zero(self) -> None:
-        for command in ("detect", "probe", "assess", "plan", "new-profile", "index", "validate"):
+        for command in (
+            "detect",
+            "probe",
+            "assess",
+            "plan",
+            "rootcheck",
+            "rescue-kit",
+            "new-profile",
+            "index",
+            "validate",
+            "preflight",
+        ):
             with self.subTest(command=command):
                 result = _run([command, "--help"])
                 self.assertEqual(result.returncode, 0, msg=result.stderr)
@@ -251,6 +267,52 @@ class AssessPlanTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
 
 
+class RootcheckTests(unittest.TestCase):
+    def test_rootcheck_ready_profile_json(self) -> None:
+        result = _run(["rootcheck", "--profile", str(ROOT_READY_PROFILE), "--json"])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["schema"], "repurpose.rootcheck.v1")
+        self.assertEqual(report["verdict"], "tech-ready")
+        self.assertTrue(report["tech_ready"])
+
+    def test_rootcheck_strict_ready_returns_0(self) -> None:
+        result = _run(["rootcheck", "--profile", str(ROOT_READY_PROFILE), "--strict"])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_rootcheck_strict_research_returns_4(self) -> None:
+        result = _run(["rootcheck", "--profile", str(ROOT_RESEARCH_PROFILE), "--strict", "--json"])
+        self.assertEqual(result.returncode, 4, msg=result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["verdict"], "blocked")
+
+    def test_rootcheck_human_output(self) -> None:
+        result = _run(["rootcheck", "--profile", str(ROOT_RESEARCH_PROFILE)])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("Root 实验姿态", result.stdout)
+        self.assertIn("人工确认", result.stdout)
+
+    def test_rootcheck_requires_profile(self) -> None:
+        result = _run(["rootcheck", "--json"])
+        self.assertEqual(result.returncode, 2)
+
+    def test_assess_route_unchanged_for_research_and_ready_profiles(self) -> None:
+        research = _run(["assess", "--profile", str(ROOT_RESEARCH_PROFILE), "--json"])
+        self.assertEqual(research.returncode, 0, msg=research.stderr)
+        research_report = json.loads(research.stdout)
+        self.assertEqual(research_report["route"], "A")
+        gate_status = {gate["id"]: gate["status"] for gate in research_report["gates"]}
+        self.assertEqual(gate_status["G-B0"], "unknown")
+
+        ready = _run(["assess", "--profile", str(ROOT_READY_PROFILE), "--json"])
+        self.assertEqual(ready.returncode, 0, msg=ready.stderr)
+        ready_report = json.loads(ready.stdout)
+        self.assertEqual(ready_report["route"], "B")
+        gate_status = {gate["id"]: gate["status"] for gate in ready_report["gates"]}
+        self.assertEqual(gate_status["G-B0"], "pass")
+        self.assertEqual(gate_status["G-B1"], "pass")
+
+
 class NewProfileTests(unittest.TestCase):
     def test_new_profile_stdout(self) -> None:
         result = _run(["new-profile", "--codename", "demo-device"])
@@ -380,6 +442,76 @@ class IndexValidateTests(unittest.TestCase):
             result = _run(["validate", "--root", str(root), "--strict"])
             self.assertEqual(result.returncode, 4)
             self.assertIn("warning", result.stdout.lower())
+
+
+class IndexCheckTests(unittest.TestCase):
+    """``index --check``：只读比较生成物与内容，一致 exit 0 / 不一致 exit 4。"""
+
+    def _repo(self, tmp: str) -> Path:
+        root = Path(tmp) / "repo-check"
+        build_sample_repo(root)
+        write_bundle(root)
+        return root
+
+    def test_consistent_returns_0(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._repo(tmp)
+            result = _run(["index", "--check", "--root", str(root), "--json"])
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            report = json.loads(result.stdout)
+            self.assertEqual(report["schema"], "repurpose.index-check.v1")
+            self.assertTrue(report["ok"])
+            self.assertEqual(report["diffs"], [])
+            self.assertTrue(report["checked"]["root"]["ok"])
+            self.assertEqual(len(report["checked"]["shards"]), 4)
+            self.assertTrue(all(shard["ok"] for shard in report["checked"]["shards"]))
+
+    def test_generated_at_only_difference_returns_0(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo-check"
+            build_sample_repo(root)
+            write_bundle(root, generated_at="2026-01-01T00:00:00Z")
+            result = _run(["index", "--check", "--root", str(root)])
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("index 一致", result.stdout)
+            self.assertFalse((root / "agent-manifest.json").read_text(encoding="utf-8").count("1970-01-01"))
+
+    def test_tampered_shard_returns_4(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._repo(tmp)
+            shard_path = root / "agent-manifest.d" / "pitfalls.json"
+            shard = json.loads(shard_path.read_text(encoding="utf-8"))
+            shard["entries"][0]["title"] = "被手改的标题"
+            shard_path.write_text(json.dumps(shard, ensure_ascii=False, indent=2), encoding="utf-8")
+            result = _run(["index", "--check", "--root", str(root), "--json"])
+            self.assertEqual(result.returncode, 4)
+            report = json.loads(result.stdout)
+            self.assertFalse(report["ok"])
+            self.assertIn(
+                "agent-manifest.d/pitfalls.json",
+                [diff["path"] for diff in report["diffs"]],
+            )
+
+    def test_tampered_root_manifest_returns_4(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._repo(tmp)
+            manifest_path = root / "agent-manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["counts"]["pitfalls"] = 99
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+            result = _run(["index", "--check", "--root", str(root)])
+            self.assertEqual(result.returncode, 4)
+            self.assertIn("index 不一致", result.stdout)
+            self.assertIn("agent-manifest.json", result.stdout)
+
+    def test_missing_manifest_returns_4(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo-check"
+            build_sample_repo(root)
+            result = _run(["index", "--check", "--root", str(root), "--json"])
+            self.assertEqual(result.returncode, 4)
+            report = json.loads(result.stdout)
+            self.assertEqual(report["diffs"][0]["reason"], "missing")
 
 
 class EncodingRegressionTests(unittest.TestCase):

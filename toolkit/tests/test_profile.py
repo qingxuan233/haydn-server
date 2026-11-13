@@ -19,10 +19,12 @@ from toolkit.repurpose.profile import (
     validate_profile,
 )
 from toolkit.repurpose.util import (
+    REPO_ROOT,
+    SCHEMA_DIR,
     SCHEMA_PROFILE,
     TEMPLATES_DIR,
-    SCHEMA_DIR,
     UsageError,
+    relative_link_target_exists,
 )
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -238,11 +240,21 @@ class TemplateSchemaConsistencyTests(unittest.TestCase):
                     )
 
     def test_templates_have_no_todo_or_placeholder_links(self) -> None:
+        import re
+
         for template in sorted(TEMPLATES_DIR.glob("*.md")):
             text = template.read_text(encoding="utf-8")
             self.assertNotIn(MARKER_PLACEHOLDER, text, msg=f"{template.name} 不应包含待办占位")
-            # 模板不允许出现真实 Markdown 链接（避免路径断链）；路径只应出现在代码块/纯文本。
-            self.assertNotIn("](", text, msg=f"{template.name} 不应包含 Markdown 链接")
+            # 模板可以有**可解析的真实相对链接**（如 ADR 模板回链 adr/），
+            # 但禁止占位/外部/断链目标（占位符 `<>`、URL、目标不存在均失败）。
+            for target in re.findall(r"\]\(([^)]+)\)", text):
+                self.assertNotIn("<", target, msg=f"{template.name} 链接不得含 <...> 占位：{target}")
+                self.assertFalse(
+                    target.lower().startswith(("http://", "https://", "mailto:")),
+                    msg=f"{template.name} 不得含外部链接：{target}",
+                )
+                exists, _resolved = relative_link_target_exists(REPO_ROOT, template, target)
+                self.assertTrue(exists, msg=f"{template.name} 链接目标不存在：{target}")
 
 
 if __name__ == "__main__":

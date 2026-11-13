@@ -47,7 +47,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
 
 SCAN_ROOTS = ["README.md", "AGENTS.md", "CHANGELOG.md", "docs", "android-bridge",
               "scripts", "methodology", "pitfalls", "guardrails", "toolkit", "cases",
-              "changelog", "tools/README.md", "inventory/README.md"]
+              "adr", "changelog", "tools/README.md", "inventory/README.md"]
 SKIP_DIR_NAMES = {".git", "backup", "inventory", "tools", "node_modules",
                   "__pycache__", "build", "android-sdk", "platform-tools",
                   "apks", "termux", "termux-boot", "mi-unlock", "magisk"}
@@ -81,7 +81,7 @@ def group_of(relpath):
         return "scripts"
     if parts[0] in ("tools", "inventory"):
         return parts[0]
-    if parts[0] in ("methodology", "pitfalls", "guardrails", "toolkit", "cases"):
+    if parts[0] in ("methodology", "pitfalls", "guardrails", "toolkit", "cases", "adr"):
         return parts[0]
     return "repo-root"
 

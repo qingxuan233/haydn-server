@@ -34,25 +34,26 @@
 
 ---
 
-## 3. 仓库地图（四层 + 一案例）
+## 3. 仓库地图（四层知识 + 决策层 + 一案例）
 
 ```text
-AGENTS.md                     Agent 工作协议（新会话/新 Agent 从这里开始）
+AGENTS.md                     Agent 工作协议（协议 v1.2；新会话/新 Agent 从这里开始）
 agent-manifest.json           机器可读索引根摘要（≤160 行，由 toolkit index 生成）
 agent-manifest.d/             按层分片（methodology/pitfalls/guardrails/case-studies，按需只读一个）
-backlog.json                  结构化待办（Agent 领取任务用）
+backlog.json                  结构化待办（Agent 领取任务用；schema 见 toolkit/schema/backlog.schema.json）
+adr/                          决策记录层（ADR-0001..，Nygard 五段；索引见 adr/README.md）
 README.md                     本文件：人类入口
-methodology/                  规范层：可迁移的方法论正文（MTH-001..011）
-pitfalls/                     证据层：踩过的坑（PIT-001..020），每条含根因/规避/验证/证据
-guardrails/                   约束层：红线与注意事项（GRD-001..014），每条含检查方式
+methodology/                  规范层：可迁移的方法论正文（MTH-001..014；MTH-012 Root 实验轨、MTH-013 交付治理、MTH-014 Agent SOP）
+pitfalls/                     证据层：踩过的坑（PIT-001..025），每条含根因/规避/验证/证据
+guardrails/                   约束层：红线与注意事项（GRD-001..016），每条含检查方式
 toolkit/                      工具层：零依赖 Python CLI + schema + 模板 + Termux 脚本 + 测试
-cases/                        案例层：真实设备落地记录（haydn K40 Pro）
+cases/                        案例层：真实设备落地记录（haydn K40 Pro 部分验收；Ace Pro 实验机，已解锁/Root）
 docs/ scripts/ android-bridge/  旧项目冻结证据（案例原始文档、脚本、Bridge 源码）
 CHANGELOG.md                  当前变更窗口（≤8 条，含 2026-11-11 改造摘要）
 changelog/                    历史变更归档（按月，默认不读；规则见 MTH-011）
 ```
 
-**权威优先级**：用户指令 > [AGENTS.md](AGENTS.md) > `guardrails/` 红线 > `methodology/` 规范 > `pitfalls/` 案例证据 > `toolkit/` 实现细节 > `cases/` 与旧目录历史事实。冲突时以更高层为准（红线永远压过"应当"），但必须修正低层并记录。
+**权威优先级**：用户指令 > [AGENTS.md](AGENTS.md) > `guardrails/` 红线 > `methodology/` 规范 > `pitfalls/` 案例证据 + `adr/` 已接受决策 > `toolkit/` 实现细节 > `cases/` 与旧目录历史事实。冲突时以更高层为准（红线永远压过"应当"），但必须修正低层并记录。
 
 ---
 
@@ -63,12 +64,13 @@ changelog/                    历史变更归档（按月，默认不读；规�
 2. [MTH-002 评估与决策](methodology/01-assessment.md) → [MTH-003 路线图](methodology/02-roadmap.md)
 3. 按兴趣选读：[MTH-004 服务器栈](methodology/03-server-stack.md)、[MTH-005 遥测桥](methodology/04-telemetry-bridge.md)、[MTH-006 控制面](methodology/05-control-plane.md)
 4. 动手前必读：[MTH-007 安全](methodology/06-security.md)、[guardrails/README](guardrails/README.md)
+5. 交付/验收/割接前读 [MTH-013 项目推进与交付治理](methodology/12-delivery-governance.md)；Agent 协作/评审/回归读 [MTH-014 Agent 工作 SOP](methodology/13-agent-sop.md)；重要决策留痕见 [adr/README.md](adr/README.md)
 
 ### Agent / 新会话（10 分钟）
 1. [AGENTS.md](AGENTS.md)（工作协议、红线、DoD）
 2. [agent-manifest.json](agent-manifest.json)（根摘要与阅读顺序；**不要**一次加载全部分片）
-3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md) → [MTH-011 文档生命周期与上下文预算](methodology/10-document-lifecycle.md)
-4. [backlog.json](backlog.json) 领取任务；变更前跑 `python -m toolkit.repurpose validate --strict`
+3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md) → [MTH-011 文档生命周期与上下文预算](methodology/10-document-lifecycle.md) → [MTH-014 Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md)（任务/评审/分支/回归）
+4. [backlog.json](backlog.json) 领取任务、[adr/README.md](adr/README.md) 查已接受决策；变更前跑 `python -m toolkit.repurpose preflight`（统一质量门）
 
 **上下文预算（防膨胀，详见 [MTH-011](methodology/10-document-lifecycle.md)）**：
 - 单任务最多读 **3 份**规范/主题文档（索引/模板/任务卡/`--help` 不计）；
@@ -96,9 +98,15 @@ python -m toolkit.repurpose probe --base profiles/demo.json --adb-fixture toolki
 python -m toolkit.repurpose assess --profile profiles/<codename>.json --json
 python -m toolkit.repurpose plan --profile profiles/<codename>.json --route auto --format md
 
+# Root 实验设备技术姿态（离线，只消费 profile；不替代授权/演练人工确认）
+python -m toolkit.repurpose rootcheck --profile cases/ace-pro-pgp110/profile.json --json
+
 # 内容索引与一致性校验
 python -m toolkit.repurpose index
 python -m toolkit.repurpose validate --strict
+
+# 统一质量门（index + validate --strict + 单测 + 链接检查串联；退出码 0=全绿/3=有跳过/4=失败）
+python -m toolkit.repurpose preflight          # 加 --json 输出机器可读报告
 
 # 单元测试（fixture 模式，不需要真机）
 python -m unittest discover -s toolkit/tests -t . -v
@@ -126,15 +134,18 @@ python scripts/dev/check-links.py --strict-anchors
 | MTH-009 | [Agent 交接与扩展协议](methodology/08-agent-handoff.md) | 目录/协议/任务/扩展/DoD（Agent 必读） |
 | MTH-010 | [术语表](methodology/09-glossary.md) | proot/FGS/AVB/FBE/soak/Tier 等统一口径 |
 | MTH-011 | [文档生命周期、归档与上下文预算](methodology/10-document-lifecycle.md) | 记录边界、CHANGELOG 归档、阅读预算、分层加载 |
+| MTH-012 | [Root 实验设备方法论](methodology/11-root-lab.md) | 实验机准入、G-L0..G-L6、解锁/Root/救援/割接（多数待实测） |
+| MTH-013 | [项目推进与交付治理](methodology/12-delivery-governance.md) | 风险分级、需求基线、G0–G7 阶段门、用户验收、发布就绪与 Go/No-Go、兼容/隐私/供应链 |
+| MTH-014 | [Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md) | 任务生命周期、评审/测试、汇报、分支与协议版本、提示词治理、Agent 回归 |
 
 ---
 
 ## 7. 踩坑库与护栏（先读这里再动手）
 
-- **踩坑库** [pitfalls/README.md](pitfalls/README.md)：20 条真实踩坑 + 通用风险，按 S1–S4 分级；每条都给出症状、根因、修复步骤、验证方法与证据链接。
+- **踩坑库** [pitfalls/README.md](pitfalls/README.md)：25 条真实踩坑 + 通用风险，按 S1–S4 分级；每条都给出症状、根因、修复步骤、验证方法与证据链接；触发标准（T-1~T-8）与"坑→机制"升级链见该索引。
   高频必读：[S1 系统包卸载 bootloop](pitfalls/PIT-002-system-package-uninstall-bootloop.md)、[无 USER_NS 容器不可用](pitfalls/PIT-006-no-user-ns-containers.md)、[明文凭据入库](pitfalls/PIT-015-plaintext-credentials.md)、[伪证书 pin](pitfalls/PIT-019-fake-pinning-bridge.md)、[快照无回滚](pitfalls/PIT-017-snapshot-without-rollback.md)。
-- **护栏层** [guardrails/README.md](guardrails/README.md)：14 条不可协商红线与检查方式；Agent 每次变更前逐条对照。
-  高频必读：[不 Root/不解锁默认](guardrails/GRD-001-no-root-no-unlock-default.md)、[不卸载系统包](guardrails/GRD-002-no-system-package-uninstall.md)、[变更前备份](guardrails/GRD-004-backup-before-change.md)、[密钥卫生](guardrails/GRD-006-secret-hygiene.md)、[Agent 行为红线](guardrails/GRD-012-agent-operating-rules.md)。
+- **护栏层** [guardrails/README.md](guardrails/README.md)：16 条不可协商红线与检查方式；Agent 每次变更前逐条对照。
+  高频必读：[不 Root/不解锁默认](guardrails/GRD-001-no-root-no-unlock-default.md)、[不卸载系统包](guardrails/GRD-002-no-system-package-uninstall.md)、[变更前备份](guardrails/GRD-004-backup-before-change.md)、[密钥卫生](guardrails/GRD-006-secret-hygiene.md)、[Agent 行为红线](guardrails/GRD-012-agent-operating-rules.md)、[协议修改须回归且不得弱化校验](guardrails/GRD-016-agent-protocol-regression.md)。
 
 ---
 
@@ -152,6 +163,9 @@ python scripts/dev/check-links.py --strict-anchors
 | TOOL-008 | 服务器只读健康检查 | [toolkit/termux/healthcheck.sh](toolkit/termux/healthcheck.sh) |
 | TOOL-009 | 24h soak 观测记录 | [toolkit/termux/soak.sh](toolkit/termux/soak.sh) |
 | TOOL-010 | Termux:Boot 自启引导（幂等/dry-run） | [toolkit/termux/boot-starter.sh](toolkit/termux/boot-starter.sh) |
+| TOOL-011 | Root 实验设备技术姿态检查 | `python -m toolkit.repurpose rootcheck` |
+| TOOL-012 | 救援包 SHA-256 清单生成/校验 | `python -m toolkit.repurpose rescue-kit` |
+| TOOL-013 | 统一质量门（index+validate+单测+链接） | `python -m toolkit.repurpose preflight` |
 
 > **工具登记表以 [toolkit/README.md](toolkit/README.md) 为准**（含 CLI 契约、退出码、schema、扩展 SOP）；上表是给人类的总览。新增工具必须先在该登记表分配 `TOOL-<下一个号>` 再实现。
 
@@ -176,8 +190,9 @@ python scripts/dev/check-links.py --strict-anchors
 
 > 本节只写摘要（≤8 行）；详细状态见 [CHANGELOG.md](CHANGELOG.md) 当前窗口、[backlog.json](backlog.json) 与 [cases/README.md](cases/README.md)；历史见 [changelog/](changelog/README.md)（默认不读）。
 
-- 方法论：MTH-000..011 初版完成；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；案例：部分验收（24h soak 等未完成，不得表述为全验收）。
-- 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-011](methodology/10-document-lifecycle.md)。
+- 方法论：MTH-001..014 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-014 Agent SOP 多为"已立规范、未全实测"）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.2 与 ADR 决策层已落地。
+- 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/救援演练（见 [CASE-003](cases/ace-pro-pgp110/README.md)），仍属实验轨。
+- 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-011](methodology/10-document-lifecycle.md)；决策记录见 [adr/README.md](adr/README.md)。
 
 ---
 
@@ -188,6 +203,8 @@ python scripts/dev/check-links.py --strict-anchors
 - 新增一篇方法论：使用 [toolkit/templates/methodology-doc.md](toolkit/templates/methodology-doc.md)，ID 取 MTH 未用号；
 - 新增一条踩坑：使用 [toolkit/templates/pitfall.md](toolkit/templates/pitfall.md)，必须含证据与验证；
 - 新增一条护栏：使用 [toolkit/templates/guardrail.md](toolkit/templates/guardrail.md)，必须含可执行检查方式；
+- 新增一条决策：使用 [toolkit/templates/adr.md](toolkit/templates/adr.md)，取未用的 ADR 号并登记 [adr/README.md](adr/README.md)；
+- 新增需求/交付卡：使用 [toolkit/templates/request-card.md](toolkit/templates/request-card.md)，按 [MTH-013](methodology/12-delivery-governance.md) 过阶段门；
 - 新增工具能力：实现命令 + 单元测试 + 更新 `toolkit/README.md` 与 schema；
 - 新增设备案例：复制 [toolkit/templates/case-study.md](toolkit/templates/case-study.md) 并填 `profile.json`。
 
@@ -198,6 +215,7 @@ python scripts/dev/check-links.py --strict-anchors
 ## 12. 历史、安全与许可
 
 - **历史**：本仓库前身 `haydn-server`（2026-11-10 ~ 2026-11-11），原始 README 已归档于 [docs/90-archive/README-2026-11-10.md](docs/90-archive/README-2026-11-10.md)；变更历史见 [CHANGELOG.md](CHANGELOG.md)（当前窗口）与 [changelog/](changelog/README.md)（按月归档，默认不读）；案例状态以 [docs/00-overview/当前状态.md](docs/00-overview/当前状态.md) 为准（仅描述 haydn 案例，不描述方法论层）。
+- **决策**：架构选型、口径裁决与不可逆变更记录在 [adr/README.md](adr/README.md)（ADR-0001 起）；历史决策不改写，被取代只标 `superseded` 并回链新 ADR。
 - **归档**：`CHANGELOG.md` 当前窗口 ≤8 条；超窗条目按月移入 `changelog/YYYY-MM.md`（只读、默认不读）；记录边界与操作步骤见 [MTH-011](methodology/10-document-lifecycle.md) 与 [changelog/README.md](changelog/README.md)。
 - **安全**：任何 token/密码/证书私钥/备份口令都不进入仓库、日志、文档、聊天；发现泄露先轮换再清理历史（[GRD-006](guardrails/GRD-006-secret-hygiene.md)）。
 - **许可**：个人自用与研究项目；第三方项目仅按许可证参考/使用，GPL 只读参考不复制（[GRD-010](guardrails/GRD-010-license-compliance.md)）。

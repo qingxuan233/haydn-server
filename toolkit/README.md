@@ -4,10 +4,10 @@ title: 通用改造工具链 toolkit（CLI / schema / 模板 / Termux 脚本 / �
 type: index
 status: current
 audience: human, agent
-tags: toolkit, cli, schema, templates, termux, index, validate, offline-fixture
+tags: toolkit, cli, schema, templates, termux, index, validate, governance, preflight, offline-fixture
 depends: MTH-000, MTH-002
-updated: 2026-11-11
-agent_hint: 改工具前先读本页契约与 [AGENTS](../AGENTS.md) §7；任何子命令/字段/schema 变更必须同步 tests + schema + 本 README，并重跑 validate/index/unitest
+updated: 2026-11-13
+agent_hint: 改工具前先读本页契约与 [AGENTS](../AGENTS.md) §7；任何子命令/字段/schema 变更必须同步 tests + schema + 本 README，并重跑 preflight（index→validate --strict→unittest→check-links，退出码 0/3/4）
 ---
 
 # TOOL-000 · 通用改造工具链 toolkit
@@ -39,10 +39,15 @@ python -m toolkit.repurpose probe --base profiles/<codename>.json --out profiles
 
 # 4) 内容层维护
 python -m toolkit.repurpose index              # 重建仓库根 agent-manifest.json
-python -m toolkit.repurpose validate --strict  # front matter/ID/断链/JSON/manifest
+python -m toolkit.repurpose index --check       # 只读校验生成物是否与内容一致（不一致 exit 4）
+python -m toolkit.repurpose validate --strict  # front matter/协议/命名/PIT/ADR/backlog/归档/断链/manifest
 python -m unittest discover -s toolkit/tests -t . -v
 
-# 5) Windows 包装（等价命令）
+# 5) 统一质量门（一次串联四道门；退出码 0=全绿 / 3=有跳过 / 4=失败）
+python -m toolkit.repurpose preflight
+python -m toolkit.repurpose preflight --no-index --skip-tests  # 本地快速裁剪（跳过步骤计 SKIPPED；CI 请用完整 preflight）
+
+# 6) Windows 包装（等价命令）
 powershell -NoProfile -ExecutionPolicy Bypass -File toolkit\repurpose.ps1 --help
 ```
 
@@ -63,17 +68,19 @@ toolkit/
 │   ├── probe.py           # 补 capabilities/verdicts
 │   ├── assess.py          # 离线路线评估 A/B/C/D + 门禁
 │   ├── plan.py            # P0–P6 阶段计划（json/md）
+│   ├── rootcheck.py / rescuekit.py  # Root 姿态检查 / 救援包 SHA-256 清单（G-L1）
 │   ├── profile.py         # profile 结构校验 + new-profile 生成
 │   ├── frontmatter.py     # flat YAML front matter 解析（容 BOM/CRLF）
-│   ├── docpolicy.py       # 读取 doc-policy（体积/窗口/分片上限，缺失回退默认）
-│   ├── indexgen.py        # 生成根摘要 agent-manifest.json + agent-manifest.d/ 分片
-│   ├── validate.py        # 内容层 + doc-policy + 根/分片一致性校验（退出码 4）
+│   ├── docpolicy.py       # 读取 doc-policy（体积/协议/命名/治理/归档/分片上限，缺失回退默认）
+│   ├── indexgen.py        # 生成根摘要 + agent-manifest.d/ 分片；check_bundle（index --check）
+│   ├── governance.py      # 协议/命名/PIT/ADR/CHANGELOG 归档/backlog/Agent 回归机检
+│   ├── validate.py        # 内容层 + 治理契约 + doc-policy + 根/分片一致性校验（退出码 4）
 │   ├── util.py            # JSON I/O/时间/错误类型/路径工具
 │   └── __init__.py
 ├── templates/             # 模板（front matter 示例合法；占位符只在代码块）
-├── schema/                # 自描述 JSON Schema + doc-policy.json
+├── schema/                # 自描述 JSON Schema + doc-policy.json + backlog.schema.json
 ├── termux/                # Termux 侧脚本（只读/安全可中断）
-└── tests/                 # unittest + fixtures（离线、无真机）
+└── tests/                 # unittest + fixtures（离线、无真机；repo_builder 生成完整最小仓库）
 
 # 仓库根生成物（由 index 生成，不手改）
 agent-manifest.json        # 根摘要（≤160 行/≤16KB，含 shards 映射）
@@ -91,24 +98,27 @@ agent-manifest.d/          # methodology.json / pitfalls.json / guardrails.json 
 | `probe` | `--base`（可选）、`--out`、`--adb-fixture`、`--json` | 人类摘要；`--json` 打印完整 JSON | 在 profile 上补 12 项 `capabilities` 与 `verdicts`；无设备但有 `--base` 时进入离线模式 |
 | `assess` | `--profile`（必填）、`--json` | 人类摘要 | 输出 `repurpose.assessment.v1`：route/route_label/confidence/gates/blocked/alternatives/risks/next_steps/assumptions/unknowns |
 | `plan` | `--profile`（必填）、`--route auto\|A\|B\|C\|D`、`--format json\|md` | markdown | 输出 P0–P6 阶段：id/title/objective/actions/deliverables/gate/exit_criteria/rollback；A 与 B 动作不同；auto 用 assess 结论 |
+| `rootcheck` | `--profile`（必填）、`--json`、`--strict` | 人类摘要 | 离线检查 Root 实验设备技术姿态（`repurpose.rootcheck.v1`）：bootloader/AVB/verity/SELinux/管理器/唯一性/内核前提/分区/ARB + 授权/救援/演练/数据/固件/网络人工项；不改变 assess 路线顺序；`--strict` 非 `tech-ready` 时 exit 4 |
+| `rescue-kit` | `--dir`（必填）、`--init`/`--verify`（二选一）、`--notes`、`--force`、`--json` | 人类摘要 | 对救援包目录生成/校验 `rescue-manifest.json`（相对路径+sha256）；已有清单默认拒绝覆盖（`--force` 需先核对来源/版本）；`--verify` 缺失/清单外新增/哈希不一致时 exit 4；只读写本地目录 |
 | `new-profile` | `--codename`（必填）、`--out` | 打印 profile JSON | 从模板生成可编辑骨架（含 unknowns 提示），后续人工补证 |
-| `index` | `--root`、`--out`、`--json` | 人类摘要 | 扫描 methodology/pitfalls/guardrails/cases 的 front matter，生成 `<root>/agent-manifest.json` 根摘要 + `agent-manifest.d/` 四层分片；目录缺失跳过不失败；旧分片（本工具 schema）自动清理 |
-| `validate` | `--root`、`--strict`、`--json` | 人类摘要 | 检查 front matter/ID/相对链接/JSON/根与分片一致性，并按 `toolkit/schema/doc-policy.json` 校验文档行数、CHANGELOG 窗口≤8、归档字节、manifest 上限（`--strict` 下 warning 也算失败） |
+| `index` | `--root`、`--out`、`--check`、`--json` | 人类摘要 | 扫描四层 front matter，生成根摘要 + `agent-manifest.d/` 分片；目录缺失跳过不失败；旧分片自动清理。`--check` 只读重建并与磁盘生成物比较（规范化 generated_at；一致 exit 0 / 不一致 exit 4，不写盘） |
+| `validate` | `--root`、`--strict`、`--mtime-check`、`--json` | 人类摘要 | 检查 front matter/ID/相对链接/JSON、AGENTS.md 协议（章节/版本/哨兵/320 行硬上限）、新层命名、PIT/ADR/CHANGELOG 归档/backlog schema、manifest 一致性；`--strict` 下 warning 也失败；索引一致性以内容机检为准，`--mtime-check` 才按文件 mtime 判过期（默认关闭，CI 安全） |
+| `preflight` | `--root`、`--no-index`、`--skip-tests`、`--skip-links`、`--json` | 步骤表 | 串联 index → validate --strict → unittest → check-links；输出步骤 name/status/耗时/摘要；`--json` 为 `repurpose.preflight.v1`（ok/steps/skipped/failed）；退出码 **0 全绿 / 3 有 SKIPPED / 4 任一步 FAILED** |
 
 **退出码**（与 `--help` epilog 一致）：
 
 | 码 | 含义 | 触发场景 |
 |---|---|---|
-| 0 | 成功 | 命令完成且无失败 |
+| 0 | 成功 | 命令完成且无失败（preflight 全绿） |
 | 2 | 用法/输入错误 | argparse 参数错误、profile 结构不合法、`--route` 非法 |
-| 3 | 前置条件不满足 | 无 adb、无在线设备、fixture 文件不存在/格式错误、probe 无 base 且无设备 |
-| 4 | 校验失败 | `validate` 发现 error；`--strict` 下 warning 也算失败 |
+| 3 | 前置条件不满足 / 步骤被跳过 | 无 adb、无在线设备、fixture 不可用、probe 无 base 且无设备；**preflight 存在 SKIPPED**（`--skip-tests/--skip-links/--no-index` 或 check-links 脚本缺失，CI 可消费） |
+| 4 | 校验失败 | `validate` 发现 error；`rootcheck --strict` 非 `tech-ready`；`rescue-kit --verify` 不一致；**`index --check` 生成物不一致**；**`preflight` 任一步 FAILED**；`--strict` 下 warning 也算失败 |
 | 130 | 被中断 | Ctrl-C（脚本类：termux 脚本明确可中断；Python 命令不写设备） |
 
-`index` 是唯一会写仓库根文件的子命令（生成物 `agent-manifest.json` + `agent-manifest.d/`）；其余探测命令只读设备。
+`index`/`preflight` 是仅有的会写仓库根生成物的命令（都通过 index 步骤写 `agent-manifest.json` + `agent-manifest.d/`；`index --check` 与 `preflight --no-index` 只读）；其余探测命令只读设备。
 `index --json` 会报告根/分片的行数、字节数、条数与清理结果；`--out <path>` 只重定向根摘要（分片仍写默认目录，便于 CI 对比）。
 
-## 3.1 工具登记表（TOOL-001..010，新增工具先在这里登记）
+## 3.1 工具登记表（TOOL-001..013，新增工具先在这里登记）
 
 | ID | 能力 | 入口 | 设备/环境 |
 |---|---|---|---|
@@ -118,12 +128,15 @@ agent-manifest.d/          # methodology.json / pitfalls.json / guardrails.json 
 | TOOL-004 | P0–P6 阶段计划 | `python -m toolkit.repurpose plan` | 离线 |
 | TOOL-005 | 新设备档案脚手架 | `python -m toolkit.repurpose new-profile` | 离线 |
 | TOOL-006 | Agent 机器索引生成（根摘要 `agent-manifest.json` + `agent-manifest.d/` 四层分片） | `python -m toolkit.repurpose index` | 离线（仓库内） |
-| TOOL-007 | 内容与预算一致性校验（front matter/ID/断链/JSON/doc-policy/分片） | `python -m toolkit.repurpose validate` | 离线（仓库内） |
+| TOOL-007 | 内容与治理契约校验（front matter/ID/断链/JSON/协议/命名/PIT/ADR/backlog/归档/doc-policy/分片） | `python -m toolkit.repurpose validate` | 离线（仓库内） |
 | TOOL-008 | 服务器只读健康检查 | [termux/healthcheck.sh](termux/healthcheck.sh) | proot 服务器内 |
 | TOOL-009 | 24h soak 观测记录（可中断） | [termux/soak.sh](termux/soak.sh) | proot 服务器内 |
 | TOOL-010 | Termux:Boot 自启引导（幂等/dry-run） | [termux/boot-starter.sh](termux/boot-starter.sh) | Termux 内 |
+| TOOL-011 | Root 实验设备技术姿态检查（含人工确认项） | `python -m toolkit.repurpose rootcheck` | 离线（消费 profile） |
+| TOOL-012 | 救援包 SHA-256 清单生成/校验（G-L1） | `python -m toolkit.repurpose rescue-kit` | 离线（本地目录） |
+| TOOL-013 | 统一质量门（index→validate --strict→unittest→check-links，三态退出码 0/3/4） | `python -m toolkit.repurpose preflight` | 离线（仓库内；外部步骤用 `sys.executable`） |
 
-> 规则：①新增能力**先登记** `TOOL-<下一个号>` 再实现；ID 只增不复用。②`agent-manifest.json` 的 `tools` 是**物理入口视图**（当前 5 个：CLI/包装器/3 个 Termux 脚本），不替代本登记表。③`toolkit/templates/*` 中的 `TOOL-*`/示例 ID 只是排版示例，不占正式编号。④改契约必须同步实现 + tests + 本表 + schema + README，并重跑 §10 质量门。
+> 规则：①新增能力**先登记** `TOOL-<下一个号>` 再实现；ID 只增不复用。②`agent-manifest.json` 的 `tools` 是**物理入口视图**（当前 5 个：CLI/包装器/3 个 Termux 脚本），不替代本登记表。③`toolkit/templates/*` 中的 `TOOL-*`/示例 ID 只是排版示例，不占正式编号。④改契约必须同步实现 + tests + 本表 + schema + README，并重跑 `preflight`（§10 质量门）。
 
 ---
 
@@ -162,7 +175,8 @@ probe 的 12 项能力（顺序固定）：`proot`、`containers`、`systemd`、
 解析器：[frontmatter.py](repurpose/frontmatter.py)；schema：[frontmatter.schema.json](schema/frontmatter.schema.json)。
 必需键：`id,title,type,status,audience,tags,updated,agent_hint`（详见 [AGENTS.md](../AGENTS.md) §4.2）；
 `audience`/`tags`/`depends` 是逗号分隔列表（`[a, b]` 也兼容）；flat YAML，不接受嵌套。
-额外约定：pitfall 用 `severity: S1..S4` + `domain`；guardrail 用 `severity: blocker|warning` + `scope: device|server|agent|repo`。
+额外约定：pitfall 用 `severity: S1..S4` + `domain`；guardrail 用 `severity: blocker|warning` + `scope: device|server|agent|repo`；
+`type` 另含 `adr`/`request`，`status` 另含 `accepted`/`superseded`（ADR）；ADR 用 4 位 ID（如 `ADR-0001`），`id` 正则允许 3/4 位数字。
 解析器容忍 UTF-8 BOM / CRLF / 全行注释；重复键、缺失冒号等记入错误列表但不抛异常。
 
 ## 5. 路线与门禁（assess）
@@ -186,6 +200,13 @@ probe 的 12 项能力（顺序固定）：`proot`、`containers`、`systemd`、
 `blocked` 记录被阻断的路线/能力，`alternatives` 给出降级/升级备选，`next_steps` 给出可执行动作，
 `assumptions` 明确"未证实按 unknown 处理"。
 
+**`rootcheck` 与 assess 的关系**：`assess` 回答"走哪条路线"（A/B/C/D 与 G-A/G-B0…）；
+`rootcheck` 只回答"这台已授权实验设备的 Root 技术姿态是否可进入人工复核/验收"，
+输出 `repurpose.rootcheck.v1`（`RC-T01..T09` 技术项 + `RC-M01..M07` 人工项），
+**不新增/不改变 assess 的路线与门禁顺序**，也不替代 GRD-015 的授权、救援与演练人工确认。
+
+`repurpose.rootcheck.v1` 字段：`schema/generated_at`、`profile{schema,generated_at,source_mode}`、`verdict`（`tech-ready`/`blocked`/`insufficient-evidence`）、`tech_ready`（技术项全 pass 才 true，unknown 不当作通过）、`manual_review_required`（固定 true）、`summary{pass,fail,unknown,total,manual}`、`checks[]`/`manual_checks[]`（`{id,name,status,blocking,reason,action[,required]}`）、`blocking_failures[]`/`blocking_unknowns[]`、`next_steps[]`。
+
 ## 6. index：根摘要 + 分层分片（Agent 分层加载）
 
 > 解决"一次性读 50KB manifest"的上下文膨胀：**根摘要 ≤160 行/≤16KB**，完整条目按四层分片；
@@ -194,7 +215,13 @@ probe 的 12 项能力（顺序固定）：`proot`、`containers`、`systemd`、
 ```powershell
 python -m toolkit.repurpose index            # 重建根摘要 + 四层分片
 python -m toolkit.repurpose index --json     # 查看 root/shards 行数、字节、条数、清理结果
+python -m toolkit.repurpose index --check    # 只读一致性校验：内存重建 vs 磁盘生成物（CI 用）
 ```
+
+`index --check` 不写盘：规范化两边 `generated_at`（时间戳不同不算差异）后逐 JSON 比较根摘要与四层分片；
+一致 exit 0（打印"index 一致"），不一致打印差异文件清单并 exit 4（`--json` 为 `repurpose.index-check.v1`）。
+**索引一致性以内容机检（`MANIFEST_COUNTS`/`SHARD_CONTENT`）为准，不依赖文件 mtime**——新 clone/CI 的
+checkout 时间必然晚于提交的 `generated_at`，若按 mtime 判定会假失败；本地排查可用 `validate --mtime-check`。
 
 产物（schema：[agent-manifest.schema.json](schema/agent-manifest.schema.json) /
 [manifest-shard.schema.json](schema/manifest-shard.schema.json)）：
@@ -222,33 +249,45 @@ python -c "import json;d=json.load(open('agent-manifest.d/guardrails.json',encod
 # ③ 再读单篇主题文档（不要一次加载全部四个分片）
 ```
 
-## 7. validate：内容层 + doc-policy + 分片一致性
+## 7. validate：内容层 + 治理契约 + doc-policy + 分片一致性
 
 ```powershell
 python -m toolkit.repurpose validate            # warning 仅提示（exit 0/4）
 python -m toolkit.repurpose validate --strict    # warning 也视为失败（DoD 基线）
 python -m toolkit.repurpose validate --json
+python -m toolkit.repurpose validate --mtime-check  # 本地排查才用：按 mtime 判 manifest 过期
 ```
 
 检查项：
 
-1. **front matter**：新层 Markdown（methodology/pitfalls/guardrails/cases + `toolkit/README.md`）必需键；
-2. **ID/链接/JSON**：ID 唯一且符合 `PREFIX-000`；相对 Markdown 链接目标存在（不检查 anchor；
+1. **front matter**：新层 Markdown（methodology/pitfalls/guardrails/cases/**adr** + `toolkit/README.md`）必需键；
+2. **ID/链接/JSON**：ID 唯一且符合 `PREFIX-000`/`PREFIX-0000`（ADR）；相对 Markdown 链接目标存在（不检查 anchor；
    `#anchor`/绝对路径按新层规范记 warning）；根 JSON、内容层、toolkit、docs、scripts、android-bridge 非隐私 JSON 可解析；
-3. **doc-policy**（[schema/doc-policy.json](schema/doc-policy.json)，schema `repurpose.doc-policy.v1`）：
-   - 行数上限：`AGENTS.md`≤340、`README.md`≤280、`methodology/*.md`≤300、`pitfalls/*.md`≤90、
-     `guardrails/*.md`≤90、`cases/*/README.md`≤280、`cases/*/oem-profile.md`≤200；
+3. **协议契约**（`governance.py` §3.1）：AGENTS.md 必需 H2（启动清单/红线/任务协议/完成定义/机器可读接口/本文件的维护）、
+   `| 协议版本 | vX.Y |` 行、末行哨兵 `<!-- END-OF-PROTOCOL -->`、320 行硬上限（>320 error，201~320 只记 `checked.protocol_tier=warning`，strict 不失败）；
+4. **治理契约**（`governance.py` §3.2–§3.7）：
+   - 命名：methodology/pitfalls/guardrails/cases/adr/toolkit-templates 的 ASCII 小写 kebab-case、前缀与禁止状态词（README 豁免）；
+   - PIT：编号连续/正文五段（症状/根因/规避/验证/证据）/条目数 ≤40（不强制旧条目补新字段）；
+   - ADR：`NNNN-slug.md` 连续、id/type/status（proposed/accepted/superseded）、四段、`superseded_by` 回链、索引无孤儿；
+   - CHANGELOG §4 归档索引 ↔ `changelog/*.md` 双向一致（文件存在/条数/版本范围）；
+   - backlog：按 [backlog.schema.json](schema/backlog.schema.json) 校验结构，并检查 ID 连续/active 状态字段/depends 断链；
+   - Agent 回归 AR-02（红线区每条含 GRD 链接且 ≥9 条）/ AR-03（manifest.invariants 覆盖关键红线词）；
+   - 缺新结构文件的临时 fixture 仓库会**降级跳过**（不误报 error）；真实仓库必须全绿。
+5. **doc-policy**（[schema/doc-policy.json](schema/doc-policy.json)，schema `repurpose.doc-policy.v1`）：
+   - 行数上限：`AGENTS.md`≤320、`README.md`≤280、`methodology/*.md`≤300、`pitfalls/PIT-*.md`≤90、
+     `pitfalls/README.md`≤150、`guardrails/GRD-*.md`≤90、`guardrails/README.md`≤130、`cases/*/README.md`≤280、
+     `cases/*/oem-profile.md`≤200、`toolkit/README.md`≤440、`toolkit/templates/*.md`≤130、`adr/*.md`≤120、`adr/README.md`≤90、`backlog.json`≤640；
    - `changelog/*.md`≤256KB；CHANGELOG **当前窗口数据行**（`| 2026-11-11 | vX.Y | … |` 形式）≤8；
      `changelog/` 归档默认不读、只读，仅追溯时读单个文件（见 [MTH-011](../methodology/10-document-lifecycle.md)）；
    - `AGENTS.md`/`README.md` 的"状态段落"≤8 行（只留结论与链接）；
    - 策略文件缺失/损坏时回退内置默认策略并记 `POLICY_MISSING`/`POLICY_INVALID` warning。
-4. **manifest 根/分片一致性**：根 ≤160 行/≤16KB 且不含完整 content；四层 `shards` 映射完整；
+6. **manifest 根/分片一致性**：根 ≤160 行/≤16KB 且不含完整 content；四层 `shards` 映射完整；
    分片 ≤300 行/≤32KB/≤40 条；counts 与分片/当前内容一致；分片 entry 的 ID 全局唯一、path 存在且相对、
    与内容 front matter 字段同步；旧格式/孤儿分片/过期索引都会提示重跑 index。
-5. **敏感值启发式**（私钥/令牌片段）只记 warning，不打印内容。
+7. **敏感值启发式**（私钥/令牌片段）只记 warning，不打印内容。
 
-policy/manifest 违规在 `--strict` 下 exit 4、非 strict 下仅 warning；若违规来自 Lead/维护者负责的文档（如窗口超限），
-validate 只报告，不自动改那些文件。
+内容层错误与机器契约违反固定 error；policy/manifest 预算类违规在 `--strict` 下 exit 4、非 strict 下仅 warning；
+`MANIFEST_STALE` 仅 `--mtime-check` 开启时报告。若违规来自 Lead/维护者负责的文档，validate 只报告，不自动改那些文件。
 
 
 ## 8. 模板与 schema（新增内容先复制模板）
@@ -263,6 +302,8 @@ validate 只报告，不自动改那些文件。
 | [templates/oem-profile.md](templates/oem-profile.md) | OEM 差异 profile（安装/自启/后台/权限重置/验证） |
 | [templates/acceptance.md](templates/acceptance.md) | 验收清单（A1–A8，证据驱动） |
 | [templates/runbook.md](templates/runbook.md) | 可执行 Runbook（前置/步骤/验证/回滚/记录） |
+| [templates/adr.md](templates/adr.md) | ADR 决策记录（状态/背景/决策/后果 + 备选方案对比） |
+| [templates/request-card.md](templates/request-card.md) | 需求基线卡（目标/非目标/验收/DRI/风险） |
 | [templates/device-profile.json](templates/device-profile.json) | profile 骨架（字段全、值全 unknown，可直接补证） |
 
 > 模板使用警告：①模板 front matter 里的示例 ID（如 `MTH-011`/`PIT-021`/`GRD-015`/`CASE-003`）**只是示例、不占正式编号**，复制时必须查 manifest 改成当前未占用号；②模板正文 H2 带编号只为阅读方便，**正式 PIT/GRD 必须使用各自 README 规定的无编号固定 H2**（否则人/机器检索会不一致）；③模板中的 `<...>` 占位符只出现在演示代码块，正式文档不得保留。
@@ -272,8 +313,9 @@ validate 只报告，不自动改那些文件。
 | [schema/device-profile.schema.json](schema/device-profile.schema.json) | `repurpose.device-profile.v1`（detect/probe 产物、cases profile） |
 | [schema/agent-manifest.schema.json](schema/agent-manifest.schema.json) | `repurpose.agent-manifest.v1` 根摘要（含 shards、无 content） |
 | [schema/manifest-shard.schema.json](schema/manifest-shard.schema.json) | `repurpose.manifest-shard.v1` 按层分片（entries 字段/≤40 条） |
-| [schema/frontmatter.schema.json](schema/frontmatter.schema.json) | 新层 Markdown front matter 契约（含 pitfall/guardrail 额外键） |
-| [schema/doc-policy.json](schema/doc-policy.json) | `repurpose.doc-policy.v1` 文档行数/归档窗口/manifest 上限策略（validate/index 读取） |
+| [schema/frontmatter.schema.json](schema/frontmatter.schema.json) | 新层 Markdown front matter 契约（含 pitfall/guardrail 额外键、adr/request 类型） |
+| [schema/backlog.schema.json](schema/backlog.schema.json) | `repurpose.backlog.v1` backlog.json 字段/枚举/正则 + 语义规则（governance 内置小校验器读取） |
+| [schema/doc-policy.json](schema/doc-policy.json) | `repurpose.doc-policy.v1` 文档行数/协议/命名/治理/归档窗口/manifest 上限策略（validate/index 读取） |
 
 Schema 均为**自描述 JSON Schema（draft-07）**，校验器不依赖 `jsonschema` 库；
 模板/schema/doc-policy 一致性由单元测试覆盖（front matter 必需键、类型枚举、pitfall/guardrail 额外键、
@@ -292,19 +334,29 @@ Schema 均为**自描述 JSON Schema（draft-07）**，校验器不依赖 `jsons
 ## 10. 测试与质量门
 
 ```powershell
-python -m unittest discover -s toolkit/tests -t . -v
+python -m unittest discover -s toolkit/tests -t . -v   # 当前 282 项，全绿
+python -m toolkit.repurpose preflight                   # 一次跑完四道门（0/3/4 三态）
 ```
 
 覆盖：front matter（BOM/CRLF/列表/引号/错误分支）、profile 结构校验与模板/schema 一致性、
 assess 四条路线与门禁/软门禁/未知降置信度、plan 的 P0–P6 与 A/B 差异、index（根摘要 ≤160 行/≤16KB、
-四层分片字段与限额、counts 一致、旧分片清理、缺失目录/front matter 半成品容错）、
-validate（重复 ID/断链/anchor/绝对路径/JSON/manifest 过期、doc-policy 行数/CHANGELOG 窗口≤8/
-归档字节/状态段落、根-分片一致性与 legacy content、policy 缺失回退、strict 升级）、
-CLI（`--help` 退出码/subcommand help、fixture 离线 detect/probe/assess/plan/new-profile/index/validate、
-Cp936 管道下 JSON 仍为合法 UTF-8）。
+四层分片字段与限额、counts 一致、旧分片清理、缺失目录/front matter 半成品容错、`index --check` 一致/篡改分片/篡改根摘要/generated_at 无关、两次重建仅 generated_at 不同（AR-06 幂等））、
+validate（重复 ID/断链/anchor/绝对路径/JSON/manifest 一致性与 legacy content、doc-policy 行数/CHANGELOG 窗口≤8/归档字节/状态段落、
+`--mtime-check` 默认关闭语义、policy 缺失回退、strict 升级）、
+governance（协议缺章节/缺哨兵/版本行非法/320 硬上限与 201~320 不算失败、命名大写/中文/状态词/前缀/README 豁免、
+PIT 跳号/缺段/超 40、ADR 文件名/ID/状态/缺段/superseded 回链/索引孤儿、CHANGELOG 归档条数/文件缺失/版本范围/未登记、
+backlog 缺字段/非法枚举/done 缺 result/ID 跳号/depends 断链/outputs 绝对路径、AR-02/AR-03，
+以及 **AR-04 反例自证**：构造 6 类违规后 validate 报 error 且 CLI exit 4）、
+preflight（全绿 0 / `--skip-*` 出 SKIPPED=3 / validate 失败=4 / unittest 失败=4 / check-links 失败=4 / 脚本缺失降级 SKIPPED、
+步骤表与 `--json` 字段）、
+CLI（`--help`/退出码、fixture 离线 detect/probe/assess/plan/rootcheck/rescue-kit/new-profile/index/validate/preflight、
+Cp936 管道 JSON 合法 UTF-8）、rootcheck（三态/人工项/AVB 矛盾/verity/SELinux/多管理器/GKI/KALLSYMS/分区/ARB）、
+rescue-kit（清单/相对路径/自排除/修改/缺失/新增/空目录/CLI 0/4/2）。
 测试全部离线（fixture：[adb-haydn.json](tests/fixtures/adb-haydn.json)、
 [profile-haydn-locked.json](tests/fixtures/profile-haydn-locked.json)、
-[repo_builder.py](tests/fixtures/repo_builder.py)），不依赖真机与网络。
+[profile-root-lab-ready.json](tests/fixtures/profile-root-lab-ready.json)、
+[repo_builder.py](tests/fixtures/repo_builder.py)），不依赖真机与网络；`repo_builder` 生成
+含 AGENTS/backlog/CHANGELOG/adr 的完整最小仓库，另有 helper 构造违规样本与 preflight stub。
 
 ## 11. 扩展子命令/SOP（改契约必须同步）
 
@@ -313,11 +365,11 @@ Cp936 管道下 JSON 仍为合法 UTF-8）。
 3. 在 `tests/` 补单元测试（成功/边界/失败分支），并跑全量 unittest；
 4. 更新本 README 的 CLI 契约、字段/schema、目录表；
 5. 涉及 front matter/ID/schema 时同步更新 `schema/` 与模板；
-6. 运行 `validate --strict` + `index` + 全量测试；`agent-manifest.json` + `agent-manifest.d/` 与内容一致
-   （根摘要 ≤160 行、分片 ≤300 行/≤40 条、doc-policy 全部在限内）；
+6. 运行 `python -m toolkit.repurpose preflight`（index + validate --strict + 全量测试 + check-links，退出码 0 才算完成）；
+   `agent-manifest.json` + `agent-manifest.d/` 与内容一致（`index --check` exit 0；根摘要 ≤160 行、分片 ≤300 行/≤40 条、doc-policy 全部在限内）；
 7. 对外契约变化在 CHANGELOG.md 当前窗口记录（Lead/维护者提交；窗口将超 8 条时先按 MTH-011 归档），并按
    [MTH-009](../methodology/08-agent-handoff.md) 做影响传播（MTH/PIT/GRD/CASE 交叉链接）。
-   > 如需"一条命令跑完所有 CI 门"，见 [backlog.json](../backlog.json) BL-003（`preflight` 子命令，尚未实现）。
+   > "一条命令跑所有 CI 门"即 TOOL-013 `preflight`；CI 调 `index --check` + **完整** `preflight`（不要用 `--no-index`，会因 SKIPPED 退 3）。
 
 ## 12. 与 AGENTS / MTH / PIT / GRD / CASE 的接口约定
 
@@ -330,7 +382,7 @@ Cp936 管道下 JSON 仍为合法 UTF-8）。
 | [pitfalls/README.md](../pitfalls/README.md) | manifest 条目必须带 `severity`/`domain`，供 Agent 过滤；PIT 复现优先用工具只读命令 |
 | [guardrails/README.md](../guardrails/README.md) | 工具不得通过写设备/提权"绕过"红线；验证命令只读 |
 | [cases/README.md](../cases/README.md) | 案例 profile 用 `repurpose.device-profile.v1`，经 assess 验证；敏感值脱敏 |
-| `agent-manifest.json` / `backlog.json` | manifest 由 `index` 重建；backlog 由维护者/Lead 维护，工具只读 |
+| `agent-manifest.json` / `backlog.json` | manifest 由 `index` 重建（`index --check` 只读比对）；backlog 由维护者/Lead 维护，`validate` 按 [backlog.schema.json](schema/backlog.schema.json) 机检结构/语义 |
 
 ## 13. 安全与隐私
 
@@ -339,6 +391,7 @@ Cp936 管道下 JSON 仍为合法 UTF-8）。
 - 输出只含结构化字段与命令名（`adb shell getprop` 等），不打印原始设备输出、不打印 token/IP；
 - 所有设备命令**只读**（`getprop`/`cat`/`ls`/`df`/`dumpsys`/`wm`/`pm list`/`unshare` 临时实验/
   `test -r/-w`）；无任何写入/重启/安装/卸载操作；
+- `rootcheck`/`rescue-kit` 均为离线检查：`rootcheck` 不连接/不写设备；`rescue-kit` 只读写本地目录、清单仅存相对 POSIX 路径与 SHA-256；两者输出不含序列号/绝对路径/凭据；
 - 无第三方依赖；无网络访问（除 `soak.sh --health-url` 由调用方显式提供）。
 
 ## 14. 已知限制（诚实标注）
@@ -351,6 +404,8 @@ Cp936 管道下 JSON 仍为合法 UTF-8）。
   evidence 中已注明；报告不得把 ADB 可读误写为 App 可读。
 - Windows 环境无 bash，`termux/*.sh` 只做静态审查与真实 Termux 使用，未在本机执行（已保持 POSIX/bash
   兼容、只读/可中断设计）；真机/真 Termux 验证列入 backlog。
+- `rootcheck` 只消费 profile 已采集字段：`unknown` 按未通过处理；ARB 检查仅为 `.500/.501/.503` 启发式（以厂商公告为准）；`manual_checks` 不会自动判定完成；真机姿态仍需按 [MTH-012](../methodology/11-root-lab.md) 实测补证。
+- `rescue-kit --verify` 只证明"目录与清单一致"，不证明镜像版本匹配/可救援；已有清单默认拒绝覆盖（`--force` 前必须核对来源与版本，否则只是"洗白"错误状态）；清单外新增文件判失败。
 - `index` 默认写仓库根 `agent-manifest.json`（生成物）+ `agent-manifest.d/` 四层分片；在只读环境用
   `--out` 重定向根摘要（分片仍写默认目录，便于 CI 对比）。
 - `--out` 指向其他仓库根之外时仍按默认 shards 相对路径生成；跨仓库对比请用独立临时目录。
@@ -358,5 +413,9 @@ Cp936 管道下 JSON 仍为合法 UTF-8）。
   若未来某层持续增长，需扩展为 `{layer}-{n}.json` 多分片并同步根 `shards` 映射（schema/契约变更）。
 - **旧格式迁移**：旧根 manifest 含完整 `content` 数组；重跑 `index` 即自动迁移为根摘要+分片，
   validate 会对未迁移的旧格式报 `MANIFEST_LEGACY_CONTENT`（warning；`--strict` 下失败）。
+- **索引一致性不依赖 mtime**：`validate` 默认不按文件 mtime 判 manifest 过期（CI/新 clone 会假失败）；
+  一致性由 `MANIFEST_COUNTS`/`SHARD_CONTENT` 与 `index --check` 保证；本地排查才加 `--mtime-check`。
+- **preflight 三态退出码**：0 全绿 / 3 存在 SKIPPED（`--skip-*`/`--no-index`/check-links 脚本缺失）/ 4 任一步 FAILED。
+  CI 请用**完整** `preflight`（exit 0）+ `index --check`；若本地用 `--no-index` 裁剪，需显式接受退出码 3。
 - **doc-policy 违规只报告不自动改**：`AGENTS.md`/`README.md`/`CHANGELOG.md`/新层文档由 Lead/维护者负责；
   validate 仅列出具体错误（例如窗口超 8 条），由对应负责人修复后重跑。

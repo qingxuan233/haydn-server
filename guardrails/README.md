@@ -14,7 +14,7 @@ scope: repo
 
 # GRD-000 · 护栏索引与使用规范
 
-> 本层是**不可协商**的约束，编号 GRD-001..014。每篇结构固定：红线（MUST NOT）→ 为什么 → 允许的替代 → 检查方式 → 关联。
+> 本层是**不可协商**的约束，编号 GRD-001..016。每篇结构固定：红线（MUST NOT）→ 为什么 → 允许的替代 → 检查方式 → 关联。
 > 权威顺序见 [AGENTS.md](../AGENTS.md)；任何 Agent 不得自行降低红线，规则冲突时以用户直接指令为最高并记录例外。
 
 ## 1. 用途
@@ -40,9 +40,9 @@ scope 取值：device（宿主/设备操作）、server（服务器栈与控制�
 3. 变更中：写操作走 GRD-005 分级流程；没有备份/快照/回滚路径不开始（GRD-004）。
 4. 变更后：运行验证命令并保存证据（GRD-013）；失败立即回滚并如实报告（GRD-012）。
 5. 提交前：跑 `python -m toolkit.repurpose validate --strict` 与 `python scripts/dev/check-links.py --strict-anchors`；确认未触碰冻结案例。
+6. 协议/提示词/模板/校验器变更：加跑 `python -m toolkit.repurpose preflight` 与 Agent 回归 AR-01..AR-10（[GRD-016](GRD-016-agent-protocol-regression.md)）；不得为通过而修改检查。
 
 ## 4. 索引
-
 | ID | 标题 | severity | scope | 一句话 | 文档 |
 |---|---|---|---|---|---|
 | GRD-001 | 默认不 Root、不刷机、不解锁 Bootloader | blocker | device | 高风险路线必须先过评估与用户明确授权 | [GRD-001](GRD-001-no-root-no-unlock-default.md) |
@@ -59,7 +59,9 @@ scope 取值：device（宿主/设备操作）、server（服务器栈与控制�
 | GRD-012 | Agent 行为红线 | blocker | agent | 先只读核对、不越权、不伪造验收、变更走 DoD | [GRD-012](GRD-012-agent-operating-rules.md) |
 | GRD-013 | 不伪造验收 | blocker | agent | 未实测不得标完成，目标值/实测值分开并有证据链 | [GRD-013](GRD-013-no-fake-acceptance.md) |
 | GRD-014 | 固件冻结与受控升级 | blocker | device | 禁止自动 OTA，升级前后都要评估与重跑验收 | [GRD-014](GRD-014-firmware-freeze-ota.md) |
-
+| GRD-015 | Root 实验设备的受控操作边界 | blocker | device | 仅授权专用实验设备；官方解锁/救援就绪/不降级/不关 AVB/最小 su | [GRD-015](GRD-015-root-lab-controlled.md) |
+| GRD-016 | 协议/提示词变更须回归且不得弱化校验 | blocker | agent | 协议、提示词、模板、校验器变更必须跑 preflight+回归，禁止为变绿改检查 | [GRD-016](GRD-016-agent-protocol-regression.md) |
+> **例外关系**：GRD-015 是 GRD-001 的受控例外实施细则，不是普遍放宽；非实验设备仍按 GRD-001 默认拒绝。两者冲突时以更严格者为准。
 ## 5. 格式规范
 
 - front matter 是**文件头部**（首行 `---` 到下一个 `---`；末尾不要求 `---`）；必填 `id,title,type,status,audience,tags,updated,agent_hint`，**GRD 额外必需** `severity,scope`（缺失/非法会被 `validate --strict` 判失败），`depends` 用逗号串；禁止嵌套结构。

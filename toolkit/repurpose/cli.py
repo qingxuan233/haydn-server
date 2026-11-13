@@ -1,17 +1,23 @@
 """argparse CLI：子命令、退出码与输出约定。
 
 退出码：
-- 0 成功
+- 0 成功 / preflight 全绿
 - 2 用法/输入错误（argparse 或 profile/参数错误）
-- 3 前置条件不满足（无 adb / 无设备 / fixture 不可用）
-- 4 校验失败（validate 发现 error；--strict 下 warning 也算失败）
+- 3 前置条件不满足（无 adb / 无设备 / fixture 不可用）；preflight 存在 SKIPPED 步骤
+  （--skip-tests/--skip-links/--no-index 或 check-links 脚本缺失）；
+- 4 校验失败（validate 发现 error；rootcheck --strict 非 tech-ready；rescue-kit --verify
+  不一致；index --check 生成物不一致；preflight 任一步 FAILED；--strict 下 warning 也算失败）
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
+import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -20,6 +26,13 @@ from .assess import assess_profile, format_assessment_human
 from .detect import detect_profile
 from .plan import build_plan, format_plan_markdown
 from .probe import format_probe_human, probe_profile
+from .rescuekit import (
+    format_manifest_human,
+    format_verify_human,
+    verify_manifest,
+    write_manifest,
+)
+from .rootcheck import build_rootcheck, format_rootcheck_human
 from .profile import build_new_profile, load_and_validate, validate_profile, write_profile
 from .util import (
     PreconditionError,
@@ -33,6 +46,8 @@ from .util import (
 )
 from .validate import format_validation_human, validate_repo
 from .indexgen import (
+    check_bundle,
+    format_index_check_human,
     format_index_summary,
     write_bundle,
 )
@@ -42,19 +57,32 @@ EXIT_USAGE = 2
 EXIT_PRECONDITION = 3
 EXIT_VALIDATION = 4
 
+SCHEMA_PREFLIGHT = "repurpose.preflight.v1"
+"""``preflight --json`` 报告 schema。"""
+
+PREFLIGHT_CHECK_LINKS_SCRIPT = "scripts/dev/check-links.py"
+"""仍与其他步骤串联的相对链接质量门（冻结例外，可随文档结构维护）。"""
+
 EPILOG = """退出码：
-  0  成功
+  0  成功 / preflight 全绿
   2  用法/输入错误（argparse 或 profile/参数错误）
-  3  前置条件不满足（无 adb / 无设备 / fixture 不可用）
-  4  校验失败（validate 发现 error；--strict 下 warning 也算失败）
+  3  前置条件不满足（无 adb / 无设备 / fixture 不可用）；preflight 存在 SKIPPED 步骤
+  4  校验失败（validate 发现 error / rootcheck --strict 非 tech-ready / rescue-kit --verify 不一致 /
+     index --check 不一致 / preflight 任一步 FAILED；--strict 下 warning 也算失败）
 
 示例：
   python -m toolkit.repurpose detect --adb-fixture toolkit/tests/fixtures/adb-haydn.json
   python -m toolkit.repurpose probe --base profiles/haydn.json --adb-fixture toolkit/tests/fixtures/adb-haydn.json --out profiles/haydn-probed.json
   python -m toolkit.repurpose assess --profile profiles/haydn-probed.json --json
   python -m toolkit.repurpose plan --profile profiles/haydn-probed.json --format md
-  python -m toolkit.repurpose index --json
+  python -m toolkit.repurpose rootcheck --profile cases/ace-pro-pgp110/profile.json --json
+  python -m toolkit.repurpose rescue-kit --dir backup/rescue --init
+  python -m toolkit.repurpose rescue-kit --dir backup/rescue --verify
+  python -m toolkit.repurpose index
+  python -m toolkit.repurpose index --check
   python -m toolkit.repurpose validate --strict
+  python -m toolkit.repurpose preflight
+  python -m toolkit.repurpose preflight --no-index --json
 """
 
 
@@ -142,6 +170,45 @@ def build_parser() -> argparse.ArgumentParser:
     )
     plan_parser.set_defaults(handler=cmd_plan)
 
+    rootcheck_parser = subparsers.add_parser(
+        "rootcheck",
+        help="离线检查 Root 实验设备技术姿态（不替代授权/演练人工确认）",
+        description=(
+            "消费 repurpose.device-profile.v1，输出 repurpose.rootcheck.v1："
+            "bootloader/AVB/verity/SELinux/Root 管理器/管理器唯一性/内核前提/分区布局/"
+            "ARB 禁止批次等技术项 + 授权/救援/数据/固件冻结/演练/su 与网络基线等人工项。"
+            "只读、离线；不改变 assess 的路线与门禁顺序。--strict 在非 tech-ready 时退出 4。"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    rootcheck_parser.add_argument("--profile", required=True, help="device-profile JSON 路径（必填）")
+    rootcheck_parser.add_argument("--json", action="store_true", help="打印 JSON（缺省人类摘要）")
+    rootcheck_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="tech_ready=false 时退出 4（供 CI/门禁消费）",
+    )
+    rootcheck_parser.set_defaults(handler=cmd_rootcheck)
+
+    rescue_parser = subparsers.add_parser(
+        "rescue-kit",
+        help="离线生成/校验救援包 SHA-256 清单（G-L1 辅助）",
+        description=(
+            "对指定目录生成 rescue-manifest.json（相对路径 + sha256），或校验目录与清单一致。"
+            "只读文件/只写清单，不连接设备；--verify 发现缺失/新增/哈希不一致时退出 4。"
+            "清单不存绝对路径/凭据；版本匹配与救援演练仍需人工核对。"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    rescue_parser.add_argument("--dir", required=True, help="救援包目录（必填）")
+    rescue_group = rescue_parser.add_mutually_exclusive_group(required=True)
+    rescue_group.add_argument("--init", action="store_true", help="生成清单（覆盖已有清单）")
+    rescue_group.add_argument("--verify", action="store_true", help="按清单校验目录")
+    rescue_parser.add_argument("--notes", default="", help="--init 时写入清单的备注（不得含凭据）")
+    rescue_parser.add_argument("--force", action="store_true", help="--init 时允许覆盖已存在清单（先核对来源/版本）")
+    rescue_parser.add_argument("--json", action="store_true", help="打印 JSON（init 摘要/verify 报告）")
+    rescue_parser.set_defaults(handler=cmd_rescue_kit)
+
     new_profile_parser = subparsers.add_parser(
         "new-profile",
         help="从模板生成可编辑 profile JSON（含 unknowns 提示）",
@@ -166,23 +233,54 @@ def build_parser() -> argparse.ArgumentParser:
     )
     index_parser.add_argument("--root", help="仓库根目录（默认当前仓库根）")
     index_parser.add_argument("--out", help="manifest 输出路径（默认 <root>/agent-manifest.json）")
+    index_parser.add_argument(
+        "--check",
+        action="store_true",
+        help="只读比较：内存重建生成物并与磁盘 agent-manifest.json/分片比对（不写盘，不一致 exit 4）",
+    )
     index_parser.add_argument("--json", action="store_true", help="打印 JSON 摘要")
     index_parser.set_defaults(handler=cmd_index)
 
     validate_parser = subparsers.add_parser(
         "validate",
-        help="校验 front matter/ID 唯一/相对链接/JSON/manifest 过期",
+        help="校验 front matter/ID/相对链接/JSON/协议/命名/PIT/ADR/backlog/归档/manifest",
         description=(
             "检查新层 Markdown 的必需 front matter 键（id,title,type,status,audience,tags,"
             "updated,agent_hint）、ID 唯一、相对 Markdown 链接目标存在（不检查 anchor）、"
-            "JSON 可解析、agent-manifest.json 是否过期。发现问题退出码 4。"
+            "JSON 可解析、AGENTS.md 协议章节/版本/哨兵/体积、新层命名、PIT/ADR/CHANGELOG 归档/"
+            "backlog schema 与语义、agent-manifest.json 与分片一致性。发现问题退出码 4。"
+            "索引一致性以内容机检为准，不依赖文件 mtime（CI 安全）；本地调试可加 --mtime-check。"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     validate_parser.add_argument("--root", help="仓库根目录（默认当前仓库根）")
     validate_parser.add_argument("--strict", action="store_true", help="将 warning 视为失败")
+    validate_parser.add_argument(
+        "--mtime-check",
+        action="store_true",
+        help="额外按文件 mtime 判定 manifest 过期（MANIFEST_STALE；默认关闭，CI/新 checkout 不应开启）",
+    )
     validate_parser.add_argument("--json", action="store_true", help="打印 JSON 报告")
     validate_parser.set_defaults(handler=cmd_validate)
+
+    preflight_parser = subparsers.add_parser(
+        "preflight",
+        help="统一质量门：index → validate --strict → unittest → check-links",
+        description=(
+            "串联质量门并输出步骤表（name/status/耗时/摘要）：index（--no-index 可跳过）→ "
+            "validate --strict → python -m unittest discover -s toolkit/tests -t . → "
+            "python scripts/dev/check-links.py --strict-anchors（脚本缺失时 SKIPPED）。"
+            "退出码三态契约：0 全绿 / 3 存在 SKIPPED（CI 可裁剪）/ 4 任一步 FAILED。"
+            "只读检查（除 index 写生成物）；不连接设备、不打印敏感值。"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    preflight_parser.add_argument("--root", help="仓库根目录（默认当前仓库根）")
+    preflight_parser.add_argument("--no-index", action="store_true", help="跳过 index 步骤（CI 用已提交生成物）")
+    preflight_parser.add_argument("--skip-tests", action="store_true", help="跳过 unittest 步骤（快速编排检查）")
+    preflight_parser.add_argument("--skip-links", action="store_true", help="跳过 check-links 步骤")
+    preflight_parser.add_argument("--json", action="store_true", help="打印 repurpose.preflight.v1 JSON")
+    preflight_parser.set_defaults(handler=cmd_preflight)
 
     return parser
 
@@ -332,6 +430,37 @@ def cmd_plan(args: argparse.Namespace, *, transport: Any = None) -> int:
     return EXIT_OK
 
 
+def cmd_rootcheck(args: argparse.Namespace, *, transport: Any = None) -> int:
+    _ = transport  # rootcheck 离线：不接触设备
+    profile = load_and_validate(args.profile)
+    report = build_rootcheck(profile)
+    if args.json:
+        _print_json(report)
+    else:
+        print(format_rootcheck_human(report))
+    if args.strict and not report["tech_ready"]:
+        return EXIT_VALIDATION
+    return EXIT_OK
+
+
+def cmd_rescue_kit(args: argparse.Namespace, *, transport: Any = None) -> int:
+    _ = transport  # rescue-kit 只操作本地目录
+    if args.init:
+        target, manifest = write_manifest(args.dir, notes=args.notes, force=args.force)
+        if args.json:
+            _print_json(manifest)
+        else:
+            print(format_manifest_human(manifest))
+            print(f"已写入：{_display(target)}")
+        return EXIT_OK
+    report = verify_manifest(args.dir)
+    if args.json:
+        _print_json(report)
+    else:
+        print(format_verify_human(report))
+    return EXIT_OK if report["ok"] else EXIT_VALIDATION
+
+
 def cmd_new_profile(args: argparse.Namespace, *, transport: Any = None) -> int:
     profile = build_new_profile(args.codename)
     if args.out:
@@ -344,6 +473,13 @@ def cmd_new_profile(args: argparse.Namespace, *, transport: Any = None) -> int:
 
 def cmd_index(args: argparse.Namespace, *, transport: Any = None) -> int:
     root = find_repo_root(args.root)
+    if getattr(args, "check", False):
+        report = check_bundle(root)
+        if args.json:
+            _print_json(report)
+        else:
+            print(format_index_check_human(report))
+        return EXIT_OK if report["ok"] else EXIT_VALIDATION
     info = write_bundle(root, args.out)
     manifest = info["manifest"]
     if args.json:
@@ -366,12 +502,182 @@ def cmd_index(args: argparse.Namespace, *, transport: Any = None) -> int:
 
 def cmd_validate(args: argparse.Namespace, *, transport: Any = None) -> int:
     root = find_repo_root(args.root)
-    report = validate_repo(root, strict=args.strict)
+    report = validate_repo(root, strict=args.strict, mtime_check=getattr(args, "mtime_check", False))
     if args.json:
         _print_json(report)
     else:
         print(format_validation_human(report))
     return EXIT_OK if report["ok"] else EXIT_VALIDATION
+
+
+# ---------------------------------------------------------------------------
+# preflight：统一质量门（index → validate --strict → unittest → check-links）
+# ---------------------------------------------------------------------------
+
+
+def _run_external(command: list[str], cwd: Path, *, timeout: int = 900) -> tuple[int, str]:
+    """运行外部步骤（unittest / check-links），捕获 stdout+stderr 文本。
+
+    使用 ``sys.executable`` 保证与当前解释器一致；UTF-8 环境变量避免 Windows cp936
+    管道把中文测试输出变成非法编码。执行失败（脚本不存在/超时）按非零返回。
+    """
+    env = dict(os.environ)
+    env.setdefault("PYTHONUTF8", "1")
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=env,
+            timeout=timeout,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return EXIT_VALIDATION, f"无法执行外部步骤：{exc.__class__.__name__}"
+    return completed.returncode, (completed.stdout or "") + (completed.stderr or "")
+
+
+def _tail_summary(output: str, *, lines: int = 3, limit: int = 200) -> str:
+    content = [line.strip() for line in output.splitlines() if line.strip()]
+    if not content:
+        return "无输出"
+    return " / ".join(content[-lines:])[:limit]
+
+
+def _validate_step_summary(report: dict[str, Any]) -> str:
+    summary = (
+        f"errors={report['error_count']} warnings={report['warning_count']} strict={report['strict']}"
+    )
+    if report["issues"]:
+        first = report["issues"][0]
+        summary += f"；首条：{first['code']} {first['path']}"
+    return summary
+
+
+def _unittest_step_summary(returncode: int, output: str) -> str:
+    match = re.search(r"Ran (\d+) tests?", output)
+    count = match.group(1) if match else "?"
+    if returncode == 0:
+        return f"{count} 项测试 OK"
+    tail = _tail_summary(output)
+    return f"{count} 项测试 FAILED；{tail}" if tail else f"{count} 项测试 FAILED"
+
+
+def _preflight_step(name: str, status: str, started: float, summary: str) -> dict[str, Any]:
+    return {
+        "name": name,
+        "status": status,
+        "duration_ms": int((time.perf_counter() - started) * 1000),
+        "summary": summary,
+    }
+
+
+def format_preflight_human(report: dict[str, Any]) -> str:
+    """人类可读 preflight 步骤表：name/status/耗时/摘要 + 失败定位。"""
+    status = "OK" if report["ok"] else ("FAILED" if report["failed"] else "SKIPPED")
+    lines = [f"preflight 结果：{status}（0=全绿 / 3=有跳过 / 4=失败）"]
+    lines.append(f"  {'步骤':<12}{'状态':<9}{'耗时':>8}  摘要")
+    for step in report["steps"]:
+        lines.append(
+            f"  {step['name']:<12}{step['status']:<9}{step['duration_ms']:>6}ms  {step['summary']}"
+        )
+    if report["failed"]:
+        lines.append("失败详情：")
+        for step in report["steps"]:
+            if step["status"] == "FAILED":
+                lines.append(f"  - {step['name']}: {step['summary']}")
+    lines.append(
+        f"结论：skipped={report['skipped']} failed={report['failed']} exit={report['exit_code']}"
+    )
+    return "\n".join(lines)
+
+
+def cmd_preflight(args: argparse.Namespace, *, transport: Any = None) -> int:
+    _ = transport  # preflight 只读本地仓库，不接触设备
+    root = find_repo_root(args.root)
+    steps: list[dict[str, Any]] = []
+    failed = 0
+    skipped = 0
+
+    # 1) index（除非 --no-index；CI 用已提交生成物）
+    started = time.perf_counter()
+    if args.no_index:
+        steps.append(_preflight_step("index", "SKIPPED", started, "按 --no-index 跳过（CI 用已提交生成物）"))
+        skipped += 1
+    else:
+        info = write_bundle(root)
+        status = "FAILED" if info.get("errors") else "OK"
+        summary = (
+            f"根摘要 {info['root']['lines']} 行 / 分片 {len(info['shards'])} 个"
+            + (f"；errors：{_tail_summary(' / '.join(info['errors']))}" if info.get("errors") else "")
+        )
+        steps.append(_preflight_step("index", status, started, summary))
+        if status == "FAILED":
+            failed += 1
+
+    # 2) validate --strict（--no-index 时仍检查提交版 manifest 的内容一致性）
+    started = time.perf_counter()
+    report = validate_repo(root, strict=True)
+    status = "OK" if report["ok"] else "FAILED"
+    steps.append(_preflight_step("validate", status, started, _validate_step_summary(report)))
+    if status == "FAILED":
+        failed += 1
+
+    # 3) unittest（--skip-tests 可裁剪）
+    started = time.perf_counter()
+    if args.skip_tests:
+        steps.append(_preflight_step("unittest", "SKIPPED", started, "按 --skip-tests 跳过"))
+        skipped += 1
+    else:
+        code, output = _run_external(
+            [sys.executable, "-m", "unittest", "discover", "-s", "toolkit/tests", "-t", "."],
+            root,
+        )
+        status = "OK" if code == 0 else "FAILED"
+        steps.append(_preflight_step("unittest", status, started, _unittest_step_summary(code, output)))
+        if status == "FAILED":
+            failed += 1
+
+    # 4) check-links（--skip-links 可裁剪；脚本缺失降级 SKIPPED）
+    started = time.perf_counter()
+    script = root / PREFLIGHT_CHECK_LINKS_SCRIPT
+    if args.skip_links:
+        steps.append(_preflight_step("check-links", "SKIPPED", started, "按 --skip-links 跳过"))
+        skipped += 1
+    elif not script.is_file():
+        steps.append(
+            _preflight_step("check-links", "SKIPPED", started, f"脚本不存在：{PREFLIGHT_CHECK_LINKS_SCRIPT}")
+        )
+        skipped += 1
+    else:
+        code, output = _run_external(
+            [sys.executable, PREFLIGHT_CHECK_LINKS_SCRIPT, "--strict-anchors"], root
+        )
+        status = "OK" if code == 0 else "FAILED"
+        summary = "相对链接全部有效" if code == 0 else "check-links 失败：" + _tail_summary(output)
+        steps.append(_preflight_step("check-links", status, started, summary))
+        if status == "FAILED":
+            failed += 1
+
+    exit_code = EXIT_VALIDATION if failed else (EXIT_PRECONDITION if skipped else EXIT_OK)
+    payload: dict[str, Any] = {
+        "schema": SCHEMA_PREFLIGHT,
+        "generated_at": iso_now(),
+        "root": ".",
+        "ok": exit_code == EXIT_OK,
+        "exit_code": exit_code,
+        "steps": steps,
+        "skipped": skipped,
+        "failed": failed,
+    }
+    if args.json:
+        _print_json(payload)
+    else:
+        print(format_preflight_human(payload))
+    return exit_code
 
 
 # ---------------------------------------------------------------------------

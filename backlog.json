@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.backlog.v1",
-  "updated": "2026-11-11",
+  "updated": "2026-11-13",
   "owner": "maintainers / agents",
   "notes": [
     "本文件是 Agent 领取任务的机器可读队列；状态取值 pending/in_progress/done/blocked。",
@@ -23,16 +23,14 @@
       "notes": "需要 ADB 与用户授权；序列号不得入库。",
       "agent_hint": "先在一台设备跑 detect，人工核对每个字段，再补 probe 的失败分支。",
       "requires": "真机 + 用户授权（ADB 可用）",
-      "owner": "",
-      "updated": "",
-      "result": ""
+      "owner": "", "updated": "", "result": ""
     },
     {
       "id": "BL-002",
       "title": "补齐 CI 质量门（链接/单测/秘密扫描/front matter）",
       "priority": "P1",
       "area": "repo",
-      "status": "pending",
+      "status": "in_progress",
       "acceptance": "任意 CI（GitHub Actions 或等价）在 push/PR 上运行：unittest、validate --strict、check-links --strict-anchors、secret scan；全绿才可合并。",
       "outputs": [
         ".github/workflows/（或等价 CI 配置）",
@@ -41,15 +39,19 @@
       "depends": [
         "BL-003"
       ],
-      "notes": "仓库无 remote 时也可先提供本地脚本 `toolkit/preflight`。",
-      "agent_hint": "先确认仓库托管平台，再写最小 workflow。"
+      "notes": "2026-11-13 已加 .github/workflows/quality.yml（index --check + 完整 preflight）；secret scan 仍未纳入（见 BL-010）。",
+      "agent_hint": "首次 push 后确认 Actions 实跑结果，再补 secret scan 步骤。",
+      "requires": "仓库 push 权限（首次 CI 实跑验证）",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "CI 配置已落地并通过本地等价检查：index --check + 完整 preflight；**GitHub Actions 实跑尚未验证**（无 push 权限），不得标 done。"
     },
     {
       "id": "BL-003",
       "title": "toolkit 增加 preflight 子命令并统一校验入口",
       "priority": "P1",
       "area": "toolkit",
-      "status": "pending",
+      "status": "done",
       "acceptance": "`python -m toolkit.repurpose preflight` 串行运行 validate、index 一致性、unittest、check-links，输出简洁汇总与失败定位，退出码可被 CI 消费。",
       "outputs": [
         "toolkit/repurpose/",
@@ -58,7 +60,11 @@
       ],
       "depends": [],
       "notes": "避免 CI 与文档命令漂移。",
-      "agent_hint": "复用现有 validate/index 实现，不要复制逻辑。"
+      "agent_hint": "已实现；CI workflow 见 .github/workflows/quality.yml。",
+      "requires": "",
+      "owner": "toolkit",
+      "updated": "2026-11-13",
+      "result": "已实现 preflight（index→validate --strict→unittest→check-links；--root/--json/--skip-tests/--skip-links/--no-index；三态退出码 0=全绿/3=有跳过/4=失败），并新增 .github/workflows/quality.yml（index --check + 完整 preflight）。"
     },
     {
       "id": "BL-004",
@@ -239,7 +245,7 @@
       "title": "backlog/工具登记表的机器校验（schema + validate 联动）",
       "priority": "P2",
       "area": "repo",
-      "status": "pending",
+      "status": "done",
       "acceptance": "backlog.json 有正式 JSON Schema（必填/可选字段、status/priority 枚举）；toolkit validate 校验 backlog 语义与 TOOL 登记表（toolkit/README）一致性；新增/修改时自动发现缺字段、非法优先级、未登记 TOOL。",
       "outputs": [
         "toolkit/schema/backlog.schema.json",
@@ -250,12 +256,12 @@
       "depends": [
         "BL-003"
       ],
-      "notes": "当前 validate 只检查 backlog JSON 可解析；登记表与索引仍靠人工/约定。",
-      "agent_hint": "先冻结 backlog schema，再把 validate 的 warning 升级为 strict error。",
+      "notes": "2026-11-13 完成 schema + 语义检查（ID 连续/枚举/in_progress 与 done 必填字段/depends 引用）。TOOL 登记表一致性尚未机检，遗留为后续项。",
+      "agent_hint": "改 backlog 字段时先改 schema 再改 validate 与测试。",
       "requires": "",
-      "owner": "",
-      "updated": "",
-      "result": ""
+      "owner": "toolkit",
+      "updated": "2026-11-13",
+      "result": "已实现：toolkit/schema/backlog.schema.json + governance 检查（必填键、priority/status/risk 枚举、ID 唯一且连续、in_progress/done 必须有 owner/updated/result、depends 指向存在 ID）；单测覆盖。"
     },
     {
       "id": "BL-016",
@@ -276,9 +282,7 @@
       "notes": "2026-11-11 完成初版；backlog 归档与 >40 条分片仍待 BL-017。",
       "agent_hint": "改动上限时先改 doc-policy 再跑 validate。",
       "requires": "",
-      "owner": "toolkit",
-      "updated": "2026-11-11",
-      "result": "已实现：docpolicy.py + doc-policy.json + 根/分片索引与一致性校验；163 项单测全绿，validate --strict 0 error。"
+      "owner": "toolkit", "updated": "2026-11-11", "result": "已实现：docpolicy.py + doc-policy.json + 根/分片索引与一致性校验；163 项单测全绿，validate --strict 0 error。"
     },
     {
       "id": "BL-017",
@@ -299,16 +303,14 @@
       "notes": "当前四层均 ≤40 条，尚未触发；规则见 MTH-011。",
       "agent_hint": "先定拆分键（ID 区间或 domain），再改 index/validate 与测试。",
       "requires": "",
-      "owner": "",
-      "updated": "",
-      "result": ""
+      "owner": "", "updated": "", "result": ""
     },
     {
       "id": "BL-018",
       "title": "CHANGELOG §4 归档索引与归档文件条数/版本一致性机检",
       "priority": "P1",
       "area": "toolkit",
-      "status": "pending",
+      "status": "done",
       "acceptance": "validate --strict 解析 CHANGELOG §4 索引行与 changelog/YYYY-MM.md，校验月份条目数、版本范围、链接存在且无重复/缺失；不符即 exit 4，并有临时 repo 测试。",
       "outputs": [
         "toolkit/repurpose/validate.py",
@@ -318,12 +320,12 @@
       "depends": [
         "BL-016"
       ],
-      "notes": "当前归档由人工核对（MTH-011 已标注）；实现后 MTH-011 改为机检。",
-      "agent_hint": "先从 CHANGELOG §4 表解析 month/条目数/版本范围，再逐个归档文件计数比对。",
+      "notes": "2026-11-13 实现；同时修正旧镜像漂移（changelog/README.md §2 与 CHANGELOG §4 曾不一致）。",
+      "agent_hint": "已实现；归档操作须同步 §4 与 changelog/README.md 镜像。",
       "requires": "",
-      "owner": "",
-      "updated": "",
-      "result": ""
+      "owner": "toolkit",
+      "updated": "2026-11-13",
+      "result": "已实现：validate 解析 CHANGELOG §4 归档索引（月份/条数/版本范围/文件存在）与 changelog/*.md 双向一致；本次归档 v1.47 后通过机检。"
     },
     {
       "id": "BL-019",
@@ -346,9 +348,247 @@
       "notes": "MTH-002 §5.3.1/MTH-004 §4.1 已先给人工判定规则；工具化前后以人工结论为准。",
       "agent_hint": "先加 schema 字段与 assess 规则，再做发现脚本；发现优先页面/扫码，广播发现需最小权限与可选签名。",
       "requires": "",
+      "owner": "", "updated": "", "result": ""
+    },
+    {
+      "id": "BL-020",
+      "title": "一加 Ace Pro（PGP110/ovaltine）采购核验与解锁/Root 门禁落地",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "按 MTH-012 §7 完成采购前 10 项核验；G-L0/G-L1 证据入库；版本/ARB/解锁政策/救援包结论写入 CASE-003；不可行则记录并换机，不伪造进度。",
+      "outputs": [
+        "cases/ace-pro-pgp110/README.md",
+        "cases/ace-pro-pgp110/profile.json",
+        "methodology/11-root-lab.md"
+      ],
+      "depends": [],
+      "notes": "设备未购入；先只读核验，不解锁不刷写；用户已授权该实验机接受硬砖/数据丢失风险（2026-11-11）。",
+      "agent_hint": "收货后先只读 detect/核对 build 与 ARB 状态，再备救援包，最后才走官方解锁。",
+      "requires": "真机 + 用户授权（解锁/Root）",
+      "owner": "lead", "updated": "2026-11-13", "result": "真机（PGP110/COS15.0.0.1901）完成：G-L0 身份/版本核验；官方 fastboot 解锁成功（清数据）；G-L1 官方同版本全量包 + 原厂 boot + SHA-256 清单 + 双线/第二台电脑/离线双副本；3/3 救援演练通过。证据见 CASE-003 §6 与运行期 inventory（gitignored）。"
+    },
+    {
+      "id": "BL-021",
+      "title": "Root 工具配套：rootcheck + rescue-kit + fixture/assess 回归",
+      "priority": "P1",
+      "area": "toolkit",
+      "status": "done",
+      "acceptance": "以 cases/ace-pro-pgp110/profile.json 断言 assess route=A、G-B0=unknown；新增 rootcheck 技术姿态检查与 rescue-kit 清单校验；单测全绿且不改变现有路线选择顺序。",
+      "outputs": [
+        "toolkit/repurpose/rootcheck.py",
+        "toolkit/repurpose/rescuekit.py",
+        "toolkit/tests/",
+        "toolkit/tests/fixtures/profile-root-lab-ready.json",
+        "toolkit/README.md"
+      ],
+      "depends": [],
+      "notes": "rootcheck 只读消费 profile，不替代授权/演练；rescue-kit 只证明目录与清单一致；工具门禁顺序以 assess.py 为准。",
+      "agent_hint": "已实现；后续真机 profile 采集后用 rootcheck --strict、救援包用 rescue-kit --verify 复核。",
+      "requires": "",
+      "owner": "toolkit", "updated": "2026-11-11", "result": "已实现 rootcheck（9 技术项+7 人工项）与 rescue-kit（SHA-256 清单 init/verify）；ready/预研/边界/清单 34 项新增测试；validate/index/198 项单测全绿。"
+    },
+    {
+      "id": "BL-022",
+      "title": "Root 后服务器栈/灾备实测（5 重启、soak、救援演练、chroot 基准）",
+      "priority": "P1",
+      "area": "validation",
+      "status": "in_progress",
+      "acceptance": "解锁+Root 后：5/5 重启、24h soak、3 轮救援演练、chroot vs proot 基准、su 审计与 nftables 基线均有证据；失败如实记录并回退；生产割接需用户确认。",
+      "outputs": [
+        "cases/ace-pro-pgp110/",
+        "methodology/11-root-lab.md",
+        "toolkit/termux/"
+      ],
+      "depends": [
+        "BL-020"
+      ],
+      "notes": "未实测不得标完成；按 G-L5/G-L6 与 MTH-008 G-R1..G-R5 验收。",
+      "agent_hint": "先 Root 最小基线，再 chroot 基准，再救援演练；一次一变更并留回滚证据。",
+      "requires": "真机 + 用户授权（解锁/Root）",
+      "owner": "lead", "updated": "2026-11-13", "result": "已完成：KernelSU LKM Root、5/5 重启 Root 存活、3/3 救援演练；服务器化准备（Ubuntu 24.04.5 arm64 chroot、supervisord 心跳+loopback HTTP、root 特权遥测、iptables 入站 DROP、KernelSU 开机模块、5/5 重启自启）；soak 已于 2026-11-13 23:16 启动。未完成：24h soak、proot vs chroot 基准、资源/电源调优、SSH/局域网管理、服务迁移、7 天双跑、生产割接。"
+    },
+    {
+      "id": "BL-023",
+      "title": "Agent-Harness v1.3 规范对齐与机器校验落地",
+      "priority": "P1",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "以 Agent-Harness v1.3 为参照完成定向采纳：AGENTS 协议 v1.2（容量分级/哨兵/机器可读摘要/停止条件 7 条）、ADR 决策层、GRD-016、MTH-013/MTH-014、模板与 backlog schema；validate 新增协议/命名/PIT/ADR/backlog/归档/回归机检；preflight 与 CI 落地；全量质量门绿。",
+      "outputs": [
+        "AGENTS.md",
+        "adr/",
+        "methodology/12-delivery-governance.md",
+        "methodology/13-agent-sop.md",
+        "guardrails/GRD-016-agent-protocol-regression.md",
+        "toolkit/schema/backlog.schema.json",
+        "toolkit/repurpose/governance.py",
+        ".github/workflows/quality.yml"
+      ],
+      "depends": [
+        "BL-003",
+        "BL-015",
+        "BL-018"
+      ],
+      "notes": "参考 https://github.com/qingxuan233/Agent-Harness（v1.3）；定向采纳，未改冻结案例；未实测项如实保留。",
+      "agent_hint": "先读 adr/0001-adopt-agent-harness-v1-3.md 了解采纳/裁剪清单。",
+      "requires": "",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "已落地并验证：协议 v1.2、ADR-0001/0002、GRD-016、MTH-013/014、模板新增 2 个（adr、request-card）/更新 4 个（acceptance、agent-task、pitfall、runbook）、backlog schema、validate 新检查、preflight/index --check、CI workflow；验收证据：preflight exit 0（index 重建无 warnings；validate --strict 0 error/0 warning；282 项单测 OK；check-links 0 missing）、index --check exit 0。",
+      "risk": "H"
+    },
+    {
+      "id": "BL-024",
+      "title": "ADR 决策记录层落地（adr/ + 模板 + 机检）",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "新增 adr/ 层与索引；ADR-0001/0002 记录本批关键决策；模板 toolkit/templates/adr.md；validate 校验文件名/ID/status/五段式/superseded 链/索引无孤儿。",
+      "outputs": [
+        "adr/README.md",
+        "adr/0001-adopt-agent-harness-v1-3.md",
+        "adr/0002-protocol-versioning-and-regression.md",
+        "toolkit/templates/adr.md"
+      ],
+      "depends": [
+        "BL-023"
+      ],
+      "notes": "状态枚举 proposed/accepted/superseded；被取代不删除、回链新 ADR。",
+      "agent_hint": "新决策写入前先读 adr/README.md 的状态与流程。",
+      "requires": "",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "已落地：adr/README.md + ADR-0001（采纳清单/备选/后果）+ ADR-0002（协议版本与回归）+ 模板；validate ADR 机检覆盖，索引无孤儿。",
+      "risk": "M"
+    },
+    {
+      "id": "BL-025",
+      "title": "MTH-013 项目推进与交付治理（阶段门/用户验收/发布就绪）",
+      "priority": "P1",
+      "area": "methodology",
+      "status": "done",
+      "acceptance": "MTH-013 成文：风险分级 L/M/H、角色与 DRI、需求基线卡、G0–G7 阶段门与 P0–P6 映射、用户验收卡、发布/割接就绪与 Go/No-Go、兼容/弃用、数据隐私、依赖许可/制品来源、Continue/Pivot/Stop；配 request-card/runbook 模板。",
+      "outputs": [
+        "methodology/12-delivery-governance.md",
+        "toolkit/templates/request-card.md",
+        "toolkit/templates/runbook.md"
+      ],
+      "depends": [
+        "BL-023"
+      ],
+      "notes": "G0–G7 与 MTH-003 的 P0–P6/路线门禁关系已写明（交付治理门不替代路线门）；尚未在真实割接中演练（见 BL-027）。",
+      "agent_hint": "交付/发布任务先读 §5 阶段门与 §7 Go/No-Go。",
+      "requires": "",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "已成文并通过 validate/链接检查；未实测部分（真实割接演练）明确标注'待验证'并转 BL-027。",
+      "risk": "M"
+    },
+    {
+      "id": "BL-026",
+      "title": "MTH-014 Agent SOP 与 AR-01..AR-10 回归基线",
+      "priority": "P1",
+      "area": "methodology",
+      "status": "done",
+      "acceptance": "MTH-014 成文（生命周期/计划外置/评审/测试/汇报/多 Agent/分支与版本/提示词治理/Agent 回归/安全五问）；AR-01..AR-10 中可机检部分落为 toolkit 测试（含 AR-04 反例自证）。",
+      "outputs": [
+        "methodology/13-agent-sop.md",
+        "toolkit/tests/test_governance.py"
+      ],
+      "depends": [
+        "BL-023"
+      ],
+      "notes": "MTH-009 保留交接/扩展协议，不再重复 SOP 细节（单一事实源）。",
+      "agent_hint": "协议/提示词/模板变更后按 §13 跑回归。",
+      "requires": "",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "已成文；AR-04/AR-05 等机检用例在 test_governance.py 落地，其余依赖模型的回归项明确标注'人工/半自动'。",
+      "risk": "M"
+    },
+    {
+      "id": "BL-027",
+      "title": "首次真实交付/割接 Go-No-Go 演练与观察窗",
+      "priority": "P1",
+      "area": "validation",
+      "status": "pending",
+      "acceptance": "按 MTH-013 填一份真实 request-card 与 release-card，走完 G0–G7（至少 G3–G6 留证据），执行一次回滚演练，观察窗结束由 DRI 复核；未演练不得标完成。",
+      "outputs": [
+        "inventory/",
+        "backlog.json"
+      ],
+      "depends": [
+        "BL-022"
+      ],
+      "notes": "MTH-013 已给门与卡；需真实割接窗口与用户确认。",
+      "agent_hint": "先按 MTH-013 §4 填需求基线卡，再在维护窗口内演练。",
+      "requires": "真机 + 用户确认（割接窗口/回滚授权）",
       "owner": "",
       "updated": "",
-      "result": ""
+      "result": "",
+      "risk": "H"
+    },
+    {
+      "id": "BL-028",
+      "title": "Android Bridge 构建 SBOM/来源与依赖许可证清单",
+      "priority": "P2",
+      "area": "bridge",
+      "status": "pending",
+      "acceptance": "Android Bridge 发布制品可回答：源提交、构建工具/依赖版本、依赖许可证清单、制品 hash；无法生成时写明原因、替代控制、风险 Owner 与复查日期（MTH-013 §10）。",
+      "outputs": [
+        "android-bridge/",
+        "cases/haydn-k40pro/"
+      ],
+      "depends": [],
+      "notes": "当前 APK 构建来源、依赖清单与许可证尚未归档；PIT-024 已沉淀第三方工具供应链风险。",
+      "agent_hint": "先列 gradle 依赖与许可证，再补构建 provenance 说明。",
+      "requires": "",
+      "owner": "",
+      "updated": "",
+      "result": "",
+      "risk": "M"
+    },
+    {
+      "id": "BL-029",
+      "title": "AGENTS.md 容量分流（警示档降至健康档 ≤200 行）",
+      "priority": "P2",
+      "area": "repo",
+      "status": "pending",
+      "acceptance": "AGENTS.md 从当前警示档（201~320 行）降至 ≤200 行健康档：把操作细节下沉到 MTH-009/MTH-011/MTH-014，协议只留一线指针与 agent_hint；validate 协议检查报 healthy。",
+      "outputs": [
+        "AGENTS.md",
+        "methodology/08-agent-handoff.md",
+        "methodology/10-document-lifecycle.md"
+      ],
+      "depends": [],
+      "notes": "协议 v1.2 实测 290 行（2026-11-13）；参考规范要求警示档下一迭代必须分流并登记知识债。",
+      "agent_hint": "先统计各节行数；优先把 §0/§4 细则与命令示例下沉。",
+      "requires": "",
+      "owner": "",
+      "updated": "",
+      "result": "",
+      "risk": "L"
+    },
+    {
+      "id": "BL-030",
+      "title": "数据隐私生命周期登记（profiles/inventory/backup 数据地图）",
+      "priority": "P2",
+      "area": "security",
+      "status": "pending",
+      "acceptance": "按 MTH-013 §9 登记数据与来源/目的与依据/最小化与访问/保留与删除/事件处置；对 profiles、inventory、backup、soak 日志给出保留期与删除验证方法；不采集/打印真实秘密。",
+      "outputs": [
+        "methodology/12-delivery-governance.md",
+        "guardrails/GRD-011-privacy-inventory.md"
+      ],
+      "depends": [],
+      "notes": "GRD-011 已有采集与脱敏约束，但保留期与删除验证未系统记录。",
+      "agent_hint": "先列运行期数据清单（gitignored 目录），再补删除验证步骤。",
+      "requires": "",
+      "owner": "",
+      "updated": "",
+      "result": "",
+      "risk": "M"
     }
   ]
 }

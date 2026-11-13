@@ -1,0 +1,77 @@
+{
+  "schema": "repurpose.backlog.v1",
+  "$id": "toolkit/schema/backlog.schema.json",
+  "title": "backlog.json（机器可读任务队列）",
+  "description": "根 backlog.json 的自描述契约：必填字段/枚举/正则与语义一致性规则。由 toolkit.repurpose.governance 内置小校验器读取（零第三方依赖，不依赖 jsonschema 库）。末行语义段（semantics）为机检补充规则，不是标准 JSON Schema 关键字。",
+  "type": "object",
+  "required": ["schema", "updated", "items"],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "repurpose.backlog.v1"
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "notes": {
+      "description": "可选：维护备注（字符串或字符串数组，不参与机器校验）"
+    },
+    "items": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/item"}
+    }
+  },
+  "definitions": {
+    "item": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "priority",
+        "area",
+        "status",
+        "acceptance",
+        "outputs",
+        "depends",
+        "notes",
+        "agent_hint"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^BL-[0-9]{3}$"},
+        "title": {"type": "string", "minLength": 1},
+        "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
+        "area": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "enum": ["pending", "in_progress", "done", "blocked"]},
+        "acceptance": {"type": "string", "minLength": 1},
+        "outputs": {"type": "array", "items": {"type": "string"}},
+        "depends": {"type": "array", "items": {"type": "string", "pattern": "^BL-[0-9]{3}$"}},
+        "notes": {"type": "string"},
+        "agent_hint": {"type": "string", "minLength": 1},
+        "requires": {"type": "string"},
+        "owner": {"type": "string"},
+        "updated": {"type": "string", "pattern": "^(?:\\d{4}-\\d{2}-\\d{2}|)$"},
+        "result": {"type": "string"},
+        "risk": {"type": "string", "enum": ["L", "M", "H"]}
+      }
+    }
+  },
+  "semantics": {
+    "id_unique": true,
+    "id_contiguous": "BL-001..BL-NNN（只增不复用、无跳号）",
+    "active_status_requires": {
+      "statuses": ["in_progress", "done"],
+      "owner": true,
+      "updated": true,
+      "result": true
+    },
+    "done_requires_result": true,
+    "depends_must_exist": true,
+    "outputs_relative_paths": true,
+    "outputs_existence": "not_enforced（outputs 允许指向待产出文件；不因路径暂不存在报 error）",
+    "note": "语义规则由 governance.check_backlog 实现；字段/枚举/正则来自本文件 required/properties。检查码：BACKLOG_SCHEMA（结构） / BACKLOG_SEMANTIC（语义）。"
+  }
+}

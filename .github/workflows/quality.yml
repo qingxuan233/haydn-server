@@ -1,0 +1,33 @@
+name: quality
+
+# 统一质量门：任何 push / PR 都必须在干净 checkout 上全绿。
+# 步骤说明：
+# 1) index --check：提交的 agent-manifest.json / agent-manifest.d/ 必须与内容同步（忽略 generated_at）；
+# 2) preflight：重建索引 → validate --strict → 单元测试 → 全仓相对链接检查，任一失败即失败。
+# 本地等价命令：python -m toolkit.repurpose preflight
+# 退出码契约：0=全绿 / 3=存在被跳过的步骤（本 workflow 不使用跳过模式）/ 4=失败。
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: preflight (validate / unittest / links / manifest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 生成物与内容一致（index --check，不写盘）
+        run: python -m toolkit.repurpose index --check
+      - name: 统一质量门（index + validate --strict + unittest + check-links）
+        run: python -m toolkit.repurpose preflight

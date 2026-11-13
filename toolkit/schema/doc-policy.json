@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.doc-policy.v1",
-  "description": "文档体积、CHANGELOG 归档窗口与 manifest 分层预算策略；由 validate 读取执行，index 读取 manifest 上限。修改上限属于契约变更：必须同步 docs/AGENTS/MTH-011 与测试。",
+  "description": "文档体积、CHANGELOG 归档窗口、协议/命名/治理策略与 manifest 分层预算；由 validate 读取执行，index 读取 manifest 上限。修改上限属于契约变更：必须同步 AGENTS/MTH-011 与测试。",
   "archival": {
     "current_file": "CHANGELOG.md",
     "archive_dir": "changelog",
@@ -9,7 +9,7 @@
     "default_read": false,
     "archive_read_only": true,
     "window_row_pattern": "^\\|\\s*20\\d{2}-\\d{2}-\\d{2}\\s*\\|",
-    "window_note": "当前窗口只保留最近 ≤8 条；更旧条目按月归档到 changelog/YYYY-MM.md（默认不读，仅追溯时读单个文件）"
+    "window_note": "当前窗口只保留最新 ≤8 条；更旧条目按月归档到 changelog/YYYY-MM.md（默认不读，仅追溯时读单个文件）；§4 归档索引由 CHANGELOG_ARCHIVE 机检双向一致"
   },
   "status_sections": {
     "max_lines": 8,
@@ -18,16 +18,22 @@
     "note": "状态段落只写结论与链接，不复制数字/长清单；详细状态指向权威状态源"
   },
   "line_limits": {
-    "AGENTS.md": 340,
+    "AGENTS.md": 320,
     "README.md": 280,
     "methodology/*.md": 300,
-    "pitfalls/*.md": 90,
-    "guardrails/*.md": 90,
+    "pitfalls/PIT-*.md": 90,
+    "pitfalls/README.md": 150,
+    "guardrails/GRD-*.md": 90,
+    "guardrails/README.md": 130,
     "cases/*/README.md": 280,
     "cases/*/oem-profile.md": 200,
-    "toolkit/README.md": 380,
-    "backlog.json": 400
+    "toolkit/README.md": 440,
+    "toolkit/templates/*.md": 130,
+    "adr/*.md": 120,
+    "adr/README.md": 90,
+    "backlog.json": 640
   },
+  "line_limit_note": "AGENTS.md 硬上限 320 与 protocol.hard_max_lines 联动；PIT/GRD 单条按条目文件计数，索引 README 单独放宽；toolkit/templates 模板单独上限",
   "byte_limits": {
     "changelog/*.md": 262144
   },
@@ -43,5 +49,27 @@
     "shard_max_entries": 40,
     "max_topic_docs_per_task": 3,
     "note": "分层加载：先读根 agent-manifest.json（≤160 行摘要）→ 需要某层时只读一个 agent-manifest.d 分片（≤40 条）→ 再读单篇主题文档；禁止一次性加载全部分片或整个归档目录"
+  },
+  "protocol": {
+    "recommended_max_lines": 200,
+    "hard_max_lines": 320,
+    "version_pattern": "^\\|\\s*协议版本\\s*\\|\\s*v\\d+\\.\\d+\\s*\\|",
+    "sentinel": "<!-- END-OF-PROTOCOL -->",
+    "required_headings": ["启动清单", "红线", "任务协议", "完成定义", "机器可读接口", "本文件的维护"],
+    "size_note": "≤200 健康 / 201~320 警示（tier=warning，不失败）/ >320 债务（PROTOCOL_SIZE error）；strict 不因 201~320 失败"
+  },
+  "naming": {
+    "enforce_dirs": ["methodology", "pitfalls", "guardrails", "cases", "adr", "toolkit/templates"],
+    "exempt_basenames": ["README.md", "CHANGELOG.md"],
+    "forbidden_tokens": ["final", "final2", "latest", "new", "v2", "copy", "副本", "最终版"]
+  },
+  "governance": {
+    "pitfall_max_entries": 40,
+    "pitfall_required_sections": ["症状", "根因", "规避", "验证", "证据"],
+    "adr_required_sections": ["状态", "背景", "决策", "后果"],
+    "adr_filename_pattern": "^\\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*\\.md$"
+  },
+  "backlog": {
+    "schema_file": "toolkit/schema/backlog.schema.json"
   }
 }

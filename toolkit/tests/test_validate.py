@@ -18,7 +18,12 @@ from toolkit.repurpose.indexgen import (
 )
 from toolkit.repurpose.util import SCHEMA_VALIDATION
 from toolkit.repurpose.validate import format_validation_human, validate_repo
-from toolkit.tests.fixtures.repo_builder import build_sample_repo, write_doc
+from toolkit.tests.fixtures.repo_builder import (
+    build_sample_repo,
+    write_changelog_archive,
+    write_changelog_with_archive,
+    write_doc,
+)
 
 
 def _codes(report: dict) -> list[str]:
@@ -62,10 +67,17 @@ class ValidRepoTests(unittest.TestCase):
         self.assertTrue(report["ok"])
         self.assertEqual(report["error_count"], 0)
         self.assertEqual(report["warning_count"], 0)
-        self.assertEqual(report["checked"]["markdown_files"], 9)
+        self.assertEqual(report["checked"]["markdown_files"], 11)
         self.assertTrue(report["checked"]["manifest"])
         self.assertEqual(report["checked"]["shards"], 4)
         self.assertGreater(report["checked"]["policy_files"], 0)
+        # 治理检查计数（新增：协议/命名/PIT/ADR/backlog/归档/回归）
+        self.assertTrue(report["checked"]["protocol"])
+        self.assertEqual(report["checked"]["protocol_tier"], "healthy")
+        self.assertEqual(report["checked"]["pitfall_files"], 1)
+        self.assertEqual(report["checked"]["adr_files"], 1)
+        self.assertEqual(report["checked"]["backlog_items"], 2)
+        self.assertGreater(report["checked"]["agent_regression_checks"], 0)
 
     def test_strict_also_passes_when_no_warnings(self) -> None:
         report = validate_repo(self.root, strict=True)
@@ -238,15 +250,21 @@ class ManifestLifecycleTests(unittest.TestCase):
         self.assertTrue(report["ok"])
         self.assertFalse(validate_repo(self.root, strict=True)["ok"])
 
-    def test_manifest_stale_warning_and_strict_failure(self) -> None:
+    def test_manifest_stale_is_opt_in_via_mtime_check(self) -> None:
+        """MANIFEST_STALE 默认关闭（CI/新 checkout 的 mtime 必然比 generated_at 新）。"""
         write_manifest(self.root, generated_at="2026-01-01T00:00:00Z")
         future = time.time() + 3600
         for path in self.root.rglob("*.md"):
             os.utime(path, (future, future))
         report = validate_repo(self.root)
-        self.assertIn("MANIFEST_STALE", _codes(report))
+        self.assertNotIn("MANIFEST_STALE", _codes(report))
         self.assertTrue(report["ok"])
-        self.assertFalse(validate_repo(self.root, strict=True)["ok"])
+        self.assertTrue(validate_repo(self.root, strict=True)["ok"])
+        # 显式 --mtime-check（本地调试）才报告 stale
+        checked = validate_repo(self.root, mtime_check=True)
+        self.assertIn("MANIFEST_STALE", _codes(checked))
+        self.assertTrue(checked["ok"])  # warning 非 strict 不失败
+        self.assertFalse(validate_repo(self.root, strict=True, mtime_check=True)["ok"])
 
     def test_manifest_counts_mismatch_after_content_change(self) -> None:
         write_bundle(self.root)
@@ -378,13 +396,22 @@ class DocPolicyTests(unittest.TestCase):
     def test_changelog_archive_index_row_not_counted(self) -> None:
         """§4 归档索引行（| 2026-11 | 44 条… |）不是窗口数据行，不得计入 ≤8 上限。"""
         path = _write_changelog(self.root, 8)
+        write_changelog_archive(self.root, month="2026-11", rows=44)
         with path.open("a", encoding="utf-8") as handle:
             handle.write("\n## 4. 归档索引\n\n")
             handle.write("| 月份 | 条数 | 文件 |\n|---|---|---|\n")
-            handle.write("| 2026-11 | 44 条 | changelog/2026-11.md |\n")
+            handle.write("| 2026-11 | 44 条 | [changelog/2026-11.md](changelog/2026-11.md) |\n")
         report = validate_repo(self.root)
         self.assertNotIn("CHANGELOG_WINDOW", _codes(report))
+        self.assertNotIn("CHANGELOG_ARCHIVE", _codes(report))
         self.assertTrue(report["ok"])
+
+    def test_changelog_archive_consistent_passes(self) -> None:
+        write_changelog_with_archive(self.root, month="2026-10", rows=5)
+        report = validate_repo(self.root)
+        self.assertNotIn("CHANGELOG_ARCHIVE", _codes(report))
+        self.assertTrue(report["ok"])
+        self.assertEqual(report["checked"]["changelog_archive_rows"], 1)
 
     def test_changelog_archive_byte_limit(self) -> None:
         archive = self.root / "changelog" / "2026-01.md"
@@ -426,13 +453,30 @@ class DocPolicyTests(unittest.TestCase):
         self.assertEqual(warnings, [])
         self.assertEqual(policy["archival"]["max_current_entries"], 8)
         self.assertEqual(policy["manifest"]["root_max_lines"], 160)
-        self.assertEqual(policy["line_limits"]["pitfalls/*.md"], 90)
+        self.assertEqual(policy["line_limits"]["pitfalls/PIT-*.md"], 90)
+        self.assertEqual(policy["line_limits"]["pitfalls/README.md"], 150)
+        self.assertEqual(policy["line_limits"]["guardrails/GRD-*.md"], 90)
+        self.assertEqual(policy["line_limits"]["guardrails/README.md"], 130)
+        self.assertEqual(policy["line_limits"]["adr/*.md"], 120)
+        self.assertEqual(policy["line_limits"]["adr/README.md"], 90)
+        self.assertEqual(policy["line_limits"]["AGENTS.md"], 320)
+        self.assertEqual(policy["line_limits"]["toolkit/README.md"], 440)
+        self.assertEqual(policy["line_limits"]["toolkit/templates/*.md"], 130)
+        self.assertEqual(policy["line_limits"]["backlog.json"], 640)
         self.assertEqual(policy["manifest"]["shard_max_entries"], 40)
         self.assertEqual(policy["archival"]["current_file"], DEFAULT_POLICY["archival"]["current_file"])
         self.assertEqual(
             policy["archival"]["window_row_pattern"],
             DEFAULT_POLICY["archival"]["window_row_pattern"],
         )
+        # 新增策略段：protocol / naming / governance / backlog（与 DEFAULT_POLICY 同步）
+        for section in ("protocol", "naming", "governance", "backlog"):
+            self.assertEqual(policy[section], DEFAULT_POLICY[section])
+        self.assertEqual(policy["protocol"]["recommended_max_lines"], 200)
+        self.assertEqual(policy["protocol"]["hard_max_lines"], 320)
+        self.assertEqual(policy["protocol"]["sentinel"], "<!-- END-OF-PROTOCOL -->")
+        self.assertEqual(policy["governance"]["pitfall_max_entries"], 40)
+        self.assertEqual(policy["backlog"]["schema_file"], "toolkit/schema/backlog.schema.json")
 
 
 if __name__ == "__main__":

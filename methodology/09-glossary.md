@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: glossary, terminology, conventions
 depends: ""
-updated: 2026-11-11
+updated: 2026-11-13
 agent_hint: 遇到不确定术语先查本表；新增术语必须一句定义+为何重要，并回链唯一出处文档。
 ---
 
@@ -32,7 +32,7 @@ agent_hint: 遇到不确定术语先查本表；新增术语必须一句定义+�
 | 术语（英文） | 一句话定义 | 为何重要 |
 |---|---|---|
 | Android 宿主 | 被改造的手机本体；方法论中始终保留 Android 作为底层平台，Linux 跑在它之上。 | 决定了"无 Root 边界"与所有能力的上限。 |
-| Bootloader | 引导加载器；解锁状态决定能否刷写/root，方法论默认**保持锁定**。 | 锁定是默认前提，解锁属于高风险、需显式授权的例外。 |
+| Bootloader | 引导加载器；解锁状态决定能否刷写/root，生产设备默认**保持锁定**。 | 锁定是默认前提；解锁属于高风险、仅专用实验设备按 [GRD-015](../guardrails/GRD-015-root-lab-controlled.md) 受控的例外。 |
 | bootloader_unlocked | 设备档案中的布尔字段：Bootloader 当前是否可写。 | 它是路线决策 A/B 的第一分叉条件。 |
 | AVB（Android Verified Boot） | 系统启动链完整性校验，锁定设备通常为 green/校验通过状态。 | 解锁会破坏 AVB，进而影响 OTA/完整性；是路线代价清单的硬项。 |
 | dm-verity | 对系统分区做块级完整性校验的机制。 | 锁定+enforcing 是"不刷机可保命"的基础。 |
@@ -46,6 +46,14 @@ agent_hint: 遇到不确定术语先查本表；新增术语必须一句定义+�
 | OEM 解锁策略 | 厂商是否开放官方解锁、门槛与代价（清数据/保修/完整性）。 | 是门禁 G-B0 的判定对象；不可用则 B 路线直接终止。 |
 | ROM | 设备上运行的系统固件版本。 | 版本差异会改变权限重置与后台策略，需记录在 profile。 |
 | Play Integrity | Google 的设备完整性判定，解锁/Root 后常失败。 | 用户若依赖银行/支付类 App，B/C 路线不可选。 |
+| 深度测试（Deep Test） | 一加/真我等 OEM 的官方 BL 解锁申请流程（账号/实名/名额/有效期）。 | 决定新机能否走官方解锁；见 [PIT-022](../pitfalls/PIT-022-oem-unlock-quota.md)。 |
+| ARB / e-fuse | 硬件级防回滚：安装特定构建时烧断电子熔丝，之后不可软件降级。 | 触发后旧固件/旧 ROM/EDL 可能直接硬砖；见 [PIT-023](../pitfalls/PIT-023-oneplus-arb-hard-brick.md)。 |
+| EDL / 9008 | 高通紧急下载模式（9008），用于深刷/救砖；需要匹配 loader/授权。 | 属于救援最后手段，不得用于绕过解锁或再刷旧固件。 |
+| OFP / 全量包 | OEM 完整固件包（含 boot 等镜像），用于恢复/重刷。 | 救援与版本一致性核对的基础；必须离线保存并校验哈希。 |
+| KMI | 内核模块接口版本（如 `5.10-android12-9`），决定 GKI 内核/模块兼容。 | Root 补丁/内核刷写前必须核对，KMI 不符会 bootloop。 |
+| kernel manager / LKM | KernelSU 等的加载方式；LKM 以可加载模块注入，不替换 boot 分区。 | 首选 Root 方式：不触发 AVB、可临时卸载、OTA 友好。 |
+| APatch / Superkey | 另一类内核补丁 Root 方案；以超级密钥解锁管理权限。 | KernelSU 不可用时的备选；必须强密码并留存。 |
+| systemless / metamodule | 不改系统分区的模块化/挂载方案；KernelSU 改 `/system` 需 metamodule。 | 保持可回滚、避免写死动态分区。 |
 | Doze / 电池优化白名单 | Android 的省电休眠机制及其豁免名单。 | 不在白名单的 Termux/桥会被杀，是"重启后掉线"的高频根因。 |
 
 ---
@@ -123,8 +131,19 @@ agent_hint: 遇到不确定术语先查本表；新增术语必须一句定义+�
 | DoD（完成定义） | 一项任务/阶段被判定完成的验收清单。 | 防止"差不多完成"与伪验收。 |
 | assumptions | 评估/计划中显式列出的默认假设（未知时的保守取值）。 | 让后续 Agent 知道哪里需要真机验证，而不是盲目继承。 |
 | confidence | 评估结论的置信度（high/medium/low），由字段来源与门禁证据决定。 | 低置信度时应先补探测，不应直接开工。 |
-| ID 前缀 | MTH（方法论）/PIT（踩坑）/GRD（护栏）/TOOL（工具）/CASE（案例）/BL（待办）/ADR（决策记录）。 | 稳定 ID 是可检索、可引用、可去重的基础；编号只增不复用。 |
-| ADR（Architecture Decision Record） | 对关键决策的记录：背景、选项、结论、代价。 | 让后来者知道"为什么这样做"，避免反复争论或误删约束。 |
+| ID 前缀 | MTH（方法论）/PIT（踩坑）/GRD（护栏）/ADR（决策记录）/REQ（需求卡，可选）/TOOL（工具）/CASE（案例）/BL（待办）。 | 稳定 ID 是可检索、可引用、可去重的基础；编号只增不复用。 |
+| ADR（Architecture Decision Record） | 对关键决策的记录：状态、背景、决策、后果（重大决策加备选正反对照）；`superseded` 不删除并回链新 ADR。 | 让后来者知道"为什么这样定"，避免反复争论或误删约束；规则见 [MTH-011](10-document-lifecycle.md) §2.4。 |
+| DRI（Directly Responsible Individual） | 结果负责人：对目标、范围、验收和是否交付负责；不是"写代码的人"默认担任。 | 防止"人人负责＝无人负责"；Agent 可整理证据但不能替代决策/验收。 |
+| Diátaxis | 文档四象限分类：教程/指南/参考/释义（＋项目记录层），按"教做事还是帮理解"归置。 | 混类（教程里塞参考、复盘里塞规范）是文档腐化主因，发现即拆分+互链。 |
+| 阶段门 G0–G7 | 项目/交付治理门：G0 立项/发现、G1 范围/基线、G2 方案、G3 实现/验证、G4 用户验收、G5 发布就绪、G6 发布/观察、G7 复盘/生命周期；每门记 `PASS/FAIL/WAIVED`。 | 与 MTH-003 的 P0–P6、路线门禁 G-A/G-B0/G-L* **并行不替代**；WAIVED 需批准人+到期日。 |
+| 风险分级 L/M/H | 按影响缩放的流程档：L=文档/局部脚本；M=新工具子命令/OEM 适配；H=解锁/固件/数据迁移/生产割接/隐私数据。 | 决定最小流程与审批强度；不确定按较高一档，不得因"Agent 能自动做"降级。 |
+| 三态退出码 0/3/4 | 证据卡退出码契约：`0=VERIFIED`（本次实跑通过）/`3=SKIPPED`（未验证，**不是通过**）/`4=FAILED`（校验/断言失败；通用脚本非零亦算失败）。 | 防止把"没验证"写成通过；`preflight` 同语义。 |
+| 知识债（knowledge debt） | 知识层的欠账：P0 影响正确性（口径漂移/索引缺失）、P1 影响效率（过时/重复）、P2 锦上添花；进 backlog 并给时限。 | 不登记就会"看起来完备、实际空转"；实证缺口必须挂时限。 |
+| SBOM（Software Bill of Materials） | 软件物料清单（SPDX/CycloneDX 等格式），列出依赖组件与版本。 | 发布门禁的依赖追溯基础；本仓库当前**未生成**（待落地）。 |
+| provenance（制品来源证明） | 记录并（可选）签名证明制品由哪个源提交、依赖与构建流程生成。 | 来源无法确认的二进制不得宣称为官方构建；按风险渐进（本仓库未落地）。 |
+| 规范版本 MAJOR/MINOR/PATCH | 协议/规范语义化版本：MAJOR=红线或规则不兼容（必须整改且走 ADR）；MINOR=新增条款；PATCH=澄清。 | 分支须记录遵循版本，跨版本合并前核对差异，防止各分支各自演化。 |
+| Agent 回归（AR-01..AR-10） | 针对 Agent 行为的可重复小回归集（红线/幻觉/验收/历史失误样本），对应协议/清单/反例的机检契约。 | "读起来更好了"不是证据；回归 FAIL 不回滚等于没测；不替代任务验收。 |
+| preflight | 统一质量门命令：`index → validate --strict → unittest → check-links`，退出码 0/3/4。 | 把"该跑哪些检查"收敛为一个可 CI 消费的入口；有跳过必须申报。 |
 | 方法论层（methodology） | 设备无关的规范正文（`methodology/MTH-*.md`）。 | 与案例/工具解耦，换设备不废文档。 |
 
 ---
@@ -136,6 +155,9 @@ agent_hint: 遇到不确定术语先查本表；新增术语必须一句定义+�
 | 边界、适用前提、三轨架构 | [MTH-001 边界与原则](00-foundations.md) |
 | 设备评估与路线决策 | [MTH-002 评估与可行性决策](01-assessment.md) |
 | 阶段推进与变更管理 | [MTH-003 通用路线图](02-roadmap.md) |
+| 项目推进、阶段门 G0–G7、用户验收、发布/割接 | [MTH-013](12-delivery-governance.md) |
+| Agent SOP、评审/测试、汇报、多 Agent、分支/回归 | [MTH-014](13-agent-sop.md) |
+| 决策记录与轻量台账 | [adr/README.md](../adr/README.md) |
 | 服务器栈与服务分层 | [MTH-004 服务器栈](03-server-stack.md) |
 | 桥、控制面、安全、验收、Agent 交接 | [MTH-005](04-telemetry-bridge.md) · [MTH-006](05-control-plane.md) · [MTH-007](06-security.md) · [MTH-008](07-validation.md) · [MTH-009](08-agent-handoff.md) |
 | 红线检查 | [guardrails/README.md](../guardrails/README.md) |

@@ -1,13 +1,19 @@
-"""validate：新层内容 + doc-policy + manifest 分片一致性的前置校验。
+"""validate：新层内容 + 治理契约 + doc-policy + manifest 分片一致性的前置校验。
 
 检查项：
-1. front matter 必需键/ID 唯一/相对链接/JSON 可解析（原内容层校验）；
+1. front matter 必需键/ID 唯一/相对链接/JSON 可解析（内容层校验）；
 2. doc-policy（``toolkit/schema/doc-policy.json``）：文档行数上限、归档字节上限、
    CHANGELOG 当前窗口条目上限（≤8）、状态段落行数上限；
-3. 根 manifest（≤160 行/≤16KB、无完整 content、含 shards）与四层分片
+3. 治理契约（``governance.py``）：AGENTS.md 协议章节/版本/哨兵/体积、新层命名、
+   PIT 编号与五段、ADR 文件名/状态/正文/回链/索引、CHANGELOG §4 归档索引双向一致、
+   backlog schema/语义、Agent 回归 AR-02/AR-03；
+4. 根 manifest（≤160 行/≤16KB、无完整 content、含 shards）与四层分片
    （≤300 行/≤32KB/≤40 条、ID 全局唯一、路径存在且相对、与 front matter 同步）。
 
-所有 policy/manifest 违规：``--strict`` 下 error（exit 4），非 strict 下 warning。
+严重度：内容层错误与机器契约违反固定 error；policy/manifest 预算类违规
+``--strict`` 下 error（exit 4）、非 strict 下 warning。索引一致性以内容机检
+（MANIFEST_COUNTS/SHARD_CONTENT）为准；文件 mtime 不参与默认判定（CI 安全），
+需要本地调试时用 ``--mtime-check`` 显式开启 MANIFEST_STALE 检查。
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ from typing import Any
 
 from .docpolicy import line_count, load_policy, manifest_limits
 from .frontmatter import REQUIRED_KEYS, parse_document
+from .governance import collect_governance
 from .indexgen import (
     CONTENT_GROUPS,
     SCHEMA_SHARD,
@@ -37,7 +44,7 @@ from .util import (
     rel_posix,
 )
 
-CONTENT_DIRS = ("methodology", "pitfalls", "guardrails", "cases")
+CONTENT_DIRS = ("methodology", "pitfalls", "guardrails", "cases", "adr")
 EXTRA_MARKDOWN = ("toolkit/README.md",)
 PROTOCOL_MARKDOWN = ("AGENTS.md",)
 
@@ -49,7 +56,16 @@ _FENCED_CODE = re.compile(r"```.*?```", re.DOTALL)
 _INLINE_CODE = re.compile(r"`[^`\n]*`")
 _LINK_PATTERN = re.compile(r"!?\[[^\]]*\]\((?:<([^>]+)>|([^)\s]+))\)")
 
-STATUS_VALUES = ("current", "draft", "deprecated", "archived", "frozen", "proposed")
+STATUS_VALUES = (
+    "current",
+    "draft",
+    "deprecated",
+    "archived",
+    "frozen",
+    "proposed",
+    "accepted",
+    "superseded",
+)
 TYPE_VALUES = (
     "index",
     "methodology",
@@ -61,8 +77,10 @@ TYPE_VALUES = (
     "runbook",
     "agent-task",
     "tool",
+    "adr",
+    "request",
 )
-ID_PATTERN = re.compile(r"^[A-Z][A-Z0-9]*-[0-9]{3}$")
+ID_PATTERN = re.compile(r"^[A-Z][A-Z0-9]*-[0-9]{3,4}$")
 
 PITFALL_SEVERITY = ("S1", "S2", "S3", "S4")
 PITFALL_DOMAIN = ("device", "boot", "server", "bridge", "security", "ops", "docs")
@@ -178,7 +196,7 @@ def validate_front_matter(paths: list[Path], root: Path) -> tuple[list[dict[str,
         if isinstance(entry_id, str) and entry_id:
             if not ID_PATTERN.match(entry_id):
                 issues.append(
-                    _issue("warning", "ID_FORMAT", relative, f"ID '{entry_id}' 不符合 'PREFIX-000' 形式")
+                    _issue("warning", "ID_FORMAT", relative, f"ID '{entry_id}' 不符合 'PREFIX-000'/'PREFIX-0000' 形式")
                 )
             if entry_id in ids:
                 issues.append(
@@ -563,8 +581,15 @@ def validate_manifest_bundle(
     content_paths: list[Path],
     policy: dict[str, Any],
     strict: bool,
+    *,
+    mtime_check: bool = False,
 ) -> tuple[list[dict[str, Any]], bool, int]:
-    """校验根摘要与分片；返回 ``(issues, manifest_found, shard_count)``。"""
+    """校验根摘要与分片；返回 ``(issues, manifest_found, shard_count)``。
+
+    ``mtime_check`` 默认 False：索引一致性由内容机检（MANIFEST_COUNTS/SHARD_CONTENT）
+    保证，不依赖文件 mtime（CI/新 checkout 的 mtime 必然晚于提交的 generated_at，
+    否则会假失败）。仅本地调试显式开启时才检查 MANIFEST_STALE。
+    """
     issues: list[dict[str, Any]] = []
     limits = manifest_limits(policy)
     manifest_path = root / "agent-manifest.json"
@@ -839,22 +864,23 @@ def validate_manifest_bundle(
                     )
                 )
 
-    # 索引是否过期
-    newest_source = 0.0
-    for path in content_paths:
-        try:
-            newest_source = max(newest_source, path.stat().st_mtime)
-        except OSError:
-            continue
-    if generated_at is not None and newest_source and generated_at.timestamp() + 1.0 < newest_source:
-        issues.append(
-            _policy_issue(
-                strict,
-                "MANIFEST_STALE",
-                "agent-manifest.json",
-                "manifest 已过期（内容文件比 manifest 新）：请重新运行 index",
+    # 索引是否过期（仅 --mtime-check：默认关闭，CI/新 checkout 的 mtime 不可信）
+    if mtime_check:
+        newest_source = 0.0
+        for path in content_paths:
+            try:
+                newest_source = max(newest_source, path.stat().st_mtime)
+            except OSError:
+                continue
+        if generated_at is not None and newest_source and generated_at.timestamp() + 1.0 < newest_source:
+            issues.append(
+                _policy_issue(
+                    strict,
+                    "MANIFEST_STALE",
+                    "agent-manifest.json",
+                    "manifest 可能已过期（内容文件 mtime 比 manifest 新；--mtime-check 本地调试项）：请重新运行 index",
+                )
             )
-        )
     return issues, True, shard_count
 
 
@@ -867,8 +893,14 @@ def validate_repo(
     root: str | Path,
     strict: bool = False,
     policy_path: str | Path | None = None,
+    *,
+    mtime_check: bool = False,
 ) -> dict[str, Any]:
-    """执行全部校验，返回 ``repurpose.validation.v1`` 报告。"""
+    """执行全部校验，返回 ``repurpose.validation.v1`` 报告。
+
+    ``mtime_check`` 默认 False：索引一致性以内容机检为准，不依赖文件 mtime
+    （CI/新 checkout 安全）；传 True 才报告 MANIFEST_STALE。
+    """
     repo_root = Path(root)
     policy, policy_warnings = load_policy(policy_path)
     content_paths = collect_content_markdown(repo_root)
@@ -884,14 +916,33 @@ def validate_repo(
             _policy_issue(strict, code, "toolkit/schema/doc-policy.json", message)
         )
     doc_issues, policy_files = validate_doc_policy(repo_root, policy, strict)
+    governance_issues, governance_checked = collect_governance(repo_root, policy, strict)
     manifest_issues, manifest_found, shard_count = validate_manifest_bundle(
-        repo_root, content_paths, policy, strict
+        repo_root, content_paths, policy, strict, mtime_check=mtime_check
     )
 
-    issues = fm_issues + link_issues + json_issues + policy_issues + doc_issues + manifest_issues
+    issues = (
+        fm_issues
+        + link_issues
+        + json_issues
+        + policy_issues
+        + doc_issues
+        + governance_issues
+        + manifest_issues
+    )
     errors = [item for item in issues if item["level"] == "error"]
     warnings = [item for item in issues if item["level"] == "warning"]
     failed = bool(errors) or (strict and bool(warnings))
+    checked: dict[str, Any] = {
+        "markdown_files": markdown_count,
+        "link_files": len(link_paths),
+        "links": link_count,
+        "json_files": json_count,
+        "manifest": manifest_found,
+        "shards": shard_count,
+        "policy_files": policy_files,
+    }
+    checked.update(governance_checked)
     return {
         "schema": SCHEMA_VALIDATION,
         "generated_at": iso_now(),
@@ -900,15 +951,7 @@ def validate_repo(
         "ok": not failed,
         "error_count": len(errors),
         "warning_count": len(warnings),
-        "checked": {
-            "markdown_files": markdown_count,
-            "link_files": len(link_paths),
-            "links": link_count,
-            "json_files": json_count,
-            "manifest": manifest_found,
-            "shards": shard_count,
-            "policy_files": policy_files,
-        },
+        "checked": checked,
         "issues": issues,
     }
 
@@ -923,6 +966,9 @@ def format_validation_human(report: dict[str, Any]) -> str:
         "JSON {json_files} 个 / manifest {manifest}（分片 {shards}）/ policy 文件 {policy_files}".format(
             **checked
         ),
+        "- 治理：协议 {protocol_lines} 行（{protocol_tier}）/ 命名 {naming_files} 个 / "
+        "PIT {pitfall_files} 条 / ADR {adr_files} 篇 / backlog {backlog_items} 条 / "
+        "归档 {changelog_archive_rows} 条 / 回归 {agent_regression_checks} 项".format(**checked),
         f"- 错误：{report['error_count']}；警告：{report['warning_count']}；strict={report['strict']}",
     ]
     if report["issues"]:

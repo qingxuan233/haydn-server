@@ -88,6 +88,12 @@ class IndexBundleTests(unittest.TestCase):
         ):
             self.assertIn(key, manifest)
 
+    def test_invariants_cover_lab_root_exception(self) -> None:
+        manifest = build_manifest(self.root)
+        self.assertTrue(
+            any("实验设备" in item and "GRD-015" in item for item in manifest["invariants"])
+        )
+
     def test_counts_match_content_and_shards(self) -> None:
         bundle = build_bundle(self.root)
         manifest = bundle["root"]
@@ -340,6 +346,40 @@ class ScanGroupTests(unittest.TestCase):
         self.assertLessEqual(len(lines), 12)
         self.assertEqual(sum(1 for line in lines if '"id"' in line), 2)  # 每个条目录一行
         json.loads(text)
+
+
+class IndexIdempotencyTests(unittest.TestCase):
+    """AR-06：连续两次重建 manifest，除 generated_at 外内容一致；index --check 只读比对一致。"""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name) / "repo"
+        build_sample_repo(self.root)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_two_builds_differ_only_in_generated_at(self) -> None:
+        first = build_manifest(self.root, generated_at="2026-01-01T00:00:00Z")
+        second = build_manifest(self.root, generated_at="2026-01-02T00:00:00Z")
+        first.pop("generated_at")
+        second.pop("generated_at")
+        self.assertEqual(first, second)
+
+    def test_check_bundle_ignores_generated_at(self) -> None:
+        from toolkit.repurpose.indexgen import check_bundle
+
+        write_bundle(self.root, generated_at="2026-01-01T00:00:00Z")
+        report = check_bundle(self.root)
+        self.assertTrue(report["ok"])
+        self.assertEqual(report["diffs"], [])
+        self.assertEqual(report["schema"], "repurpose.index-check.v1")
+        self.assertTrue(report["checked"]["root"]["ok"])
+        self.assertEqual(len(report["checked"]["shards"]), len(CONTENT_GROUPS))
+        self.assertIn(
+            "1970-01-01T00:00:00Z",
+            json.dumps([build_manifest(self.root, generated_at="1970-01-01T00:00:00Z")], ensure_ascii=False),
+        )
 
 
 if __name__ == "__main__":

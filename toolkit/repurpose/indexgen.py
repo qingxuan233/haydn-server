@@ -8,7 +8,8 @@
   生成物，每片 ≤300 行 / ≤32KB / ≤40 条（上限来自 toolkit/schema/doc-policy.json）。
 
 内容缺失/半成品（Lead 并行编辑）时：目录缺失或 front matter 解析错误只记 warning/error，
-不中断生成。
+不中断生成。``check_bundle``（``index --check``）用同一生成器在内存重建并与磁盘生成物
+逐 JSON 比较（规范化 generated_at），供 CI 校验提交版索引一致性，不写盘、不依赖 mtime。
 """
 
 from __future__ import annotations
@@ -62,7 +63,7 @@ GROUP_REASONS = {
 }
 
 INVARIANTS = [
-    "不 Root/不刷机/不解锁 BL：除非用户对具体设备明确授权且评估门禁通过",
+    "生产/主力设备不 Root/不刷机/不解锁 BL；专用实验设备仅在用户授权且 GRD-015/MTH-012 门禁通过后受控执行",
     "不卸载系统包：只允许 disable-user 并维护保护名单",
     "禁止 am kill-all 或随意 force-stop 服务器相关进程",
     "任何写操作先备份/快照并给出回滚路径；恢复未演练等价于没有回滚",
@@ -70,6 +71,7 @@ INVARIANTS = [
     "token/口令/私钥/证书/备份口令不进入仓库、日志、文档、聊天",
     "网络最小暴露：仅 loopback/局域网；ADB 维护后关闭",
     "不伪造验收：未实测不标完成，文档声称不算证据",
+    "协议/提示词/校验器变更必须回归且不得弱化检查（GRD-016）",
     "构建路径必须 ASCII（aapt2 不支持中文路径）",
 ]
 
@@ -219,7 +221,18 @@ def _build_tools(root: Path, warnings: list[str]) -> list[dict[str, Any]]:
             "kind": "cli",
             "path": "toolkit/README.md",
             "entry": "python -m toolkit.repurpose",
-            "commands": ["detect", "probe", "assess", "plan", "new-profile", "index", "validate"],
+            "commands": [
+                "detect",
+                "probe",
+                "assess",
+                "plan",
+                "rootcheck",
+                "rescue-kit",
+                "new-profile",
+                "index",
+                "validate",
+                "preflight",
+            ],
         },
     ]
     wrappers = (
@@ -264,6 +277,16 @@ def _build_commands() -> list[dict[str, str]]:
             "note": "生成 P0–P6 阶段计划",
         },
         {
+            "name": "rootcheck",
+            "cmd": "python -m toolkit.repurpose rootcheck --profile cases/<codename>/profile.json --json",
+            "note": "离线检查 Root 实验设备技术姿态（不替代授权/演练人工确认）",
+        },
+        {
+            "name": "rescue-kit",
+            "cmd": "python -m toolkit.repurpose rescue-kit --dir backup/rescue --init|--verify",
+            "note": "离线生成/校验救援包 SHA-256 清单（G-L1 辅助；不连接设备）",
+        },
+        {
             "name": "index",
             "cmd": "python -m toolkit.repurpose index",
             "note": "重建根摘要 agent-manifest.json + agent-manifest.d/ 四层分片",
@@ -271,7 +294,12 @@ def _build_commands() -> list[dict[str, str]]:
         {
             "name": "validate",
             "cmd": "python -m toolkit.repurpose validate --strict",
-            "note": "front matter/ID/断链/JSON/doc-policy 体积与 manifest 一致性",
+            "note": "front matter/ID/断链/JSON/协议/命名/PIT/ADR/backlog/归档/manifest 一致性",
+        },
+        {
+            "name": "preflight",
+            "cmd": "python -m toolkit.repurpose preflight",
+            "note": "统一质量门：index → validate --strict → unittest → check-links（退出码 0/3/4）",
         },
         {
             "name": "unittest",
@@ -626,6 +654,164 @@ def write_manifest(
     """兼容接口：写盘后返回 ``(根摘要路径, 根 manifest)``。"""
     info = write_bundle(root, out=out, generated_at=generated_at)
     return Path(info["root_path"]), info["manifest"]
+
+
+SCHEMA_INDEX_CHECK = "repurpose.index-check.v1"
+"""``index --check`` 报告 schema。"""
+
+_NORMALIZED_TIMESTAMP = "1970-01-01T00:00:00Z"
+"""比较生成物时统一替换 ``generated_at`` 的固定值（时间戳不参与一致性判定）。"""
+
+
+def _normalize_generated_at(payload: Any) -> Any:
+    """深拷贝并规范化 ``generated_at``（仅顶层键；分片/根摘要均为顶层键）。"""
+    if not isinstance(payload, dict):
+        return payload
+    normalized = json.loads(json.dumps(payload, ensure_ascii=False))
+    if "generated_at" in normalized:
+        normalized["generated_at"] = _NORMALIZED_TIMESTAMP
+    return normalized
+
+
+def _diff_fields(expected: Any, actual: Any, base: str = "", *, limit: int = 12) -> list[str]:
+    """递归比较两个 JSON 值，返回差异字段说明列表（截断到 ``limit`` 条）。"""
+    diffs: list[str] = []
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        for key in sorted(set(expected) | set(actual)):
+            if key not in actual:
+                diffs.append(f"{base}.{key}（磁盘缺失）")
+            elif key not in expected:
+                diffs.append(f"{base}.{key}（磁盘多余）")
+            else:
+                diffs.extend(_diff_fields(expected[key], actual[key], f"{base}.{key}", limit=limit))
+            if len(diffs) >= limit:
+                return diffs[:limit]
+        return diffs
+    if isinstance(expected, list) and isinstance(actual, list):
+        if len(expected) != len(actual):
+            diffs.append(f"{base or '列表'}（条数 {len(actual)} != {len(expected)}）")
+            return diffs
+        for index, (expected_item, actual_item) in enumerate(zip(expected, actual)):
+            diffs.extend(
+                _diff_fields(expected_item, actual_item, f"{base}[{index}]", limit=limit)
+            )
+            if len(diffs) >= limit:
+                return diffs[:limit]
+        return diffs
+    if expected != actual:
+        diffs.append(f"{base or '值'}（{actual!r} != {expected!r}）"[:200])
+    return diffs
+
+
+def check_bundle(root: str | Path) -> dict[str, Any]:
+    """``index --check``：在内存重建生成物并与磁盘已提交文件比较（**只读、不写盘**）。
+
+    比较前把两边的 ``generated_at`` 规范化，因此时间戳不同不算差异。
+    返回 ``repurpose.index-check.v1``：``ok`` / ``diffs`` / ``checked``。
+    """
+    repo_root = Path(root)
+    diffs: list[dict[str, Any]] = []
+    bundle = build_bundle(repo_root, generated_at=_NORMALIZED_TIMESTAMP)
+    expected_root = _normalize_generated_at(bundle["root"])
+
+    root_path = default_manifest_path(repo_root)
+    checked: dict[str, Any] = {"root": {"path": MANIFEST_FILENAME, "ok": False}, "shards": []}
+    if not root_path.is_file():
+        diffs.append(
+            {
+                "path": MANIFEST_FILENAME,
+                "reason": "missing",
+                "message": "根 manifest 不存在：请运行 python -m toolkit.repurpose index",
+            }
+        )
+    else:
+        try:
+            disk_root = load_json(root_path)
+        except Exception as exc:
+            diffs.append(
+                {
+                    "path": MANIFEST_FILENAME,
+                    "reason": "json_error",
+                    "message": f"根 manifest 无法解析：{exc.__class__.__name__}",
+                }
+            )
+        else:
+            actual_root = _normalize_generated_at(disk_root)
+            fields = _diff_fields(expected_root, actual_root, "manifest")
+            if fields:
+                diffs.append(
+                    {
+                        "path": MANIFEST_FILENAME,
+                        "reason": "mismatch",
+                        "fields": fields,
+                        "message": "根摘要与内容/生成器不一致：请重跑 index（禁止手改生成物）",
+                    }
+                )
+            else:
+                checked["root"]["ok"] = True
+
+    for layer, shard_info in bundle["shards"].items():
+        relative = shard_info["path"]
+        path = repo_root / relative
+        shard_checked: dict[str, Any] = {"path": relative, "ok": False}
+        checked["shards"].append(shard_checked)
+        if not path.is_file():
+            diffs.append(
+                {
+                    "path": relative,
+                    "reason": "missing",
+                    "message": "分片文件不存在：请运行 python -m toolkit.repurpose index",
+                }
+            )
+            continue
+        try:
+            disk_shard = load_json(path)
+        except Exception as exc:
+            diffs.append(
+                {
+                    "path": relative,
+                    "reason": "json_error",
+                    "message": f"分片无法解析：{exc.__class__.__name__}",
+                }
+            )
+        else:
+            actual_shard = _normalize_generated_at(disk_shard)
+            fields = _diff_fields(shard_info["data"], actual_shard, f"shard[{layer}]")
+            if fields:
+                diffs.append(
+                    {
+                        "path": relative,
+                        "reason": "mismatch",
+                        "fields": fields,
+                        "message": f"分片 {layer} 与内容/生成器不一致：请重跑 index",
+                    }
+                )
+            else:
+                shard_checked["ok"] = True
+
+    return {
+        "schema": SCHEMA_INDEX_CHECK,
+        "generated_at": iso_now(),
+        "root": ".",
+        "ok": not diffs,
+        "diffs": diffs,
+        "checked": checked,
+    }
+
+
+def format_index_check_human(report: dict[str, Any]) -> str:
+    """人类可读 ``index --check`` 输出（只列差异文件，不打印文件内容）。"""
+    if report["ok"]:
+        return "index 一致：agent-manifest.json + 四层分片与当前内容一致（只读检查，未写盘）"
+    lines = ["index 不一致（生成物过期/被手改）：请运行 python -m toolkit.repurpose index 重建"]
+    for diff in report["diffs"]:
+        detail = ""
+        if diff.get("fields"):
+            detail = "；差异字段：" + "、".join(diff["fields"])
+        elif diff.get("message"):
+            detail = "；" + str(diff["message"])
+        lines.append(f"  - {diff['path']}（{diff['reason']}）{detail}")
+    return "\n".join(lines)
 
 
 def format_index_summary(info: dict[str, Any]) -> str:

@@ -2,14 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://haydn-server.local/toolkit/schema/frontmatter.schema.json",
   "title": "新层 Markdown front matter（flat YAML）",
-  "description": "methodology/、pitfalls/、guardrails/、cases/ 与 toolkit/README.md 的 front matter 契约。必须为 flat YAML（key: value），不支持嵌套；列表用逗号分隔（[a, b] 也兼容）。本文件是自描述 JSON，parse/validate 由 toolkit.repurpose.frontmatter + validate 实现（零第三方依赖）。",
+  "description": "methodology/、pitfalls/、guardrails/、cases/、adr/ 与 toolkit/README.md 的 front matter 契约。必须为 flat YAML（key: value），不支持嵌套；列表用逗号分隔（[a, b] 也兼容）。本文件是自描述 JSON，parse/validate 由 toolkit.repurpose.frontmatter + validate 实现（零第三方依赖）。",
   "type": "object",
   "required": ["id", "title", "type", "status", "audience", "tags", "updated", "agent_hint"],
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3}$",
-      "description": "PREFIX-000 形式，全局唯一；索引/README 用 *-000"
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3,4}$",
+      "description": "PREFIX-000 / PREFIX-0000 形式（ADR 用四位），全局唯一；索引/README 用 *-000"
     },
     "title": {"type": "string", "minLength": 1},
     "type": {
@@ -23,11 +23,22 @@
         "acceptance",
         "runbook",
         "agent-task",
-        "tool"
+        "tool",
+        "adr",
+        "request"
       ]
     },
     "status": {
-      "enum": ["current", "draft", "deprecated", "archived", "frozen", "proposed"]
+      "enum": [
+        "current",
+        "draft",
+        "deprecated",
+        "archived",
+        "frozen",
+        "proposed",
+        "accepted",
+        "superseded"
+      ]
     },
     "audience": {
       "type": "array",

@@ -1,8 +1,8 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "guardrails",
-  "generated_at": "2026-11-11T04:08:48Z",
-  "count": 15,
+  "generated_at": "2026-11-13T16:35:59Z",
+  "count": 17,
   "entries": [
     {"id":"GRD-000","title":"护栏索引与使用规范","path":"guardrails/README.md","type":"guardrail","status":"current","tags":["guardrails","index","checklist","governance"],"agent_hint":"每次变更前后按本索引逐条自检；命中 blocker 红线立即停止，改用「允许的替代」或走授权评审，不得以效率为由破例。","severity":"warning","scope":"repo"},
     {"id":"GRD-001","title":"默认不 Root、不刷机、不解锁 Bootloader","path":"guardrails/GRD-001-no-root-no-unlock-default.md","type":"guardrail","status":"current","tags":["root","bootloader","flash","default-route","authorization"],"agent_hint":"遇到 Root、解锁、刷机、改系统分区的请求先停下，要求风险评估结论与用户明确授权；未授权一律拒绝执行。","severity":"blocker","scope":"device"},
@@ -18,6 +18,8 @@
     {"id":"GRD-011","title":"隐私数据采集与脱敏","path":"guardrails/GRD-011-privacy-inventory.md","type":"guardrail","status":"current","tags":["privacy","serial","pii","redaction","gitignore","retention"],"agent_hint":"采集或引用设备数据前先判定是否含隐私字段；默认脱敏、默认不入库，报告中只写占位符与聚合结论。","severity":"blocker","scope":"repo"},
     {"id":"GRD-012","title":"Agent 行为红线","path":"guardrails/GRD-012-agent-operating-rules.md","type":"guardrail","status":"current","tags":["agent","protocol","scope","honesty","rollback","dod"],"agent_hint":"动手前只读核对现状与写范围；不越权、不伪造、不改案例证据；高风险操作与契约变更必须人工批准，失败立即回滚并报告。","severity":"blocker","scope":"agent"},
     {"id":"GRD-013","title":"不伪造验收","path":"guardrails/GRD-013-no-fake-acceptance.md","type":"guardrail","status":"current","tags":["acceptance","evidence","target-vs-measured","soak","honesty"],"agent_hint":"任何\"完成/通过\"结论必须有当场实测的命令、输出、时间与环境；目标值写目标，实测值写实测，未知只能标待验证。","severity":"blocker","scope":"agent"},
-    {"id":"GRD-014","title":"固件冻结与受控升级","path":"guardrails/GRD-014-firmware-freeze-ota.md","type":"guardrail","status":"current","tags":["firmware","ota","freeze","upgrade","regression","permissions"],"agent_hint":"禁止开启自动 OTA；固件升级必须走\"评估→备份→维护窗口→人工批准→升级→全量回归验收→记录/回滚\"流程。","severity":"blocker","scope":"device"}
+    {"id":"GRD-014","title":"固件冻结与受控升级","path":"guardrails/GRD-014-firmware-freeze-ota.md","type":"guardrail","status":"current","tags":["firmware","ota","freeze","upgrade","regression","permissions"],"agent_hint":"禁止开启自动 OTA；固件升级必须走\"评估→备份→维护窗口→人工批准→升级→全量回归验收→记录/回滚\"流程。","severity":"blocker","scope":"device"},
+    {"id":"GRD-015","title":"Root 实验设备的受控操作边界","path":"guardrails/GRD-015-root-lab-controlled.md","type":"guardrail","status":"current","tags":["root","bootloader","lab-device","authorization","arb","privilege","supply-chain"],"agent_hint":"只有\"专用实验设备+用户授权记录+救援包+G-L 门禁\"同时满足才允许解锁/Root；任一缺失即回到 GRD-001 默认拒绝。","severity":"blocker","scope":"device"},
+    {"id":"GRD-016","title":"协议与提示词变更必须回归，不得弱化校验","path":"guardrails/GRD-016-agent-protocol-regression.md","type":"guardrail","status":"current","tags":["protocol","regression","validator-integrity","preflight","launch-blocker"],"agent_hint":"改 AGENTS/提示词/模板/校验器前先读本条；发现校验器误报先记录证据并报告 Lead，禁止改检查让自己变绿；完成协议变更必跑 preflight 与回归 AR-01..AR-10。","severity":"blocker","scope":"agent"}
   ]
 }

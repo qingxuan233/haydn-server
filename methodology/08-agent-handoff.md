@@ -4,10 +4,10 @@ title: Agent 交接与扩展协议
 type: methodology
 status: current
 audience: human, agent
-tags: agent-handoff, protocol, extension, lifecycle, cli-contract, governance
+tags: agent-handoff, protocol, extension, lifecycle, cli-contract, governance, adr, preflight
 depends: MTH-000, MTH-001, MTH-002, MTH-003, MTH-008
-updated: 2026-11-11
-agent_hint: 每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；任何扩展先查本文件 SOP
+updated: 2026-11-13
+agent_hint: 每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；本文件只保留协议与扩展契约，SOP 细节见 MTH-014、文档生命周期见 MTH-011、交付治理见 MTH-013。
 ---
 
 # MTH-009 · Agent 交接与扩展协议
@@ -43,7 +43,7 @@ agent_hint: 每个新 Agent 开工前必读；先协议后动手，任务是取�
 
 1. [AGENTS.md](../AGENTS.md)：分层与权威顺序、红线、DoD。
 2. [agent-manifest.json](../agent-manifest.json)：根摘要（≤160 行；过期先 `python -m toolkit.repurpose index`）；需要某层时**只读一个** `agent-manifest.d/<layer>.json` 分片，禁止一次加载全部分片。
-3. 按任务**只选 1 篇**主题 MTH（MTH-001..008 之一）；扩展/交接任务读本文件，归档/上下文预算读 [MTH-011](10-document-lifecycle.md)。
+3. 按任务**只选 1 篇**主题 MTH（MTH-001..008 之一；Root 实验设备读 [MTH-012](11-root-lab.md)）；扩展/交接任务读本文件，归档/上下文预算读 [MTH-011](10-document-lifecycle.md)。
 4. [README.md](../README.md) 只读"仓库地图/阅读路径"段；[backlog.json](../backlog.json) 领取任务或确认优先级。
 
 **只读优先**：先看状态与证据再改文件；不了解影响面时禁止批量重写。基线校验必须全绿（红基线先修基线，禁止叠加变更）：
@@ -78,20 +78,22 @@ agent_hint: 一句话说明何时读、先做什么
 | 键 | 必填 | 取值/规则 |
 |---|---|---|
 | `id` / `title` | ✅ | 稳定 ID（见 §4.2）/ 中文标题（不含英文冒号，避免 YAML 歧义） |
-| `type` | ✅ | 以 [frontmatter schema](../toolkit/schema/frontmatter.schema.json) 为准：`index` / `methodology` / `pitfall` / `guardrail` / `case-study` / `oem-profile` / `tool`；`acceptance` / `runbook` / `agent-task` 模板只用于交付物，不进入内容索引 |
-| `status` / `audience` | ✅ | `status` 新层统一 `current`；`audience` 固定 `human, agent` |
+| `type` | ✅ | 以 [frontmatter schema](../toolkit/schema/frontmatter.schema.json) 为准：`index` / `methodology` / `pitfall` / `guardrail` / `case-study` / `oem-profile` / `tool` / `adr` / `request`；`acceptance` / `runbook` / `agent-task` / `request` 模板只用于交付物，不进入内容索引 |
+| `status` / `audience` | ✅ | `status` 取值以 `validate` 为准：`current` / `draft` / `deprecated` / `archived` / `frozen` / `proposed`；ADR 另允许 `accepted` / `superseded`；`audience` 固定 `human, agent` |
 | `tags` | ✅ | 逗号分隔关键词（小写英文优先） |
 | `depends` | 可空 | 逗号分隔依赖 ID |
-| `updated` | ✅ | `YYYY-MM-DD`（当前基线 2026-11-11） |
+| `updated` | ✅ | `YYYY-MM-DD`（当前基线 2026-11-13） |
 | `agent_hint` | ✅ | Agent 可执行提示；禁止留空或"待补充" |
 
 ### 4.2 ID 分配与命名
 
 | 前缀 | 用途 | 分配规则 |
-|---|---|---|
+|---|---|---|---|
 | `MTH` | 方法论 | 目录索引/README 用 `*-000`；新篇编号只增不复用 |
 | `PIT` | 踩坑 | 只增不复用；一条一个问题 |
 | `GRD` | 护栏 | 只增不复用；一条一个红线 |
+| `ADR` | 决策记录 | `adr/NNNN-slug.md` 四位序号从 `0001` 起连续；`superseded` 不删除并回链新 ADR（规则见 [MTH-011](10-document-lifecycle.md) §2.4） |
+| `REQ` | 需求基线卡（可选） | M/H 任务的需求基线卡 ID（模板 [request-card](../toolkit/templates/request-card.md)）；只用于交付物，不进入内容索引 |
 | `TOOL` / `CASE` | 工具能力 / 案例 | 子命令级稳定 ID / 一个案例目录一个主 ID |
 | `ACP` / `RUN` / `TASK` | 验收清单 / Runbook / Agent 任务单 | 交付物模板编号；模板示例号不占正式编号 |
 | `BL` | 待办 | 在 [backlog.json](../backlog.json) 中分配 |
@@ -100,35 +102,38 @@ agent_hint: 一句话说明何时读、先做什么
 
 **新增前必查** `agent-manifest.json` 或全仓 `grep id:`；编号冲突立即停止（不得覆盖已有 ID）。目录与文件名为**全 ASCII**（正文中文）；链接只用相对路径，**新层禁止 `#anchor`**；禁止绝对路径、主机名、IP、端口、凭据、个人信息。引用案例必须给相对链接 + "案例实证/历史记录"标注。
 
-## 5. 任务生命周期（单 Agent）
+## 5. 任务生命周期（单 Agent，摘要）
+
+> 完整 SOP（计划外置/步数预算、操作边界补充、三态证据卡、评审/测试、汇报格式、多 Agent 冲突处置）**只维护在** [MTH-014 Agent 工作 SOP](13-agent-sop.md)；交付治理与需求卡见 [MTH-013](12-delivery-governance.md)。本节只保留本仓库任务协议要点。
 
 | 步 | 动作 | 产物/检查 |
 |---|---|---|
-| 1 | 取任务并 **claim**：从 [backlog.json](../backlog.json) 选（优先 P0/P1）或接受用户新任务；多 Agent 在共享任务板 claim，单 Agent 置 `in_progress` + owner | 记录 `BL-ID`；写范围互斥、确认不重叠 |
-| 3 | 只读核对现状、影响面、相关 MTH/PIT/GRD/案例 | 列出将改的文件与理由 |
-| 4 | 变更：最小步、可回滚；只写授权范围 | 不越界、不顺手重构 |
-| 5 | 自检：§3 基线命令全绿；改动范围内链接 0 错误；`git diff --check` | 失败项先修 |
-| 6 | 索引：`python -m toolkit.repurpose index` 重建 manifest，确认无 warnings | 不手改 manifest |
-| 7 | 记录：对外事实/契约变化写 [CHANGELOG](../CHANGELOG.md) 当前窗口（≤8 条）；超窗先把最旧条目归档到 `changelog/YYYY-MM.md` 并更新索引（规则见 [MTH-011](10-document-lifecycle.md)）；补交叉链接 | 日期 + 唯一递增记录，归档只读 |
-| 8 | 报告并完成：写清改了什么/为什么/验证命令与结果/风险与回滚/未完成项；backlog 置 `done` + `result`，共享任务板 complete | 含证据；失败如实写；状态与产出路径一致 |
-| 9 | DoD 自检（§5.1） | 全部勾选才算完成 |
+| 1 | 取任务并 **claim**：从 [backlog.json](../backlog.json) 选（优先 P0/P1）或接受用户任务；多 Agent 在共享任务板 claim，单 Agent 置 `in_progress` + owner | 记录 `BL-ID`；写范围互斥、确认不重叠 |
+| 2 | 只读核对现状、影响面、相关 MTH/PIT/GRD/ADR/案例 | 列出将改的文件与理由 |
+| 3 | 变更：最小步、可回滚；只写授权范围；M/H 任务先需求卡或变更单（[MTH-013](12-delivery-governance.md) §4） | 不越界、不顺手重构 |
+| 4 | 自检：§3 基线命令全绿；改动范围内链接 0 错误；`git diff --check` | 失败项先修 |
+| 5 | 索引：`python -m toolkit.repurpose index` 重建 manifest，确认无 warnings | 不手改 manifest |
+| 6 | 记录：对外事实/契约变化写 [CHANGELOG](../CHANGELOG.md) 当前窗口（≤8 条）；超窗先把最旧条目归档到 `changelog/YYYY-MM.md` 并更新索引（规则见 [MTH-011](10-document-lifecycle.md) §3）；补交叉链接与 ADR | 日期 + 唯一递增记录，归档只读 |
+| 7 | 报告并完成：五段格式 + 事实分级（[MTH-014](13-agent-sop.md) §9）；backlog 置 `done` + `result`，共享任务板 complete | 含证据；失败如实写；状态与产出路径一致 |
 
-### 5.1 DoD 清单
+### 5.1 DoD 摘要
 
-- [ ] 改动落在授权范围，未触碰冻结案例（例外：明确的事实纠错任务）
-- [ ] 新文档 front matter 合法、ID 唯一、无未完成标记、无敏感值
-- [ ] 新增/修改链接目标存在（`validate --strict` + `check-links --strict-anchors`）
-- [ ] 工具改动有对应单元测试且全绿；`--help`/契约文档同步
-- [ ] `agent-manifest.json`（根摘要）+ `agent-manifest.d/`（分片）已重建且与内容一致
-- [ ] 对外契约/事实变化已写入 `CHANGELOG.md` 当前窗口；超窗条目已归档且索引已更新
-- [ ] `backlog.json` 状态与结果已更新
-- [ ] 报告含验证证据、回滚方式、未完成项
+> 完整 DoD 机检清单与证据卡规范见 [MTH-014](13-agent-sop.md) §7/§17 与 [AGENTS.md](../AGENTS.md) §7；本节只列不可省略项。
 
-### 5.2 多 Agent 协作
+- [ ] 改动落在授权范围，未触碰冻结案例/校验器/红线；未越界访问工作区外文件
+- [ ] front matter/ID/命名合法、无未完成占位、无敏感值；链接目标存在
+- [ ] 质量门全绿（`preflight` 或 validate/unittest/check-links），附退出码与关键输出
+- [ ] 对外契约/事实变化已写入 CHANGELOG 当前窗口；manifest 已 `index` 重建且未被手改
+- [ ] `backlog.json` 状态与 `result` 已更新；报告含验证证据、回滚方式、未完成项
+
+### 5.2 多 Agent 协作（摘要）
 
 - **写范围必须互斥**：按目录/文件前缀分配，并在共享任务板写明 `write_scopes`；开工 claim、完成 complete。
-- 同一文件同一时间只能一个 writer；收到 `FS_STALE_VERSION` → 先重读、再 rebase、后重试，禁止盲写。
+- **并发写冲突处置** ⛔：同一文件同一时间只能一个 writer；遇 `FS_STALE_VERSION`（或等价版本冲突）**先重读最新内容 → 在其上重做变更 → 重试**，禁止用旧内容整体覆盖；共享文件由 Lead 终审——"最后一次写赢"是多 Agent 最危险的失败模式。
+- **成员失联核对** ⛔：成员 `inactive` 不代表完成；必须核对其报告与产出物（文件是否真存在、验收是否真跑过、登记是否完成）后才计入完成；缺产出视为未完成并报告 Lead。
+- **只认宿主证据**：子 Agent 汇报是线索不是证据，关键结论 Lead 需要抽查原文/复跑命令。
 - 跨范围改动由 Lead 统一集成；Lead 负责最终 diff 审查、全量校验与提交；**teammate 不 commit**。共享文件系统意味着别人写入即时可见；写前关键文件重读，禁止假设"我读过后没变"。
+- **入库才算交付态**：untracked 文件不在 `git diff`；提交前 `git add -A` 后检查 `git diff --cached` 与 `git status`；禁止把"工作区里文件存在"当成"已交付"。
 
 ## 6. 写作用语与事实分级
 
@@ -149,9 +154,9 @@ agent_hint: 一句话说明何时读、先做什么
 
 **禁止用语**："应该没问题"、"肯定可以"、"前文写过所以肯定对"。
 
-## 7. 五类扩展 SOP
+## 7. 扩展 SOP（七类）
 
-> 所有新层文件写完后都必须：跑索引 + 校验 + 链接检查；必要时更新索引 README 与交叉链接。模板在 [toolkit/templates/](../toolkit/templates/)。
+> 所有新层文件写完后都必须：跑索引 + 校验 + 链接检查；必要时更新索引 README 与交叉链接。模板在 [toolkit/templates/](../toolkit/templates/)；SOP 细节（评审/证据/回归）见 [MTH-014](13-agent-sop.md)。
 
 ### 7.1 新增方法论篇（MTH）
 
@@ -187,6 +192,20 @@ agent_hint: 一句话说明何时读、先做什么
 3. 脱敏：序列号、IP、账号、token、口令、个人信息一律不入库；profile 的 `source` 标注 documented 或 measured。
 4. 索引与验收：更新 [cases/README.md](../cases/README.md) + `index` + `validate --strict`；`assess` 对 profile 输出稳定；案例关联至少 1 条 PIT 或 MTH、证据可追溯、未实测部分标"待设备验证"、示例值不得写成实测。
 
+### 7.6 新增决策记录（ADR）
+
+1. 取号：`ADR-<下一个四位号>`；文件 `adr/<NNNN>-<ascii-slug>.md`；序号从 `0001` 起连续，只增不复用。
+2. 正文：Nygard 五段——`状态 / 背景 / 决策 / 后果`（重大决策加「备选方案正反对比」）；front matter `type: adr`、`status ∈ proposed/accepted/superseded`；被取代不删除旧文件并写 `superseded_by` 回链。
+3. 触发：架构/方案选型、口径裁决、不可逆变更、被否决的重要备选、Stop/Pivot、协议 MAJOR 变更、破坏性契约变更（规则见 [MTH-011](10-document-lifecycle.md) §2.4）。
+4. 索引与验收：在 [adr/README.md](../adr/README.md) 索引登记（无孤儿 ADR）；轻量决策进台账（D-NN 一行一条）；`validate` ADR 检查（文件名/ID/status/五段/索引）全绿；模板 [toolkit/templates/adr.md](../toolkit/templates/adr.md)。
+
+### 7.7 新增需求卡/交付卡（REQUEST）
+
+1. 取号：`REQ-<下一个号>`（可选 ID；需求卡是交付物，不进入内容索引）；模板 [request-card](../toolkit/templates/request-card.md)。
+2. 必填：ID/状态/DRI/验收人/目标版本、背景与问题、目标、非目标、场景、验收条件（含失败/空数据/权限不足/错误恢复）、依赖与约束、风险与备选、影响面。
+3. 流程：M/H 任务先过 G0/G1/G2（[MTH-013](12-delivery-governance.md) §5），验收条件批准后为基线，变更走变更单；发布/割接卡与 Go/No-Go 见 MTH-013 §7。
+4. 验收：需求卡与 [acceptance 模板](../toolkit/templates/acceptance.md) 的判据一致；完成态以用户/验收人实际走通为准，Agent 自测不替代用户验收。
+
 ## 8. 变更传播
 
 | 改了什么 | 必须同步 |
@@ -213,9 +232,12 @@ agent_hint: 一句话说明何时读、先做什么
 | `plan` | P0–P6 阶段计划 | profile/评估 | `repurpose.plan.v1`（`--format json`） | 0/2/3/4 |
 | `new-profile` | 生成脱敏设备 profile | 交互/参数 | profile 文件 + 校验 | 0/2/3/4 |
 | `index` | 重建机器索引（根摘要 + 分片） | 仓库内容 | `agent-manifest.json` + `agent-manifest.d/*.json` | 0/2/3/4 |
-| `validate` | 校验 front matter/ID/断链/文档体积与归档窗口 | `--strict` | 摘要 + 错误定位 | 0/2/3/4 |
+| `validate` | 校验 front matter/ID/断链/体积/命名/协议/PIT/ADR/backlog/CHANGELOG 归档 | `--strict`、`--json` | 摘要 + 错误定位 | 0/2/3/4 |
+| `preflight` | 统一质量门：`index` → `validate --strict` → `unittest discover` → `check-links --strict-anchors` | `--root`、`--skip-tests`、`--skip-links`、`--no-index`、`--json` | 步骤表；`--json` 输出 `repurpose.preflight.v1` | 0/3/4 |
 
 **统一约定**：退出码固定（0 成功 / 2 用法错 / 3 前置不满足 / 4 校验失败），CI 只按退出码判定；默认人类摘要，`--json`/`--format json` 输出稳定 schema；错误信息不含凭据/绝对路径/设备序列号；确定性（除时间戳/环境探测外不随机）；只写自己的产物（`index` 只写 manifest，`new-profile` 只写目标 profile）；设备能力必须支持注入 fixture 以在无真机环境测试。新增子命令见 §7.4，破坏性变更需版本化+迁移说明。
+
+**validate 已实现（契约与状态见 [toolkit/README.md](../toolkit/README.md)）**：`validate` 新增协议（`PROTOCOL_*`）、命名（`DOC_NAMING`）、PIT（`PIT_*`）、ADR（`ADR_*`）、backlog（`BACKLOG_*`）、CHANGELOG 归档（`CHANGELOG_ARCHIVE`）与 Agent 回归（`AGENT_REGRESSION`）检查（语义见 [MTH-011](10-document-lifecycle.md) §6.3）；`preflight` 退出码 **0=全绿 / 3=有 SKIPPED / 4=任一步 FAILED**，三态语义见 [MTH-014](13-agent-sop.md) §7。若工具尚未包含某检查，如实标注"未机检"，不得写已通过。
 
 ## 10. 禁止事项
 
@@ -239,6 +261,7 @@ agent_hint: 一句话说明何时读、先做什么
 | OEM 矩阵 / 第二案例 / fleet | `BL-005`、`BL-006`、`BL-007` | 只有单一案例；其他 OEM 结论与 fleet 方法论待补 |
 | soak 自动化 / 模板一致性 / 安全基线 | `BL-008`、`BL-009`、`BL-010` | soak JSONL 与报告格式待落地；模板可能漂移；安全检查未自动化 |
 | 案例迁移 / i18n / 改名 | `BL-011`、`BL-013`、`BL-014` | 默认保留不动；需用户批准 |
+| 交付治理 / Agent SOP / ADR | [MTH-013](12-delivery-governance.md)、[MTH-014](13-agent-sop.md)、[adr/README.md](../adr/README.md) | 规范已立、回归集与 Go/No-Go 未实测（待落地） |
 
 ## 12. 给下一个 Agent 的 10 分钟启动清单
 
@@ -255,7 +278,7 @@ agent_hint: 一句话说明何时读、先做什么
 
 ## 13. 维护与链接
 
-- 本协议是活文件：流程/契约变化必须同步更新并记入 [CHANGELOG](../CHANGELOG.md) 当前窗口；结构性变更按 §8 处理；任何 Agent 不得删除本文件或降低红线。变更记录：2026-11-11 初版（分层/读序/生命周期/front matter/扩展 SOP/CLI 契约/DoD），2026-11-11 v1.1（归档/上下文预算/分层 manifest）。
-- 规范层：[methodology/README.md](README.md)、[MTH-001](00-foundations.md)、[MTH-002](01-assessment.md)、[MTH-003](02-roadmap.md)、[MTH-004](03-server-stack.md)、[MTH-005](04-telemetry-bridge.md)、[MTH-006](05-control-plane.md)、[MTH-007](06-security.md)、[MTH-008](07-validation.md)、[MTH-010](09-glossary.md)、[MTH-011](10-document-lifecycle.md)。
+- 本协议是活文件：流程/契约变化必须同步更新并记入 [CHANGELOG](../CHANGELOG.md) 当前窗口；结构性变更按 §8 处理；任何 Agent 不得删除本文件或降低红线。变更记录：2026-11-11 初版（分层/读序/生命周期/front matter/扩展 SOP/CLI 契约/DoD），2026-11-11 v1.1（归档/上下文预算/分层 manifest），2026-11-13（ADR/REQ 前缀、SOP 细节移交 MTH-014、preflight 与新机检、多 Agent 冲突/失联处置、需求卡/交付卡 SOP）。
+- 规范层：[methodology/README.md](README.md)、[MTH-001](00-foundations.md)、[MTH-002](01-assessment.md)、[MTH-003](02-roadmap.md)、[MTH-004](03-server-stack.md)、[MTH-005](04-telemetry-bridge.md)、[MTH-006](05-control-plane.md)、[MTH-007](06-security.md)、[MTH-008](07-validation.md)、[MTH-010](09-glossary.md)、[MTH-011](10-document-lifecycle.md)、[MTH-012](11-root-lab.md)、[MTH-013](12-delivery-governance.md)、[MTH-014](13-agent-sop.md)。
 - 证据/实现/案例：[pitfalls/README.md](../pitfalls/README.md)、[guardrails/README.md](../guardrails/README.md)、[toolkit/README.md](../toolkit/README.md)、[cases 入口](../cases/README.md)；模板与脚本见 [methodology-doc.md](../toolkit/templates/methodology-doc.md)、[pitfall.md](../toolkit/templates/pitfall.md)、[guardrail.md](../toolkit/templates/guardrail.md)、[case-study.md](../toolkit/templates/case-study.md)、[soak.sh](../toolkit/termux/soak.sh)、[healthcheck.sh](../toolkit/termux/healthcheck.sh)。
 - 仓库协议与队列：[AGENTS.md](../AGENTS.md)、[backlog.json](../backlog.json)、[CHANGELOG](../CHANGELOG.md)、[changelog/README.md](../changelog/README.md)、[README.md](../README.md)、[docs/README.md](../docs/README.md)、[scripts/README.md](../scripts/README.md)、[haydn K40 Pro 案例](../cases/haydn-k40pro/README.md)。
