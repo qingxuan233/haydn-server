@@ -95,6 +95,7 @@ agent_hint: 开工前先按本页定位当前阶段；门禁未通过不得进�
 | 门禁 G-B0 / G-B | G-B0：官方解锁可用（`bootloader_unlocked` / `oem_unlock_policy`）+ 用户书面接受清数据/保修/完整性代价；**不可用→B 终止，保持 A+**。G-B：数据证明 A+ 已到瓶颈 |
 | 回滚 | 决策门本身无破坏；执行 B/C 后回滚需官方镜像/救砖包（**未备齐不得开始**） |
 | 不要做 | 不要用第三方付费/漏洞解锁；不要在未备份/无救砖方案时解锁；不要为"折腾"而升级 |
+| Root 轨衔接 | 专用实验设备通过 G-B0 后，按 [MTH-012](11-root-lab.md) 的 G-L0..G-L6 + 验收执行；本页 P2–P6 阶段语义与该轨的 R2–R5 对应，门禁不降低 |
 
 ### P5 · 优化与加固
 
@@ -165,6 +166,7 @@ planned ──开始──▶ in_progress ──交付──▶ gate_review
 | P4 能力上限评估 | 案例 P3 + P4（Gate B0） | ⛔ B 路线终止（Gate B0 失败，转 A+） | [02 可行性分析](../docs/10-device/02-可行性分析.md)、[05 B 路线（归档）](../docs/90-archive/05-B路线执行手册.md) |
 | P5 优化与加固 | 案例 P5 + 28 Phase 2 | ✅ A+ 优化已落地；⚠️ mTLS/配对/轮换等加固待做 | [06 A+ 优化方案](../docs/20-server/06-A+优化方案.md)、[28 全栈规范](../docs/00-overview/28-全栈整体方案规范.md) |
 | P6 稳定运行与交接 | 案例 P6 + 28 Phase 4 | ⬜ 进行中；24h soak + 故障注入待办 | [当前状态](../docs/00-overview/当前状态.md)、[28 全栈规范](../docs/00-overview/28-全栈整体方案规范.md) |
+| Root 实验轨（R0–R5） | 一加 Ace Pro 预研（尚未购入） | ⬜ 未执行（draft/未实测） | [CASE-003](../cases/ace-pro-pgp110/README.md) · [MTH-012](11-root-lab.md) |
 
 > 案例的原始阶段编号（P0–P6、Phase 0–4）与本页**不一一等价**；映射以"交付物语义"为准。引用案例状态时必须标注 **"案例 2026-11-11 状态"**，不得当作方法论当前进度。
 
@@ -197,7 +199,7 @@ planned ──开始──▶ in_progress ──交付──▶ gate_review
 ## 6. 不要做什么（负面清单）
 
 1. ❌ 跳过 P0 评估直接改造；把假设写成实测。
-2. ❌ 默认 Root/解锁/刷机（[GRD-001](../guardrails/GRD-001-no-root-no-unlock-default.md)）；第三方解锁一律不做。
+2. ❌ 默认 Root/解锁/刷机（[GRD-001](../guardrails/GRD-001-no-root-no-unlock-default.md)）；第三方付费/漏洞解锁一律不做；专用实验设备也只能按 [GRD-015](../guardrails/GRD-015-root-lab-controlled.md) 受控执行。
 3. ❌ 卸载系统包（只允许 disable 且有保护名单）；`am kill-all`（[GRD-002](../guardrails/GRD-002-no-system-package-uninstall.md)、[GRD-003](../guardrails/GRD-003-no-kill-all.md)）。
 4. ❌ 在未备份/无回滚方案时改系统设置或服务配置。
 5. ❌ 在 soak 观察窗口内改核心配置（破坏证据有效性）。
@@ -235,4 +237,5 @@ planned ──开始──▶ in_progress ──交付──▶ gate_review
 | 验收/soak/故障注入（P6） | [MTH-008](07-validation.md) |
 | Agent 交接与变更协议 | [MTH-009](08-agent-handoff.md) |
 | 红线与真实踩坑 | [guardrails/README.md](../guardrails/README.md) · [pitfalls/README.md](../pitfalls/README.md) |
+| Root 实验设备（专用/已授权） | [MTH-012](11-root-lab.md) · [GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [CASE-003](../cases/ace-pro-pgp110/README.md) |
 | 已验证案例（阶段证据） | [cases/haydn-k40pro/README.md](../cases/haydn-k40pro/README.md) |

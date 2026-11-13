@@ -1,0 +1,155 @@
+{
+  "schema": "repurpose.device-profile.v1",
+  "generated_at": "2026-11-11T00:00:00Z",
+  "source": {
+    "mode": "fixture",
+    "commands": ["fixture: rootcheck ready posture (no real device)"],
+    "notes": "fixture：模拟一台已完成官方解锁 + KernelSU LKM 的 Root 实验设备，用于 rootcheck 离线测试；不是真机结果"
+  },
+  "identity": {
+    "codename": "acepro",
+    "model": "PGP110",
+    "market_name": "OnePlus Ace Pro",
+    "manufacturer": "OnePlus",
+    "brand": "OnePlus",
+    "product": "ovaltine",
+    "fingerprint": "OnePlus/PGP110/ovaltine:15/AP3A.240617.008/V15.0.0.1900:user/release-keys",
+    "android_version": "15",
+    "sdk": 35,
+    "build_id": "PGP110_15.0.0.1900(CN01)",
+    "build_type": "user",
+    "security_patch": "2025-06-01",
+    "serial": null,
+    "serial_redacted": true
+  },
+  "boot": {
+    "bootloader_unlocked": true,
+    "verified_boot_state": "orange",
+    "vbmeta_device_state": "unlocked",
+    "dm_verity_mode": "enforcing",
+    "selinux": "Enforcing",
+    "slot_suffix": "_a",
+    "partition_style": "A/B",
+    "has_init_boot": false,
+    "oem_unlock_policy": "open",
+    "oem_unlock_evidence": "fixture：模拟官方解锁成功（非真机证据）"
+  },
+  "root": {
+    "state": "kernelsu",
+    "su_available": true,
+    "root_manager_packages": ["me.weishu.kernelsu"],
+    "adb_uid": "uid=2000(shell)",
+    "ro_secure": true,
+    "ro_debuggable": false
+  },
+  "kernel": {
+    "release": "5.10.198-android12-9-g1a2b3c4d",
+    "version_string": "Linux 5.10.198-android12-9-g1a2b3c4d aarch64",
+    "arch": "arm64-v8a",
+    "gki_generation": "gki-2.x",
+    "config_source": "none",
+    "config_readable": false
+  },
+  "hardware": {
+    "soc": {
+      "manufacturer": "QTI",
+      "platform": "SM8475",
+      "model": "SM8475",
+      "marketing_name": "Snapdragon 8+ Gen 1"
+    },
+    "cpu": {
+      "cores": 8,
+      "abi": ["arm64-v8a"],
+      "governors": ["schedutil"],
+      "clusters": []
+    },
+    "memory": {
+      "total_kb": 16777216,
+      "available_kb": null,
+      "swap_total_kb": null
+    },
+    "display": {
+      "width_px": 2412,
+      "height_px": 1080,
+      "density_dpi": 394,
+      "refresh_hz": 120
+    },
+    "battery": {
+      "design_capacity_mah": 4800,
+      "charge_full_mah": null,
+      "level_pct": null,
+      "temperature_c": null,
+      "health": null,
+      "status": null,
+      "voltage_mv": null,
+      "charge_control_nodes": []
+    },
+    "thermal": {
+      "zone_count": 40,
+      "status": 0,
+      "max_temp_c": null
+    }
+  },
+  "storage": {
+    "data_total_kb": null,
+    "data_used_kb": null,
+    "data_available_kb": null,
+    "data_filesystem": "f2fs",
+    "external_sdcard": false,
+    "external_expandable": false,
+    "zram": true,
+    "zram_total_kb": 4194300
+  },
+  "crypto": {
+    "userdata_encrypted": true,
+    "encryption_type": "FBE",
+    "keystore": "tee",
+    "play_integrity_required": false,
+    "play_integrity_level": null
+  },
+  "features": {
+    "user_ns": false,
+    "pid_ns": true,
+    "mount_ns": true,
+    "net_ns": true,
+    "uts_ns": true,
+    "ipc_ns": null,
+    "cgroup_v1": false,
+    "cgroup_v2": true,
+    "cgroup_v2_delegation": null,
+    "overlay_fs": true,
+    "binfmt_misc": true,
+    "seccomp_filter": true,
+    "kallsyms": null,
+    "modules": true,
+    "ptrace_allowed": null,
+    "native_linux_port": false,
+    "custom_kernel": true,
+    "termux_available": true,
+    "shizuku_available": null,
+    "boot_completed_receiver": true
+  },
+  "constraints": {
+    "external_storage": "none",
+    "oem_autostart": "unknown",
+    "background_execution": "unknown",
+    "battery_long_term_plugged": "unknown",
+    "root_required_capabilities": [
+      "precise_cpu",
+      "raw_network_bytes",
+      "battery_sysfs",
+      "native chroot",
+      "nftables ingress",
+      "cgroup limits"
+    ],
+    "notes": ["fixture：Root 实验设备技术姿态（非真机）"]
+  },
+  "unknowns": [
+    "features.cgroup_v2_delegation",
+    "features.ipc_ns",
+    "hardware.battery.charge_full_mah",
+    "hardware.battery.health"
+  ],
+  "evidence_refs": ["toolkit/tests/fixtures/profile-root-lab-ready.json"],
+  "warnings": ["fixture 数据：用于 rootcheck 逻辑测试，不得作为真机验收证据"]
+}

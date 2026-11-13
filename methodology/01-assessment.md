@@ -81,7 +81,7 @@ agent_hint: 新设备接入第一步；先 detect 再 probe，然后 assess；�
 |---|---|---|---|---|
 | **A** | BL 锁定/无法解锁；无 Root；不需要容器/特权 | Linux 用户态服务、局域网访问、宿主状态（经桥） | 假 root；无 systemd/容器；proot 性能损耗；部分系统级数据不可得 | ✅ **默认**（绝大多数设备） |
 | **A+** | 同上，且已稳定运行、需要降温度/功耗/提高稳定性 | A 的全部 + 系统设置/包治理/看护 | 仍是 A 的能力边界；优化项必须可回滚 | ✅ A 的优化档（**不是独立 route ID**，见 §6） |
-| **B** | G-B0 通过（可解锁且代价可接受）；有 root 方案；可选容器需 G-B2 通过 | 真 chroot、特权遥测、内核调参、可选容器 | 清数据/失保/完整性/OTA 风险；救砖预案必需 | ⚠️ 仅门禁+授权通过后 |
+| **B** | G-B0 通过（可解锁且代价可接受）；有 root 方案；可选容器需 G-B2 通过 | 真 chroot、特权遥测、内核调参、可选容器 | 清数据/失保/完整性/OTA 风险；救砖预案必需 | ⚠️ 仅门禁+授权通过后；专用实验设备另按 [MTH-012](11-root-lab.md) 执行 |
 | **C** | G-B0 + G-C 通过；有自编译/刷机条件 | 自定义内核/ROM（可开 NS/cgroup） | 极高风险、无维护、OTA 失效 | ❌ 非默认（研究性） |
 | **D** | G-B0 + G-D 通过；存在可用社区移植 | 原生 Linux 完整内核能力 | 无移植则不可行；服务器关键驱动常不齐 | ❌ 仅"已有移植"且验证可跑时 |
 
@@ -199,7 +199,8 @@ python -m toolkit.repurpose plan --profile profiles/<codename>.json --route auto
 | 自启动开关 | 系统设置中"自启动/后台启动"是否存在、默认值 | `constraints.oem_autostart` | manual-required 时需人工步骤 |
 | 后台清理策略 | 省电/后台限制选项与默认行为 | `constraints.background_execution` | restricted 时需白名单+验收 |
 | 权限重置行为 | 重启后通知/使用情况访问/定位是否被重置 | `warnings` / oem-profile | 桥字段可能重启后失效 |
-| 解锁策略 | 官方通道是否存在、门槛、代价 | `boot.oem_unlock_policy` + `oem_unlock_evidence` | G-B0 直接判定 |
+| 解锁策略 | 官方通道是否存在、门槛（账号年限/实名/名额/冷却期）、代价 | `boot.oem_unlock_policy` + `oem_unlock_evidence` | G-B0 直接判定；门槛见 [PIT-022](../pitfalls/PIT-022-oem-unlock-quota.md) |
+| 防回滚/OTA | 是否有 ARB/e-fuse、触发版本、能否降级、全量包/救援包可得性 | `boot` 字段 + `source.notes` / oem-profile | 决定"能否安全升级/回滚"；见 [PIT-023](../pitfalls/PIT-023-oneplus-arb-hard-brick.md) |
 | 锁屏/FBE 策略 | 是否可无锁屏、BOOT_COMPLETED 是否延迟 | `crypto.encryption_type` + 人工确认 | 无人值守自启可行性 |
 | 充电策略 | 是否有充电上限/旁路充电、相关节点是否可读 | `hardware.battery.charge_control_nodes` | 长期插电风险 |
 | 社区 root/移植与救砖 | 官方/社区项目是否成熟、官方镜像与 EDL/recovery 是否可得 | `root.state`/`features.native_linux_port` + `source.notes` | B/D 可行性与高风险路线前置 |
@@ -270,6 +271,7 @@ python -m toolkit.repurpose plan --profile profiles/<codename>.json --route auto
 | 阶段计划与门禁 | [MTH-003](02-roadmap.md) |
 | 服务器栈 / 遥测桥实现 | [MTH-004](03-server-stack.md) · [MTH-005](04-telemetry-bridge.md) |
 | 安全边界 / 验收 soak | [MTH-007](06-security.md) · [MTH-008](07-validation.md) |
+| Root 实验设备（专用/已授权） | [MTH-012](11-root-lab.md) · [GRD-015](../guardrails/GRD-015-root-lab-controlled.md) |
 | 工具/字段定义 | [toolkit/README.md](../toolkit/README.md) · [device-profile schema](../toolkit/schema/device-profile.schema.json) |
 | 红线（不 Root/快照/密钥） | [guardrails/README.md](../guardrails/README.md) |
 | 真实踩坑（解锁/容器/FBE） | [PIT-010](../pitfalls/PIT-010-cn-oem-unlock-closed.md) · [PIT-006](../pitfalls/PIT-006-no-user-ns-containers.md) · [PIT-004](../pitfalls/PIT-004-fbe-lockscreen-boot.md) |

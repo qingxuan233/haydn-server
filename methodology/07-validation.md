@@ -63,6 +63,19 @@ agent_hint: 没有证据就没有完成；先定证据类型与门禁，再跑 5
 
 > 门禁定义可扩展，但**不得删除已通过项**；新增门禁必须有可执行标准与证据要求。
 
+### 2.1 Root 轨附加验收（仅 [MTH-012](../methodology/11-root-lab.md) 实验设备）
+
+| 门禁 | 标准 | 证据 | 失败处置 |
+|---|---|---|---|
+| **G-R1 Root 存活** | Root 管理器与 `su` 在 5/5 重启后可用；无未知管理器 | 5 次重启表 + Root 状态输出 | 回退原厂 boot；重做 G-L5 |
+| **G-R2 最小权限** | su 仅白名单；SELinux=Enforcing；AVB/verity 未关闭；无网络 root shell | 授权清单 + getprop + 端口清单 | 立即收紧；不通过不得进入能力改造 |
+| **G-R3 救援演练** | 至少 3 轮"可恢复故障→原厂镜像/官方包恢复→服务复验" | 演练时间线 + 恢复输出 | 视为没有回滚；修救援链 |
+| **G-R4 迁移基准** | chroot 相对 proot 的 CPU/IO/网络基准达到预先定义目标（目标值先写、后填实测） | 前后基准数据 | 维持 proot；不强行迁移 |
+| **G-R5 固件冻结** | 无自动更新/无待装禁止清单构建；build 与备份镜像一致 | 版本/设置证据 | 停止 OTA；重核 ARB |
+
+> 说明：G-R1..G-R5 与 G0..G8 是并列验收项，不替代通用门禁；Root 设备的通用门禁（G1/G5/G7）同样必须通过。
+> 工具辅助：`python -m toolkit.repurpose rootcheck --profile <profile.json> --json --strict` 可先检查 Root 技术姿态（G-R2/G-R5 相关字段）；但它不替代 G-R1/G-R3 的实测记录。
+
 ## 3. 5 次重启 SOP
 
 **前置**：
@@ -167,6 +180,16 @@ agent_hint: 没有证据就没有完成；先定证据类型与门禁，再跑 5
 
 **频率**：首次验收必须做一次；重大变更（升级/迁移/备份策略变更）后重做；平时按季度抽检（可只做副本演练）。
 
+### 6.1 解锁/救砖演练（Root 轨专用）
+
+| 轮次 | 制造的可恢复故障 | 恢复手段 | 通过标准 |
+|---|---|---|---|
+| 1 | Root 补丁导致不能开机（或在测试镜像上模拟） | `fastboot flash boot`（或 init_boot）原厂镜像 | 正常开机；Root 状态符合预期；数据完整 |
+| 2 | 服务启动链失败（启动脚本死循环/端口冲突） | 停用启动脚本/回滚 rootfs 快照 | 服务恢复；审计记录完整 |
+| 3 | 网络规则误配导致远程不可达 | 本地 console + 规则快照回滚 | 恢复可达；生产不受影响 |
+
+> 前提：原厂镜像、全量包、哈希、第二条数据线/第二台电脑齐备（G-L1）；**未演练不得进入生产割接**。救援阶梯与禁止项见 [MTH-012 §8](../methodology/11-root-lab.md)。演练失败按 [GRD-013](../guardrails/GRD-013-no-fake-acceptance.md) 如实记录，不得改写为"基本通过"。
+
 ## 7. 经验阈值（目标值，非实测值）
 
 | 指标 | 目标/建议 | 说明 |
@@ -216,6 +239,7 @@ agent_hint: 没有证据就没有完成；先定证据类型与门禁，再跑 5
 - 案例阶段记录：[docs/33 Bridge MVP 实施记录](../docs/50-bridge/33-Android-Bridge-MVP实施记录.md)（5 次重启、release 加固、稳定性阶段记录）。
 - 事故复盘与恢复：[docs/08 事故复盘与重置重建报告](../docs/20-server/08-事故复盘与重置重建报告.md)；风险与回滚：[docs/04 风险与回滚](../docs/10-device/04-风险与回滚.md)。
 - 备份/恢复护栏：[GRD-004](../guardrails/GRD-004-backup-before-change.md)；相关踩坑：[PIT-017 快照无回滚](../pitfalls/PIT-017-snapshot-without-rollback.md)、[PIT-020 看门狗级联](../pitfalls/PIT-020-watchdog-selfheal-cascade.md)、[PIT-004 锁屏阻断开机自启](../pitfalls/PIT-004-fbe-lockscreen-boot.md)。
+- Root 轨验收：[MTH-012](../methodology/11-root-lab.md) · [GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [PIT-023 ARB 硬砖](../pitfalls/PIT-023-oneplus-arb-hard-brick.md) · [PIT-025 Root 模块回归](../pitfalls/PIT-025-root-module-regression.md)。
 - 工具：[toolkit 索引](../toolkit/README.md)、[soak 采集脚本](../toolkit/termux/soak.sh)、[健康检查脚本](../toolkit/termux/healthcheck.sh)。
 - 相关方法论：[MTH-005 遥测桥](04-telemetry-bridge.md)、[MTH-006 控制面](05-control-plane.md)、[MTH-007 安全](06-security.md)、[MTH-009 交接](08-agent-handoff.md)；任务队列：[backlog.json](../backlog.json)（`BL-008` soak 自动化）。
 - 案例：[haydn K40 Pro 案例](../cases/haydn-k40pro/README.md)。

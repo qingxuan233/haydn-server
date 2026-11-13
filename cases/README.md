@@ -14,7 +14,7 @@ agent_hint: 新增设备案例先读本页：复制模板 → 填 profile → �
 
 > `cases/` 是四层知识体系（`methodology/` 规范、`guardrails/` 红线、`pitfalls/` 证据、`toolkit/` 实现）之外的**实证层**。
 > 每个真实改造过的设备一个目录，记录"这台机器上方法论被验证到什么程度、哪里不成立、为什么"。案例是证据，不是教程；通用步骤写在 [methodology/README.md](../methodology/README.md)，不要复制到案例里。
-> 首例：[haydn K40 Pro 案例](haydn-k40pro/README.md)（CASE-001，已冻结）。
+> 首例：[haydn K40 Pro 案例](haydn-k40pro/README.md)（CASE-001，已冻结）。**预研/实验案例**（未购入或仅部分实测）允许以 `status: draft` 入档，但必须显著标注实测程度，不得当作完整验收证据（如 [一加 Ace Pro 实验轨](ace-pro-pgp110/README.md)）。
 
 ---
 
@@ -95,6 +95,8 @@ cases/
 | 案例 ID | 目录 | 设备 | 系统 | 关键约束 | 路线 | 验证状态 | 入口 |
 |---|---|---|---|---|---|---|---|
 | CASE-001 | `cases/haydn-k40pro/` | Redmi K40 Pro（`M2012K11C` / `haydn` / SM8350 / 8GB / 256GB） | Android 14 / HyperOS 1.0（国行） | BL 锁定、AVB green、无 Root、内核缺 USER_NS/PID_NS | A（Termux + proot，无 Root） | Phase 0/1 完成，Phase 2 部分完成；24h soak 未完成 | [案例正文](haydn-k40pro/README.md) · [profile](haydn-k40pro/profile.json) · [OEM profile](haydn-k40pro/oem-profile.md) |
+| CASE-003 | `cases/ace-pro-pgp110/` | OnePlus Ace Pro（`PGP110` / `ovaltine` / SM8475 / 16GB / 256GB） | ColorOS 12.1→15（Android 12→15） | 已购机；2026-11-13 完成官方解锁 + KernelSU LKM Root + 3/3 救援演练；24h soak/chroot 基准/割接未完成 | 目标 B（Root + chroot，受控实验） | **draft/实验轨（部分实测，未全验收）**；按 [MTH-012](../methodology/11-root-lab.md) 门禁推进 | [实验轨正文](ace-pro-pgp110/README.md) · [profile](ace-pro-pgp110/profile.json) |
+| CASE-004 | `cases/ace-pro-pgp110/` | 同上（OEM 侧清单） | 一加 / ColorOS | 深度测试、ARB、Root 后指纹/完整性部分待实测 | B | **draft/实验轨（OEM 侧部分待实测）** | [OEM profile](ace-pro-pgp110/oem-profile.md) |
 
 > 清单按案例 ID 递增；一个案例一行，状态写"已完成/部分/未验证"的事实，不写目标值。
 

@@ -37,6 +37,21 @@ agent_hint: 实现 Track A 前先读"为什么 proot"与启动链；服务集按
 
 > 证据：案例在无 Root 条件下以 proot 方案稳定运行多服务，并明确记录"容器不可用/系统级 `/proc` 不可得"为已知限制（[当前状态](../docs/00-overview/当前状态.md)、[28 全栈规范](../docs/00-overview/28-全栈整体方案规范.md)）。以上是**案例实证**；新设备仍须按 [MTH-002](01-assessment.md) 探测。
 
+### 1.1 Root 轨（专用实验设备）的栈选择
+
+> 本节只适用于 [MTH-012](11-root-lab.md) 授权的实验设备；生产机仍按 §1 的默认 A/A+ 结论。
+
+| 项 | 做法 | 必须/说明 |
+|---|---|---|
+| 运行环境 | 原生 chroot（Debian/Ubuntu arm64 rootfs）替代 proot | MUST 先做 proot vs chroot 基准（CPU/IO/网络）再切换；保留 Termux 作引导与 SSH 兜底 |
+| 挂载 | bind `/proc /sys /dev`、必要的 `/data` 子目录；只读挂载优先 | MUST 用独立 rootfs 目录与快照；挂载脚本幂等、可卸载；不得挂载系统分区做写操作 |
+| 网络 | 内核级 nftables/iptables 白名单；先默认拒绝入站再放行 | MUST 先本地 console 可达；规则变更带定时回滚/看门狗，避免锁死远程维护 |
+| 服务管理 | s6/supervisord/runit；不假设 systemd | SHOULD 统一守护方式；systemd 仅在 cgroup 委派实测通过后尝试 |
+| 容器 | 仅当 G-B2 全 pass；Root 不自动等于容器可用 | MUST 失败即退回 chroot，不硬刚内核/SELinux |
+| 观测 | 特权遥测（`/proc/stat`、`/proc/net/dev`、`dumpsys`、sysfs） | MUST 只读、带来源/新鲜度；缺失不补 0；隐私字段脱敏 |
+| 自启 | Root 管理器官方支持的启动脚本（模块 `service.sh` / `service.d`，按所选管理器文档） | MUST 幂等、超时、失败降级；5 次重启验收；不依赖 OEM 自启动 UI |
+| 回滚 | 原厂 boot 镜像 + rootfs 快照 + 网络规则快照 | MUST 演练后才算回滚；救援阶梯见 [MTH-012 §8](11-root-lab.md) |
+
 ---
 
 ## 2. 启动链（必须可复现、可观测、可人工兜底）
@@ -234,4 +249,5 @@ agent_hint: 实现 Track A 前先读"为什么 proot"与启动链；服务集按
 | 红线 | [guardrails/README.md](../guardrails/README.md) |
 | 真实踩坑 | [pitfalls/README.md](../pitfalls/README.md) |
 | 已验证案例（含 rebuild runbook） | [cases/haydn-k40pro/README.md](../cases/haydn-k40pro/README.md) |
+| Root 实验架构与 chroot 迁移 | [MTH-012](11-root-lab.md) · [CASE-003](../cases/ace-pro-pgp110/README.md) |
 | 高风险替代路线（B/C/D） | [02 可行性分析](../docs/10-device/02-可行性分析.md)、[05 B 路线（归档）](../docs/90-archive/05-B路线执行手册.md) |

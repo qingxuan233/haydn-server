@@ -1,0 +1,193 @@
+{
+  "schema": "repurpose.device-profile.v1",
+  "generated_at": "2026-11-11T12:40:00Z",
+  "source": {
+    "mode": "documented",
+    "commands": [
+      "adb shell getprop ro.product.device",
+      "adb shell getprop ro.build.fingerprint",
+      "adb shell getprop ro.build.version.security_patch",
+      "adb shell getprop ro.boot.flash.locked",
+      "adb shell uname -r",
+      "unzip -l official-full-package.zip (核对 boot/init_boot 与 A/B 布局)"
+    ],
+    "notes": "预研档案：设备尚未购入/未实测。参数来自一加官方规格页（2026-11 查阅）；解锁政策来自一加官方公告/公开报道（2025-08-14/2026-07-24）；Root 机制来自 KernelSU/APatch 官方文档（2026-11 查阅）。不得作为验收证据。"
+  },
+  "identity": {
+    "codename": "ovaltine",
+    "model": "PGP110",
+    "market_name": "OnePlus Ace Pro",
+    "manufacturer": "OnePlus",
+    "brand": "OnePlus",
+    "product": null,
+    "fingerprint": null,
+    "android_version": null,
+    "sdk": null,
+    "build_id": null,
+    "build_type": null,
+    "security_patch": null,
+    "serial": null,
+    "serial_redacted": true
+  },
+  "boot": {
+    "bootloader_unlocked": null,
+    "verified_boot_state": null,
+    "vbmeta_device_state": null,
+    "dm_verity_mode": null,
+    "selinux": null,
+    "slot_suffix": null,
+    "partition_style": null,
+    "has_init_boot": null,
+    "oem_unlock_policy": "unknown",
+    "oem_unlock_evidence": "待实测：一加现行深度测试/fastboot 官方通道；见 cases/ace-pro-pgp110/README.md"
+  },
+  "root": {
+    "state": "none",
+    "su_available": null,
+    "root_manager_packages": [],
+    "adb_uid": null,
+    "ro_secure": null,
+    "ro_debuggable": null
+  },
+  "kernel": {
+    "release": null,
+    "version_string": null,
+    "arch": "arm64",
+    "gki_generation": "unknown",
+    "config_source": "unknown",
+    "config_readable": null
+  },
+  "hardware": {
+    "soc": {
+      "manufacturer": "Qualcomm",
+      "platform": "SM8475",
+      "model": null,
+      "marketing_name": "Snapdragon 8+ Gen 1"
+    },
+    "cpu": {
+      "cores": 8,
+      "abi": ["arm64-v8a"],
+      "governors": [],
+      "clusters": []
+    },
+    "memory": {
+      "total_kb": 16777216,
+      "available_kb": null,
+      "swap_total_kb": null
+    },
+    "display": {
+      "width_px": 2412,
+      "height_px": 1080,
+      "density_dpi": 394,
+      "refresh_hz": 120
+    },
+    "battery": {
+      "design_capacity_mah": 4800,
+      "charge_full_mah": null,
+      "level_pct": null,
+      "temperature_c": null,
+      "health": null,
+      "status": null,
+      "voltage_mv": null,
+      "charge_control_nodes": []
+    },
+    "thermal": {
+      "zone_count": null,
+      "status": null,
+      "max_temp_c": null
+    }
+  },
+  "storage": {
+    "data_total_kb": null,
+    "data_used_kb": null,
+    "data_available_kb": null,
+    "data_filesystem": null,
+    "external_sdcard": false,
+    "external_expandable": false,
+    "zram": null,
+    "zram_total_kb": null
+  },
+  "crypto": {
+    "userdata_encrypted": null,
+    "encryption_type": "unknown",
+    "keystore": "unknown",
+    "play_integrity_required": false,
+    "play_integrity_level": null
+  },
+  "features": {
+    "user_ns": null,
+    "pid_ns": null,
+    "mount_ns": null,
+    "net_ns": null,
+    "uts_ns": null,
+    "ipc_ns": null,
+    "cgroup_v1": null,
+    "cgroup_v2": null,
+    "cgroup_v2_delegation": null,
+    "overlay_fs": null,
+    "binfmt_misc": null,
+    "seccomp_filter": null,
+    "kallsyms": null,
+    "modules": null,
+    "ptrace_allowed": null,
+    "native_linux_port": null,
+    "custom_kernel": true,
+    "termux_available": null,
+    "shizuku_available": null,
+    "boot_completed_receiver": null
+  },
+  "constraints": {
+    "external_storage": "none",
+    "oem_autostart": "unknown",
+    "background_execution": "unknown",
+    "battery_long_term_plugged": "unknown",
+    "root_required_capabilities": [
+      "privileged telemetry: /proc/stat, /proc/net/dev, dumpsys, sysfs battery/thermal",
+      "native chroot with bind mounts (/proc /sys /dev)",
+      "nftables/iptables ingress default-deny with allowlist",
+      "cgroup resource limits for server processes",
+      "zram / sysctl tuning with rollback",
+      "root-managed boot scripts and watchdog",
+      "read-only charge/thermal sysfs observation"
+    ],
+    "notes": [
+      "专用实验设备；生产机 haydn 保持无 Root",
+      "用户已接受解锁清数据、失保、硬砖与数据丢失风险（2026-11-11）",
+      "解锁/ARB/KernelSU 兼容性/救援链路均待实测"
+    ]
+  },
+  "unknowns": [
+    "boot.bootloader_unlocked",
+    "boot.oem_unlock_policy",
+    "boot.verified_boot_state",
+    "boot.partition_style",
+    "boot.has_init_boot",
+    "root.state",
+    "kernel.release",
+    "kernel.gki_generation",
+    "kernel.config_readable",
+    "features.user_ns",
+    "features.cgroup_v2",
+    "features.cgroup_v2_delegation",
+    "features.kallsyms",
+    "features.modules",
+    "features.overlay_fs",
+    "storage.data_total_kb",
+    "crypto.userdata_encrypted",
+    "hardware.battery.charge_full_mah",
+    "hardware.battery.health",
+    "ARB/e-fuse 是否已触发或将被触发",
+    "chroot 相对 proot 的实测性能收益"
+  ],
+  "evidence_refs": [
+    "cases/ace-pro-pgp110/README.md",
+    "cases/ace-pro-pgp110/oem-profile.md",
+    "methodology/11-root-lab.md",
+    "guardrails/GRD-015-root-lab-controlled.md"
+  ],
+  "warnings": [
+    "documented 预研档案：字段多来自官方规格页与公开资料，未实测",
+    "设备尚未购入；不得把本档案当作 assess 实测输入",
+    "Ace Pro 是否需深度测试、是否引入 ARB、KernelSU/APatch 兼容性仍未证实"
+  ]
+}
