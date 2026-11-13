@@ -435,7 +435,7 @@
       "requires": "",
       "owner": "lead",
       "updated": "2026-11-13",
-      "result": "已落地并验证：协议 v1.2、ADR-0001/0002、GRD-016、MTH-013/014、模板新增 2 个（adr、request-card）/更新 4 个（acceptance、agent-task、pitfall、runbook）、backlog schema、validate 新检查、preflight/index --check、CI workflow；验收证据：preflight exit 0（index 重建无 warnings；validate --strict 0 error/0 warning；282 项单测 OK；check-links 0 missing）、index --check exit 0；提交 6c3bf74；CI 首跑 success（run #43465049307）。",
+      "result": "已落地并验证：协议 v1.2、ADR-0001/0002、GRD-016、MTH-013/014、模板新增 2 个（adr、request-card）/更新 4 个（acceptance、agent-task、pitfall、runbook）、backlog schema、validate 新检查、preflight/index --check、CI workflow；验收证据：preflight exit 0（index 重建无 warnings；validate --strict 0 error/0 warning；282 项单测 OK；check-links 0 missing）、index --check exit 0；提交 6c3bf74；CI 首跑 success（run #43465049307）。后续改进（2026-11-14）：index 幂等——内容未变时不重写、保留原 generated_at；单测 282→285。",
       "risk": "H"
     },
     {

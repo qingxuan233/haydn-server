@@ -608,24 +608,63 @@ def write_bundle(
     out: str | Path | None = None,
     generated_at: str | None = None,
 ) -> dict[str, Any]:
-    """生成并写盘（根摘要 + 四层分片），返回统计信息。"""
+    """生成并写盘（根摘要 + 四层分片），返回统计信息。
+
+    幂等策略（2026-11-14）：默认目标（未显式传 ``--out``/``generated_at``）且磁盘
+    生成物已与当前内容一致时**不重写**，保留原 ``generated_at``——``generated_at``
+    因此语义为“生成物内容最后一次变更时间”，而不是“最后一次执行 index 的时间”。
+    显式 ``out`` 或显式 ``generated_at``（测试/外部调用）仍强制写盘。
+    """
     repo_root = Path(root)
     removed, cleanup_warnings = cleanup_stale_shards(repo_root)
     bundle = build_bundle(repo_root, generated_at=generated_at, extra_warnings=cleanup_warnings)
     root_target = Path(out) if out is not None else default_manifest_path(repo_root)
-    write_text(root_target, bundle["root_text"])
 
-    written_shards: dict[str, dict[str, Any]] = {}
-    for layer in CONTENT_GROUPS:
-        shard_info = bundle["shards"][layer]
-        target = repo_root / shard_info["path"]
-        write_text(target, shard_info["text"])
-        written_shards[layer] = {
+    unchanged = (
+        out is None
+        and generated_at is None
+        and _bundle_matches_disk(repo_root, bundle, root_target)
+    )
+    shards_info: dict[str, dict[str, Any]] = {
+        layer: {
             "path": shard_info["path"],
             "entries": shard_info["data"]["count"],
             "lines": shard_info["lines"],
             "bytes": shard_info["bytes"],
         }
+        for layer, shard_info in bundle["shards"].items()
+    }
+
+    if unchanged:
+        try:
+            existing_manifest = load_json(root_target)
+        except Exception:
+            # 理论上不会到这里（_bundle_matches_disk 已确认可解析），兜底回退为写盘。
+            unchanged = False
+            existing_manifest = None
+        if unchanged and isinstance(existing_manifest, dict):
+            return {
+                "root_path": root_target,
+                "manifest": existing_manifest,
+                "root": {
+                    "path": rel_posix(root_target, repo_root),
+                    "lines": bundle["root_lines"],
+                    "bytes": bundle["root_bytes"],
+                    "max_lines": bundle["limits"]["root_max_lines"],
+                    "max_bytes": bundle["limits"]["root_max_bytes"],
+                },
+                "shards": shards_info,
+                "limits": bundle["limits"],
+                "removed_shards": removed,
+                "written": False,
+                "warnings": bundle["root"].get("warnings", []),
+                "errors": bundle["root"].get("errors", []),
+            }
+
+    write_text(root_target, bundle["root_text"])
+    for layer, shard_info in bundle["shards"].items():
+        target = repo_root / shard_info["path"]
+        write_text(target, shard_info["text"])
 
     return {
         "root_path": root_target,
@@ -637,9 +676,10 @@ def write_bundle(
             "max_lines": bundle["limits"]["root_max_lines"],
             "max_bytes": bundle["limits"]["root_max_bytes"],
         },
-        "shards": written_shards,
+        "shards": shards_info,
         "limits": bundle["limits"],
         "removed_shards": removed,
+        "written": True,
         "warnings": bundle["root"].get("warnings", []),
         "errors": bundle["root"].get("errors", []),
     }
@@ -701,6 +741,44 @@ def _diff_fields(expected: Any, actual: Any, base: str = "", *, limit: int = 12)
     if expected != actual:
         diffs.append(f"{base or '值'}（{actual!r} != {expected!r}）"[:200])
     return diffs
+
+
+def _bundle_matches_disk(
+    repo_root: Path,
+    bundle: dict[str, Any],
+    root_target: Path,
+) -> bool:
+    """磁盘生成物是否已与待写 bundle 等价（比较前规范化 ``generated_at``）。
+
+    只读；任何缺失/不可解析/字段差异都返回 False（由调用方决定重写）。
+    """
+    if not root_target.is_file():
+        return False
+    try:
+        disk_root = load_json(root_target)
+    except Exception:
+        return False
+    if _diff_fields(
+        _normalize_generated_at(bundle["root"]),
+        _normalize_generated_at(disk_root),
+        "manifest",
+    ):
+        return False
+    for layer, shard_info in bundle["shards"].items():
+        path = repo_root / shard_info["path"]
+        if not path.is_file():
+            return False
+        try:
+            disk_shard = load_json(path)
+        except Exception:
+            return False
+        if _diff_fields(
+            _normalize_generated_at(shard_info["data"]),
+            _normalize_generated_at(disk_shard),
+            f"shard[{layer}]",
+        ):
+            return False
+    return True
 
 
 def check_bundle(root: str | Path) -> dict[str, Any]:
@@ -818,7 +896,11 @@ def format_index_summary(info: dict[str, Any]) -> str:
     """人类可读 index 摘要。"""
     manifest = info.get("manifest") or {}
     root = info.get("root") or {}
-    lines = ["agent-manifest 生成完成（根摘要 + 分层分片）"]
+    if info.get("written") is False:
+        generated_at = manifest.get("generated_at", "?")
+        lines = [f"index 已一致，未重写（保留原 generated_at：{generated_at}）"]
+    else:
+        lines = ["agent-manifest 生成完成（根摘要 + 分层分片）"]
     lines.append(
         "- 根：{}（{} 行 / {} 字节；上限 {}/{}）".format(
             root.get("path", MANIFEST_FILENAME),

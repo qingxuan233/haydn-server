@@ -381,6 +381,59 @@ class IndexIdempotencyTests(unittest.TestCase):
             json.dumps([build_manifest(self.root, generated_at="1970-01-01T00:00:00Z")], ensure_ascii=False),
         )
 
+    def test_index_no_rewrite_when_content_unchanged(self) -> None:
+        """内容未变化时，第二次 index 不重写生成物（保留原 generated_at）。"""
+        first = write_bundle(self.root)
+        self.assertTrue(first["written"])
+        root_path = default_manifest_path(self.root)
+        root_text = root_path.read_text(encoding="utf-8-sig")
+        shard_texts = {
+            layer: (self.root / shard_relative_path(layer)).read_text(encoding="utf-8-sig")
+            for layer in CONTENT_GROUPS
+        }
+        generated_at = first["manifest"]["generated_at"]
+
+        second = write_bundle(self.root)
+        self.assertFalse(second["written"])
+        self.assertEqual(second["manifest"]["generated_at"], generated_at)
+        self.assertEqual(root_path.read_text(encoding="utf-8-sig"), root_text)
+        for layer in CONTENT_GROUPS:
+            path = self.root / shard_relative_path(layer)
+            self.assertEqual(path.read_text(encoding="utf-8-sig"), shard_texts[layer])
+        self.assertIn("未重写", format_index_summary(second))
+
+    def test_index_rewrites_after_content_change(self) -> None:
+        """内容变化（front matter 字段变化）时，index 重写（written=true）并更新分片。"""
+        first = write_bundle(self.root)
+        self.assertTrue(first["written"])
+        old_generated_at = first["manifest"]["generated_at"]
+
+        write_doc(
+            self.root,
+            "pitfalls/PIT-001-demo.md",
+            entry_id="PIT-001",
+            title="示例踩坑（已更新）",
+            doc_type="pitfall",
+            severity="S2",
+            domain="server",
+            tags="updated, test",
+            body="# 示例踩坑（已更新）\n\n关联 [护栏](../guardrails/README.md)。\n",
+        )
+        # 内容已变化时，磁盘生成物与待写 bundle 不一致
+        from toolkit.repurpose.indexgen import check_bundle
+
+        self.assertFalse(check_bundle(self.root)["ok"])
+
+        second = write_bundle(self.root)
+        self.assertTrue(second["written"])
+        # generated_at 精度到分钟，同一分钟内重写可能相同；以内容与一致性为准
+        self.assertEqual(second["manifest"]["counts"]["pitfalls"], 2)  # PIT-000 索引 + PIT-001
+        shard = json.loads((self.root / shard_relative_path("pitfalls")).read_text(encoding="utf-8-sig"))
+        pit = next(entry for entry in shard["entries"] if entry["id"] == "PIT-001")
+        self.assertEqual(pit["title"], "示例踩坑（已更新）")
+        self.assertTrue(check_bundle(self.root)["ok"])
+        self.assertIsNotNone(parse_iso(old_generated_at))
+
 
 if __name__ == "__main__":
     unittest.main()

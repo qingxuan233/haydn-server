@@ -486,6 +486,7 @@ def cmd_index(args: argparse.Namespace, *, transport: Any = None) -> int:
         summary = {
             "schema": manifest["schema"],
             "generated_at": manifest["generated_at"],
+            "written": info.get("written", True),
             "output": info["root"]["path"],
             "root": info["root"],
             "shards": info["shards"],
@@ -612,6 +613,7 @@ def cmd_preflight(args: argparse.Namespace, *, transport: Any = None) -> int:
         status = "FAILED" if info.get("errors") else "OK"
         summary = (
             f"根摘要 {info['root']['lines']} 行 / 分片 {len(info['shards'])} 个"
+            + ("；内容未变，未重写（保留原 generated_at）" if info.get("written") is False else "")
             + (f"；errors：{_tail_summary(' / '.join(info['errors']))}" if info.get("errors") else "")
         )
         steps.append(_preflight_step("index", status, started, summary))

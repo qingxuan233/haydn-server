@@ -103,7 +103,7 @@ agent-manifest.d/          # methodology.json / pitfalls.json / guardrails.json 
 | `new-profile` | `--codename`（必填）、`--out` | 打印 profile JSON | 从模板生成可编辑骨架（含 unknowns 提示），后续人工补证 |
 | `index` | `--root`、`--out`、`--check`、`--json` | 人类摘要 | 扫描四层 front matter，生成根摘要 + `agent-manifest.d/` 分片；目录缺失跳过不失败；旧分片自动清理。`--check` 只读重建并与磁盘生成物比较（规范化 generated_at；一致 exit 0 / 不一致 exit 4，不写盘） |
 | `validate` | `--root`、`--strict`、`--mtime-check`、`--json` | 人类摘要 | 检查 front matter/ID/相对链接/JSON、AGENTS.md 协议（章节/版本/哨兵/320 行硬上限）、新层命名、PIT/ADR/CHANGELOG 归档/backlog schema、manifest 一致性；`--strict` 下 warning 也失败；索引一致性以内容机检为准，`--mtime-check` 才按文件 mtime 判过期（默认关闭，CI 安全） |
-| `preflight` | `--root`、`--no-index`、`--skip-tests`、`--skip-links`、`--json` | 步骤表 | 串联 index → validate --strict → unittest → check-links；输出步骤 name/status/耗时/摘要；`--json` 为 `repurpose.preflight.v1`（ok/steps/skipped/failed）；退出码 **0 全绿 / 3 有 SKIPPED / 4 任一步 FAILED** |
+| `preflight` | `--root`、`--no-index`、`--skip-tests`、`--skip-links`、`--json` | 步骤表 | 串联 index → validate --strict → unittest → check-links；输出步骤 name/status/耗时/摘要；`--json` 为 `repurpose.preflight.v1`（ok/steps/skipped/failed）；退出码 **0 全绿 / 3 有 SKIPPED / 4 任一步 FAILED**；index 步幂等（内容未变保留原 `generated_at`，不产生时间戳变更） |
 
 **退出码**（与 `--help` epilog 一致）：
 
@@ -115,7 +115,7 @@ agent-manifest.d/          # methodology.json / pitfalls.json / guardrails.json 
 | 4 | 校验失败 | `validate` 发现 error；`rootcheck --strict` 非 `tech-ready`；`rescue-kit --verify` 不一致；**`index --check` 生成物不一致**；**`preflight` 任一步 FAILED**；`--strict` 下 warning 也算失败 |
 | 130 | 被中断 | Ctrl-C（脚本类：termux 脚本明确可中断；Python 命令不写设备） |
 
-`index`/`preflight` 是仅有的会写仓库根生成物的命令（都通过 index 步骤写 `agent-manifest.json` + `agent-manifest.d/`；`index --check` 与 `preflight --no-index` 只读）；其余探测命令只读设备。
+`index`/`preflight` 是仅有的会更新仓库根生成物的命令。默认路径且内容未变化时 `index` **不重写**（保留原 `generated_at`），因此 `preflight` 全绿后工作区不会产生"仅时间戳"变更；仅内容变化、显式 `--out` 或显式传入 `generated_at` 时才写盘。`index --check` 与 `preflight --no-index` 只读；其余探测命令只读设备。
 `index --json` 会报告根/分片的行数、字节数、条数与清理结果；`--out <path>` 只重定向根摘要（分片仍写默认目录，便于 CI 对比）。
 
 ## 3.1 工具登记表（TOOL-001..013，新增工具先在这里登记）
@@ -213,10 +213,15 @@ probe 的 12 项能力（顺序固定）：`proot`、`containers`、`systemd`、
 > Agent 先读根，需要某层时**只读一个**分片，再读单篇主题文档（读序见 [AGENTS.md](../AGENTS.md) §0）。
 
 ```powershell
-python -m toolkit.repurpose index            # 重建根摘要 + 四层分片
+python -m toolkit.repurpose index            # 重建根摘要 + 四层分片（内容未变化时不重写）
 python -m toolkit.repurpose index --json     # 查看 root/shards 行数、字节、条数、清理结果
 python -m toolkit.repurpose index --check    # 只读一致性校验：内存重建 vs 磁盘生成物（CI 用）
 ```
+
+`index` 幂等：默认目标（未显式 `--out`/`--generated-at`）且磁盘生成物已与当前内容一致时**不重写**，保留原
+`generated_at`——它表示"生成物内容最后一次变更时间"，不是"最后一次执行 index 的时间"。显式 `--out` 或外部调用
+显式传入 `generated_at` 时仍强制写盘（便于测试/导出）。因此本地跑 `preflight`（内含 index 步）不会产生"仅时间戳"
+的 git 变更；内容变化时照常重写并刷新 `generated_at`。`--json` 输出新增 `written`（true/false）。
 
 `index --check` 不写盘：规范化两边 `generated_at`（时间戳不同不算差异）后逐 JSON 比较根摘要与四层分片；
 一致 exit 0（打印"index 一致"），不一致打印差异文件清单并 exit 4（`--json` 为 `repurpose.index-check.v1`）。

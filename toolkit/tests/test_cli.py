@@ -513,6 +513,28 @@ class IndexCheckTests(unittest.TestCase):
             report = json.loads(result.stdout)
             self.assertEqual(report["diffs"][0]["reason"], "missing")
 
+    def test_index_no_rewrite_when_content_unchanged(self) -> None:
+        """默认路径 + 无显式 generated_at：内容未变化时第二次 index 保留原 generated_at。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo-noop"
+            build_sample_repo(root)
+            first = _run(["index", "--root", str(root), "--json"])
+            self.assertEqual(first.returncode, 0, msg=first.stderr)
+            first_report = json.loads(first.stdout)
+            self.assertTrue(first_report["written"])
+            generated_at = first_report["generated_at"]
+
+            second = _run(["index", "--root", str(root), "--json"])
+            self.assertEqual(second.returncode, 0, msg=second.stderr)
+            second_report = json.loads(second.stdout)
+            self.assertFalse(second_report["written"])
+            self.assertEqual(second_report["generated_at"], generated_at)
+
+            human = _run(["index", "--root", str(root)])
+            self.assertEqual(human.returncode, 0, msg=human.stderr)
+            self.assertIn("未重写", human.stdout)
+            self.assertIn(generated_at, human.stdout)
+
 
 class EncodingRegressionTests(unittest.TestCase):
     """回归：Windows cp936 管道下，CLI 必须自己输出合法 UTF-8。
