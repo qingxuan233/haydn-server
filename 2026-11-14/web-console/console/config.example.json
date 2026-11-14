@@ -1,0 +1,194 @@
+{
+  "listen": "127.0.0.1:18080",
+  "public_root": "https://8.137.162.154:60875",
+  "console": {
+    "path": "/console",
+    "title": "Haydn Console",
+    "session_ttl_seconds": 43200,
+    "cookie_secure": true,
+    "login": {
+      "max_failures": 5,
+      "window_seconds": 900,
+      "lock_seconds": 900
+    }
+  },
+  "secret_file": "/etc/haydn-console/secret.json",
+  "audit_log": "/var/log/haydn/console-audit.log",
+  "lan": {
+    "enabled": true,
+    "listen": "0.0.0.0:18090",
+    "probe_target": "223.5.5.5",
+    "probe_interval_seconds": 30,
+    "ticket_ttl_seconds": 60,
+    "subnet_file": "/srv/haydn/run/lan-subnet"
+  },
+  "supervisor": {
+    "conf": "/etc/supervisor/supervisord.conf",
+    "ctl": "/usr/bin/supervisorctl",
+    "services": [
+      "haydn-cron",
+      "haydn-frpc",
+      "haydn-heartbeat",
+      "haydn-local-http",
+      "haydn-node-exporter",
+      "haydn-sshd",
+      "haydn-tailscaled",
+      "haydn-tls",
+      "haydn-webdav",
+      "haydn-forgejo"
+    ]
+  },
+  "logs": {
+    "backup.log": "/srv/haydn/logs/backup.log",
+    "health.log": "/var/log/haydn/health.log",
+    "telemetry-loop.out": "/srv/haydn/logs/telemetry-loop.out",
+    "supervisord.out": "/srv/haydn/logs/supervisord.out",
+    "alerts.log": "/srv/haydn/logs/alerts.log",
+    "backup-loop.out": "/srv/haydn/logs/backup-loop.out",
+    "frpc.log": "/var/log/haydn/frpc.log",
+    "tls.log": "/var/log/haydn/tls.log",
+    "local-http.log": "/var/log/haydn/http.log",
+    "console-audit.log": "/var/log/haydn/console-audit.log",
+    "webdav.log": "/srv/haydn/logs/webdav.log",
+    "forgejo.log": "/srv/haydn/logs/forgejo.log"
+  },
+  "telemetry_csv": "/srv/haydn/logs/telemetry.csv",
+  "soak_file": "/srv/haydn/logs/soak-run3-start.txt",
+  "cert_file": "/etc/ssl/certs/qingxuan.bbs0.cc.fullchain.pem",
+  "secrets_dir": "/opt/haydn/secrets",
+  "backup_trigger": "/srv/haydn/run/backup-trigger",
+  "backup_log": "/srv/haydn/logs/backup.log",
+  "entries": [
+    {"name": "控制台", "url": "/console/", "note": "本页"},
+    {"name": "WebDAV", "url": "/dav/", "note": "Basic 认证"},
+    {"name": "Forgejo", "url": "/git/", "note": "Git 服务"},
+    {"name": "Vaultwarden", "url": "https://8.137.162.154:60177/", "note": "自签证书，首次访问需确认"},
+    {"name": "Prometheus 指标", "url": "/console/api/metrics", "note": "登录后可看，经控制台代理 loopback 采集"}
+  ],
+  "credentials": {
+    "state_file": "/etc/haydn-console/credential-state.json",
+    "export_dir": "/srv/haydn/run",
+    "token_ttl_seconds": 120,
+    "folder": "haydn-server",
+    "password_length": 24,
+    "vault": {
+      "enabled": true,
+      "client": "/opt/haydn/bwnew/node_modules/.bin/bw",
+      "server": "https://127.0.0.1:18445",
+      "appdata_dir": "/srv/haydn/run/bw-cli",
+      "extra_path": "/opt/node24/bin",
+      "extra_env": {
+        "NODE_EXTRA_CA_CERTS": "/etc/ssl/certs/vault.qingxuan.bbs0.cc.fullchain.pem"
+      },
+      "master_file": "/opt/haydn/secrets/vaultwarden-master.txt",
+      "folder": "haydn-server",
+      "timeout_seconds": 60
+    },
+    "services": [
+      {
+        "id": "console",
+        "name": "Haydn 控制台",
+        "username": "admin",
+        "login_uri": "https://8.137.162.154:60875/console/",
+        "rotate": "console",
+        "secret_file": "/etc/haydn-console/secret.json",
+        "plain_file": "/etc/haydn-console/admin-password.txt",
+        "notes": "Web 控制台登录口令（无用户名）"
+      },
+      {
+        "id": "webdav",
+        "name": "Haydn WebDAV",
+        "username": "haydn",
+        "login_uri": "https://8.137.162.154:60875/dav/",
+        "rotate": "basic:webdav",
+        "secret_file": "/opt/haydn/secrets/webdav.json",
+        "plain_file": "/opt/haydn/secrets/webdav-password.txt",
+        "notes": "WebDAV Basic 认证"
+      },
+      {
+        "id": "forgejo",
+        "name": "Haydn Forgejo",
+        "username": "haydn",
+        "login_uri": "https://8.137.162.154:60875/git/",
+        "rotate": "forgejo",
+        "plain_file": "/opt/haydn/secrets/forgejo-admin-password.txt",
+        "binary": "/opt/haydn/bin/forgejo",
+        "server_config": "/etc/haydn/forgejo/app.ini",
+        "run_as": "git",
+        "upstream_name": "forgejo",
+        "notes": "Git 服务网页账号（管理员）"
+      },
+      {
+        "id": "vaultwarden",
+        "name": "Vaultwarden 主密码",
+        "username": "admin@haydn.local",
+        "login_uri": "https://8.137.162.154:60177/",
+        "rotate": "none",
+        "account_file": "/opt/haydn/secrets/vaultwarden-master.txt",
+        "notes": "端到端加密：服务端无法代改条目内容；主密码轮换须在客户端完成，再把新口令粘贴到库内条目"
+      },
+      {
+        "id": "vaultwarden-admin",
+        "name": "Vaultwarden 管理令牌",
+        "username": "admin",
+        "login_uri": "https://8.137.162.154:60177/admin",
+        "rotate": "none",
+        "plain_file": "/opt/haydn/secrets/vaultwarden-admin-token.txt",
+        "notes": "管理后台令牌；轮换用设备侧 deploy/rotate-secret.sh vaultwarden（会重启 Vaultwarden）"
+      },
+      {
+        "id": "device-root",
+        "name": "设备 root/su",
+        "username": "root",
+        "login_uri": "",
+        "rotate": "none",
+        "notes": "设备解锁口令只存在于用户侧；不在设备保存、不入库、不由控制台管理"
+      }
+    ]
+  },
+  "upstreams": [
+    {
+      "name": "static-site",
+      "path": "/",
+      "upstream": "127.0.0.1:18081",
+      "strip_prefix": false,
+      "preserve_host": true,
+      "websocket": false,
+      "auth": "none",
+      "enabled": true
+    },
+    {
+      "name": "deepseek-harness-ui",
+      "path": "/ui",
+      "upstream": "127.0.0.1:3080",
+      "strip_prefix": true,
+      "preserve_host": true,
+      "websocket": true,
+      "auth": "session",
+      "enabled": false
+    },
+    {
+      "name": "webdav",
+      "path": "/dav",
+      "upstream": "127.0.0.1:18082",
+      "strip_prefix": false,
+      "preserve_host": false,
+      "websocket": false,
+      "auth": "basic",
+      "auth_realm": "Haydn WebDAV",
+      "auth_user": "haydn",
+      "secret_file": "/opt/haydn/secrets/webdav.json",
+      "enabled": true
+    },
+    {
+      "name": "forgejo",
+      "path": "/git",
+      "upstream": "127.0.0.1:18083",
+      "strip_prefix": true,
+      "preserve_host": false,
+      "websocket": true,
+      "auth": "none",
+      "enabled": true
+    }
+  ]
+}

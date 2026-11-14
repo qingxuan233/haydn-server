@@ -301,9 +301,9 @@ redirect_stderr=true
 | `openssl s_client` + 手发 GET | `HTTP/1.0 200 OK`，返回自检页 |
 | Python `ssl` 客户端 | TLSv1.3 / TLS_AES_256_GCM_SHA384，链校验通过，`HTTP/1.0 200 OK` |
 | 公网 443 证书 | 即设备这张（subject/issuer/指纹一致）→ **确认透传，无边缘第二张证书** |
-| `curl`（Windows schannel / 设备 OpenSSL 3.0.13） | `(35) Connection reset`，ClientHello 后即被重置 → **已定位为链路外部 RST 注入（外部环境限制），非本机与 stunnel 问题**（证据见下） |
+| `curl`（Windows schannel / 设备 OpenSSL 3.0.13） | `(35) Connection reset`，ClientHello 后约 0.07 s 被重置；**2026-11-14 22:11 起同一入口出现阿里云备案拦截**（同 IP 明文 HTTP 403 `Server: Beaver` + `Non-compliance ICP Filing`），两者**可能相关、尚未证实** |
 
-**curl RST 已定位（2026-11-14 抓包，只读）。** 依据：[已核验] ①同一四元组在 RST 之后**仍继续收到服务器方向的 ACK（len=518）**——若连接确在端点关闭，不应再有后续报文；②注入 RST 的 **TTL 与 IP-ID 与真实服务器（`8.137.162.154`）后续报文不一致**，指向中间链路设备伪造；③该 **RST 早于本地 stunnel 记录**（stunnel 侧无对应会话，说明包未到达设备）；④**同机同链路 Chrome 正常而 curl 失败**，与本机 TLS 栈、证书链无关；⑤**请求长度不构成判据**（不同长度复现一致）。已排除的变量仍是 ALPN（h2 / http/1.1）、TLS 1.2/1.3、frp 压缩开关、DNS。结论：属**外部环境（运营商/云侧防护策略）对特定 ClientHello 特征的阻断**，不影响浏览器实际使用；不再作为部署缺陷跟踪，也不建议为此改动 frp/stunnel 配置。
+**curl RST：事实与不确定性（2026-11-14 复核更正）。** [已核验] ①同一四元组在 RST 之后仍收到服务器方向 ACK（len=518）；②RST 的 TTL/IP-ID 与真实服务器（`8.137.162.154`）后续报文不一致，指向中间设备伪造；③RST 早于本地 stunnel 会话记录；④同机同链路 Chrome 早前可正常访问而 curl 失败；⑤请求长度不构成判据。另于 2026-11-14 22:11 起，**公网 443 全部入口**（`/`、`/console/`、`/git/`、`vault…/alive`）均在握手阶段被重置，同 IP 明文 HTTP 返回 403 `Server: Beaver`，响应体为阿里云备案拦截页（`aliyun.com/beian/beian-block?id=00000000005278678442`）。因此此前"已定位为对特定 ClientHello 特征的阻断"**只能作为推断**：RST 与备案拦截是否同一原因，**目前未证实**（未取得拦截生效时的边缘侧日志或完整握手对比）；也不再把 RST 视为独立定论。设备侧 stunnel 与 frpc 在该时段均正常（本地 18443/18445 均 200、frpc 代理 `start proxy success`），**已核验**。
 
 ### 11.5 续期与降级策略
 
@@ -318,3 +318,82 @@ redirect_stderr=true
 3. 面板改回 HTTP 类型 → 重新生成配置 → 本地 `type` 改回 `http` → `verify` → 重启
 
 > 顺序不可颠倒：先停前置再改 localPort，否则 TLS 流量会持续打到 18080 产生 400；面板最后改，避免服务端先切换终结模型。
+
+---
+
+## 12. TCP 非标端口（2026-11-14 已选定为当前公网入口：IP 直连，接受证书告警）
+
+### 12.1 背景与用途
+
+阿里云对未备案域名的 80/443 入口做拦截（现象见 §11.4），主站、控制台、密码库与 Git 在标准端口不可达。用户决定**不迁境外节点**，保留成都节点 200 Mbps 带宽，改用 **TCP 隧道 + 非标准端口** 绕开 80/443：TLS 仍由设备侧 stunnel 终结，公网访问形如 `https://<域名或 IP>:<端口>/`。原两条 `type="https"` 隧道保留不删。
+
+最终选型（[ADR-0008](../../../adr/0008-public-entry-after-icp-sni-block.md)，`accepted`）：**IP 直连** `https://8.137.162.154:60875/`、`https://8.137.162.154:60177/` 为当前主入口，接受证书告警；域名 + 非标端口因 SNI 拦截不采用；境外节点、Cloudflare Tunnel、Tailscale Funnel 均**未采用**。
+
+**域名入口统一口径（唯一事实来源，其他文档引用本节）**：
+
+1. **公网不可用**：备案按 SNI 判定——明文 HTTP 返回 403 `Server: Beaver`（`Non-compliance ICP Filing`），TLS 握手被 RST；域名 + 非标端口同样受影响。判据实验与计数见 §11.4/§12.4。
+2. **隧道保留作回滚备胎**：原两条 `type="https"` 代理（`43RHEU5l28eb`、`3U6GYwayApgh`）与 stunnel/证书一律不删不改，回滚步骤见 §12.7。
+3. **不在控制台展示**：`gateway.json` 的 `entries[]` 只放 IP 入口（主站/控制台 `https://8.137.162.154:60875/`、密码库 `https://8.137.162.154:60177/`）与站内相对路径，不出现 `qingxuan.bbs0.cc` / `vault.qingxuan.bbs0.cc` 入口。
+
+### 12.2 目标形态
+
+| 用途 | 本地监听（已存在） | 隧道 `name` | 远端端口 | 公网地址 |
+|---|---|---|---|---|
+| 主站 / 控制台 / Git | `127.0.0.1:18443`（stunnel → 18080） | `HJtApRGYMHvn` | **60875** | `https://8.137.162.154:60875/`（**当前入口**；域名形式 1/10，不采用） |
+| 密码库 | `127.0.0.1:18445`（stunnel → 18084） | `0mP2rpGpthc0` | **60177** | `https://8.137.162.154:60177/`（**当前入口**；域名形式间歇可通，不采用） |
+
+### 12.3 只读预检查（2026-11-14，已核验）
+
+| 项 | 结果 |
+|---|---|
+| frpc 版本 | 0.72.0（`/data/server/rootfs/usr/local/bin/frpc`） |
+| TCP 段语法 | `frpc verify` 通过；`transport.useEncryption` / `useCompression` 在 `type="tcp"` 下被接受 |
+| `remotePort` 缺失 | `frpc verify` 仍报 syntax ok → 端口约束在运行期/服务端（**推断**，待实测） |
+| stunnel | 18443 → 18080（DigiCert 证书）、18445 → 18084（自签证书），均 loopback |
+| 出站 | `OUTPUT` 默认 ACCEPT，仅 uid 10343 REJECT；frpc 以 root 运行 → **无需改防火墙** |
+| INPUT | `-P INPUT DROP`，为出站连接无需新增规则 |
+| 配置备份 | `/data/server/backups/frpc.toml.20261114T142406Z`（预检前）与 `…T142644Z`（追加 TCP 前，含原两条 HTTPS） |
+
+### 12.4 实施结果（2026-11-14 14:26Z，已核验）
+
+| 项 | 结果 |
+|---|---|
+| `frpc verify` | `syntax is ok`，rc=0（tcp 段 + `useEncryption/useCompression` 均接受） |
+| 重启日志 | `login to server success`；`proxy added: [0mP2rpGpthc0 3U6GYwayApgh 43RHEU5l28eb HJtApRGYMHvn]`；四条 `start proxy success`；无端口占用/`remote port` 冲突/加密报错 |
+| 设备 → `https://8.137.162.154:60875/console/` | 200，2780 B（10/10） |
+| 设备 → 同端口 `/`、`/git/` | 200（302 B）、200（14760 B） |
+| 设备 → `https://8.137.162.154:60177/alive` | 200 |
+| 证书 `:60875` | DigiCert，`8C:95:6C:…:C8:77:08`，CN=`qingxuan.bbs0.cc`，notAfter 2027-02-12 |
+| 证书 `:60177` | 自签，`2E:7B:76:…:15:A5:76`，CN=`vault.qingxuan.bbs0.cc`，notAfter 2029-02-16 |
+| **域名 SNI** `qingxuan.bbs0.cc:60875/console/`（10 次） | 1 次 200，9 次 RST |
+| 中性 SNI（`test.invalid` → `:60875`，5 次） | 5/5 200 |
+| 原 443 | 仍 RST（设备侧同测） |
+
+结论：**拦截判据是 SNI 域名，不是端口**。据此选型为 **IP 直连**（10/10 稳定、证书告警接受）；域名形式不采用，代价与风险见 §12.6。
+
+### 12.5 切换步骤（已完成，供复盘）
+
+1. 面板建两条 **TCP** 隧道（本地 18443 / 18445），记下 `remotePort` 与隧道 `name`。
+2. 编辑 `/etc/frp/frpc.toml`：**仅追加**两段 `[[proxies]]`（`type="tcp"`、`localIP="127.0.0.1"`、`localPort`、`remotePort`、`name` 用面板值），原有两段不动。
+3. `frpc verify -c /etc/frp/frpc.toml` → `supervisorctl restart haydn-frpc`。
+4. 验证清单：
+   - `https://qingxuan.bbs0.cc:<P1>/console/` 200，证书指纹 `8C:95:…:08`（DigiCert）
+   - `https://qingxuan.bbs0.cc:<P1>/` 200
+   - `https://vault.qingxuan.bbs0.cc:<P2>/`、`/alive`、`/api/config` 200，证书为自签（指纹 `2E:7B:…:76`）
+   - `https://qingxuan.bbs0.cc:<P1>/git/` 200（Forgejo 首次公网结论）
+   - 原 443 仍被拦截：如实记录，不当故障
+
+### 12.6 风险
+
+1. **已证实**：拦截按 SNI 域名生效，`:60875` / `:60177` 的域名形式同样被拦（10 次中 9 次 RST），故域名形式不作入口，改用 IP 直连。
+2. 暴露面：公网可直接连到 stunnel，防爆破依赖网关全局限流与 Forgejo/Vaultwarden 自身限流，无 WAF。
+3. 客户端兼容：部分企业/公共网络只放行 80/443；浏览器需显式带端口；Git 远端地址也必须带端口。
+4. TCP 下 frps 按端口直通、不再按 SNI 选路；TLS/SNI 仍由 stunnel 处理，证书不受影响 —— **已核验**（`:60875` 返回 DigiCert、`:60177` 返回自签）。
+5. 证书告警常态化（CN 与 IP 不匹配 / 自签），易形成"点继续"的习惯，需自律；`ROOT_URL`/`DOMAIN` 仍为域名，IP 下客户端需重配（未实测）。
+6. **未知**：若拦截策略改为按 IP 或端口封堵，该入口会整体失效（未发生）；Vaultwarden 手机端/扩展在 IP 入口下的兼容性未实测。
+
+### 12.7 回滚
+
+- **首选（回到 443）**：删除新增两段 TCP → `frpc verify` → `restart haydn-frpc`；原 HTTPS 隧道一直在，DNS 未改。
+- **文件级**：`cp /data/server/backups/frpc.toml.20261114T142644Z /data/server/rootfs/etc/frp/frpc.toml` → `verify` → `restart haydn-frpc`（该备份含原两条 https、不含 TCP 段）。
+- **备选（迁香港节点，未实施）**：面板建 HTTPS 隧道 → 改 `serverAddr` / `serverPort` / `user` / 两条 `name` → `verify` → 重启 → **最后**改 DNS（DNS 改早会全断）。

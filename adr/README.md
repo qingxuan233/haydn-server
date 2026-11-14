@@ -52,6 +52,7 @@ agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR �
 | ADR-0005 | MTH-013 拆分：治理流程留 MTH-013，发布/兼容/数据/许可归 MTH-016 | accepted | 2026-11-14 | [ADR-0005](0005-mth-013-split.md) |
 | ADR-0006 | MTH-009/MTH-002 拆分：扩展契约归 MTH-017，评估执行归 MTH-018 | accepted | 2026-11-14 | [ADR-0006](0006-mth-009-mth-002-split.md) |
 | ADR-0007 | 行数余量预警采用 advisory 级，不改变 strict/preflight 失败语义 | accepted | 2026-11-14 | [ADR-0007](0007-line-margin-advisory.md) |
+| ADR-0008 | 公网入口采用大陆节点 IP + 非标端口（放弃域名 443、境外节点、CF Tunnel、Tailscale Funnel） | accepted | 2026-11-14 | [ADR-0008](0008-public-entry-after-icp-sni-block.md) |
 
 新增 ADR 必须同步本表；索引与文件双向无遗漏（validate 的 ADR_INDEX 检查）。
 

@@ -3,6 +3,54 @@
   "updated": "2026-11-14",
   "items": [
     {
+      "id": "BL-034",
+      "title": "MTH-013 拆分：发布/兼容/数据治理独立为 MTH-016",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "methodology/12-delivery-governance.md 从 290/300 行降至健康档：按单一事实源把 §7–§10（发布就绪、兼容/弃用、数据隐私、依赖许可/制品来源）迁入 MTH-016，不删规则、不重复抄写；同步全仓引用、manifest、ADR 与 CHANGELOG；preflight 全绿且未弱化检查。",
+      "outputs": [
+        "methodology/12-delivery-governance.md",
+        "methodology/16-release-compatibility-data.md",
+        "adr/0005-mth-013-split.md",
+        "methodology/README.md",
+        "README.md"
+      ],
+      "depends": [],
+      "notes": "2026-11-14 完成：MTH-013 187 行、MTH-016 150 行；G0–G7 门禁仍归 MTH-013，MTH-016 只给 G5/G6 检查项；done 窗口保持 ≤5（BL-024 移入 backlog-archive.json）。",
+      "agent_hint": "改风险分级/需求基线/阶段门/用户验收读 MTH-013；改发布/兼容/数据/许可读 MTH-016。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "MTH-013 187 行、MTH-016 150 行（均 ≤200）；新增 ADR-0005 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-008/009/010/011/014/015 与 backlog pending 任务引用；preflight 全绿。",
+      "risk": "L"
+    },
+    {
+      "id": "BL-033",
+      "title": "MTH-011 拆分：归档/预算/机检独立为 MTH-015",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "methodology/10-document-lifecycle.md 从 299/300 行降至健康档：按单一事实源拆为 MTH-011（归属/命名/ADR/联动）与 MTH-015（归档/上下文预算/机检），不删规则、不重复抄写；同步全仓引用、manifest、ADR 与 CHANGELOG；preflight 全绿且未弱化检查。",
+      "outputs": [
+        "methodology/10-document-lifecycle.md",
+        "methodology/15-archive-and-context-budget.md",
+        "AGENTS.md",
+        "README.md",
+        "methodology/README.md",
+        "adr/0004-mth-011-split.md",
+        "toolkit/README.md"
+      ],
+      "depends": [],
+      "notes": "2026-11-14 完成：两篇 158/190 行；历史 ADR-0001/0002 不改写，ADR-0004 记录拆分决策；backlog done 窗口保持 ≤5（BL-023 移入 backlog-archive.json）。",
+      "agent_hint": "改归档/预算/机检读 MTH-015；改归属/命名/ADR/联动读 MTH-011；两篇不得互相抄写。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "MTH-011 158 行、MTH-015 190 行（均 ≤200）；新增 ADR-0004 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-009/013/014/pitfalls/toolkit/README/doc-policy 描述/changelog 索引；preflight 全绿。",
+      "risk": "L"
+    },
+    {
       "id": "BL-003",
       "title": "toolkit 增加 preflight 子命令并统一校验入口",
       "priority": "P1",
@@ -67,6 +115,30 @@
       "owner": "toolkit",
       "updated": "2026-11-11",
       "result": "已实现：docpolicy.py + doc-policy.json + 根/分片索引与一致性校验；163 项单测全绿，validate --strict 0 error。"
+    },
+    {
+      "id": "BL-017",
+      "title": "单层 >40 条的分片拆分与 backlog 归档机检",
+      "priority": "P2",
+      "area": "toolkit",
+      "status": "done",
+      "acceptance": "manifest 分片超过 40 条时自动按子目录/字母区间拆分为多片并在根 shards 映射；backlog done 超过 5 条时自动归档到 backlog-archive.json 并机检；两者均有测试。",
+      "outputs": [
+        "toolkit/repurpose/indexgen.py",
+        "toolkit/repurpose/validate.py",
+        "toolkit/schema/",
+        "backlog-archive.json"
+      ],
+      "depends": [
+        "BL-016"
+      ],
+      "notes": "2026-11-14 全部完成：backlog 归档机检（backlog-archive.json + done 窗口 ≤5 + 并集 ID 连续）先落地；分片拆分按层内既有顺序每 40 条一片（不用子目录/字母区间键），规则与命名见 MTH-015、toolkit/README 与两份 schema。",
+      "agent_hint": "后续四层均可能超 40 条：只需重跑 index，勿手改分片；命名/片数由 validate 机检。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "index 单层 >40 条自动拆为 <layer>-p01.json…（≤40 条仍用 <layer>.json，非末片满 40 条），根 shards 改为 {count, parts[]}；validate 新增 SHARD_SPLIT/SHARD_NAMING（片数、命名、非末片满片、各片合计）；新增 40 不拆 / 41 拆、拆分完整性、单文件→多片→回退清理测试，297 项单测全绿；同步 toolkit/README、agent-manifest.schema.json、manifest-shard.schema.json、MTH-015；preflight 全绿、advisories=0。",
+      "risk": "L"
     },
     {
       "id": "BL-018",
