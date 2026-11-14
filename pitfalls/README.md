@@ -117,6 +117,8 @@ domain: docs
 | PIT-023 | 硬件级防回滚（ARB/e-fuse）触发后降级即硬砖 | S1 | boot | 冻结固件、不降级、禁止清单；EDL 也救不回 | [PIT-023](PIT-023-oneplus-arb-hard-brick.md) |
 | PIT-024 | 第三方一键刷机/救砖工具的供应链风险 | S2 | security | 官方发布物+哈希校验；闭源工具不得作唯一路径 | [PIT-024](PIT-024-flash-tool-supply-chain.md) |
 | PIT-025 | Root 后模块冲突/OTA 错配 bootloop 与完整性回归 | S2 | device | 最小模块、一次一装、OTA 前恢复原厂镜像 | [PIT-025](PIT-025-root-module-regression.md) |
+| PIT-026 | dump `tailscaled.state` 致节点私钥/network-lock 密钥进日志 | S1 | ops | 只用 `status --json`/`debug prefs`/`whois`；禁止读状态文件；已 dump 即轮换 key | [PIT-026](PIT-026-tailscale-state-dump.md) |
+
 ## 6. 关系与冻结
 
 - **[guardrails/](../guardrails/README.md)**：MUST NOT 红线；PIT 根因应反推是否有对应 GRD，没有则先补证据再提红线。

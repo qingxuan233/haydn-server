@@ -1,8 +1,8 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "pitfalls",
-  "generated_at": "2026-11-14T11:09:24Z",
-  "count": 26,
+  "generated_at": "2026-11-14T11:42:50Z",
+  "count": 27,
   "entries": [
     {"id":"PIT-000","title":"踩坑库索引（Pitfalls Index）","path":"pitfalls/README.md","type":"pitfall","status":"current","tags":["index","pitfalls","severity","evidence"],"agent_hint":"先按严重度与域检索，再读对应 PIT；新增条目必须带可复现证据与验证步骤","severity":"S4","domain":"docs"},
     {"id":"PIT-001","title":"非 ASCII 路径导致 aapt2 构建失败","path":"pitfalls/PIT-001-ascii-path-aapt2.md","type":"pitfall","status":"current","tags":["build","aapt2","windows","ascii-path"],"agent_hint":"构建报 aapt2 路径错误时先验证仓库与 SDK 路径字符集，禁止用 junction 绕行","severity":"S3","domain":"docs"},
@@ -29,6 +29,7 @@
     {"id":"PIT-022","title":"OEM 解锁资格收紧：账号年限、实名、名额与冷却期成为隐藏前置","path":"pitfalls/PIT-022-oem-unlock-quota.md","type":"pitfall","status":"current","tags":["bootloader","unlock-policy","oneplus","coloros","deep-test","quota","account"],"agent_hint":"采购/解锁前先查机型现行政策与账号状态；把账号门槛当硬前置，不要假设\"买来就能解\"。","severity":"S2","domain":"boot","oem":"oneplus"},
     {"id":"PIT-023","title":"硬件级防回滚（ARB/e-fuse）触发后降级即硬砖，EDL 也救不回","path":"pitfalls/PIT-023-oneplus-arb-hard-brick.md","type":"pitfall","status":"current","tags":["arb","anti-rollback","e-fuse","coloros","oneplus","hard-brick","edl","downgrade"],"agent_hint":"解锁/root 设备一律冻结固件；任何降级、刷旧第三方 ROM、刷旧全量包的念头先停：先查 ARB 与版本后缀。","severity":"S1","domain":"boot","oem":"oneplus"},
     {"id":"PIT-024","title":"第三方一键刷机/救砖工具的供应链风险：闭源、报毒、服务端下发","path":"pitfalls/PIT-024-flash-tool-supply-chain.md","type":"pitfall","status":"current","tags":["supply-chain","flashing-tool","closed-source","edl","malware","provenance","oneplus"],"agent_hint":"Root/解锁/救砖工具优先官方开源发布物并校验哈希；闭源一键工具只能作备用且不得成为唯一路径。","severity":"S2","domain":"security","oem":"oneplus"},
-    {"id":"PIT-025","title":"Root 后模块冲突/OTA 错配导致 bootloop，且指纹与完整性回归","path":"pitfalls/PIT-025-root-module-regression.md","type":"pitfall","status":"current","tags":["root","modules","bootloop","ota","play-integrity","widevine","fingerprint","coloros","magisk"],"agent_hint":"Root 后先最小基线、一次只装一个模块；OTA 前先恢复原厂镜像；出现指纹/支付异常先查模块与隐藏配置。","severity":"S2","domain":"device","oem":"oneplus"}
+    {"id":"PIT-025","title":"Root 后模块冲突/OTA 错配导致 bootloop，且指纹与完整性回归","path":"pitfalls/PIT-025-root-module-regression.md","type":"pitfall","status":"current","tags":["root","modules","bootloop","ota","play-integrity","widevine","fingerprint","coloros","magisk"],"agent_hint":"Root 后先最小基线、一次只装一个模块；OTA 前先恢复原厂镜像；出现指纹/支付异常先查模块与隐藏配置。","severity":"S2","domain":"device","oem":"oneplus"},
+    {"id":"PIT-026","title":"诊断 tailscale 身份时 dump tailscaled.state 导致节点私钥与 network-lock 密钥进入日志","path":"pitfalls/PIT-026-tailscale-state-dump.md","type":"pitfall","status":"current","tags":["tailscale","secrets","redaction","state-file","chroot","diagnostics"],"agent_hint":"查 tailscale 登录身份只用 `status --json` / `debug prefs` / `whois`；禁止 cat/strings/grep/hexdump 原始 `tailscaled.state`（含节点私钥与 network-lock 密钥）；已 dump 按泄露处理并轮换节点 key。","severity":"S1","domain":"ops"}
   ]
 }

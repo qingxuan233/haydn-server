@@ -301,9 +301,9 @@ redirect_stderr=true
 | `openssl s_client` + 手发 GET | `HTTP/1.0 200 OK`，返回自检页 |
 | Python `ssl` 客户端 | TLSv1.3 / TLS_AES_256_GCM_SHA384，链校验通过，`HTTP/1.0 200 OK` |
 | 公网 443 证书 | 即设备这张（subject/issuer/指纹一致）→ **确认透传，无边缘第二张证书** |
-| `curl`（Windows schannel / 设备 OpenSSL 3.0.13） | `(35) Connection reset`，ClientHello 后即被重置 → **待核对** |
+| `curl`（Windows schannel / 设备 OpenSSL 3.0.13） | `(35) Connection reset`，ClientHello 后即被重置 → **已定位为链路外部 RST 注入（外部环境限制），非本机与 stunnel 问题**（证据见下） |
 
-`curl` 现象已排除 ALPN（h2 / http/1.1）、TLS 1.2/1.3、frp 压缩开关、DNS 四个因素；浏览器与 OpenSSL/Python 均正常，暂判定为链路对特定 ClientHello 的过滤特征，不影响实际使用，登记为待核对项。
+**curl RST 已定位（2026-11-14 抓包，只读）。** 依据：[已核验] ①同一四元组在 RST 之后**仍继续收到服务器方向的 ACK（len=518）**——若连接确在端点关闭，不应再有后续报文；②注入 RST 的 **TTL 与 IP-ID 与真实服务器（`8.137.162.154`）后续报文不一致**，指向中间链路设备伪造；③该 **RST 早于本地 stunnel 记录**（stunnel 侧无对应会话，说明包未到达设备）；④**同机同链路 Chrome 正常而 curl 失败**，与本机 TLS 栈、证书链无关；⑤**请求长度不构成判据**（不同长度复现一致）。已排除的变量仍是 ALPN（h2 / http/1.1）、TLS 1.2/1.3、frp 压缩开关、DNS。结论：属**外部环境（运营商/云侧防护策略）对特定 ClientHello 特征的阻断**，不影响浏览器实际使用；不再作为部署缺陷跟踪，也不建议为此改动 frp/stunnel 配置。
 
 ### 11.5 续期与降级策略
 
