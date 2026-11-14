@@ -125,7 +125,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | chroot 基线 | `dd` 256MB（fsync）≈532 MB/s；chroot 内 uname/nproc/free 正常；proot 对照未做（Termux 未安装） |
 | 观测与约束 | 内核无 `CONFIG_NF_TABLES` → 使用 iptables；无 user_ns/CGROUP_PIDS/NFT，cgroup v2 无委派 → 容器/systemd 仍不可用；电池 100%、电池温度约 28°C、温区峰值观测 82.2°C（只读，未改充电/温控） |
 | 已知限制 | KernelSU 模块脚本运行在私有 mount namespace：chroot 挂载仅对该 namespace 内服务可见，ADB shell 侧需经入口脚本重新挂载；服务管理走 supervisor control socket；遥测循环无外部看门狗（模块仅开机启动一次） |
-| 未完成（不得写"完成"） | tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时）、用户自有 SSH 公钥替换（当前为运行期管理员密钥）、备份目标/口令与定期恢复演练、24h soak（run #2 计时中，未满）、proot vs chroot 基准、资源/电源调优、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接 |
+| 未完成（不得写"完成"） | tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时）、用户自有 SSH 公钥替换（当前为运行期管理员密钥）、备份目标/口令与定期恢复演练、24h soak（run #2 计时中，未满）、充电上限 80% 长时维持观测、proot vs chroot 基准、资源/电源调优、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接 |
 
 ### 6.2 P1 管理面准备（2026-11-14，部分完成）
 
@@ -145,6 +145,8 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | 遥测循环修复 | 2026-11-14 06:54–07:08（本地）发现遥测循环脚本运行时报 `syntax error: unexpected 'done'` 并退出，造成 **22:54–23:08Z 遥测缺口**（健康检查/uptime 未受影响）；改用 **LF 文本经 `adb push` 覆盖**、`sh -n` 通过、`setsid` 重启，并核对下一采集周期（23:08/23:13 正常），随后将 soak 基线重置为 run #2 | 运行期输出、`telemetry.csv` |
 | soak 中期数据 | run #1（已中止）：4.91h、60 个 5 分钟采样、0 缺口、0 重启、supervisord/http 可用率 100%、温区峰值 44°C、电池 33.9°C；run #2 开始后 23:08/23:13 两个周期正常。**24h 未满，不得写通过** | `telemetry.csv`（gitignored）+ 运行期统计脚本 |
 | OTA/升级现状（2026-11-14 只读核对） | ColorOS 15.0.0.1901(CN01)、安全补丁 2026-07-01、活动槽 `_b`（A/B）、`verifiedbootstate=orange`、解锁+Root（KernelSU LKM 3.3.1）；`/data/ota_package/OTA` 下**无已下载载荷**；但存在 `can_update_at_night=1`、`oplus.ota.autoinstall.time=3:41`，**自动更新是否关闭待核实**。是否升级/如何保留 Root 的评估登记为 [BL-032](../../backlog.json)（用户明确授权前不执行 OTA/刷写） | 运行期只读命令输出 |
+| 充电上限（80%） | 2026-11-14 通过 ColorOS「电池健康」页开启**原生充电上限保护**：充电时电量最终维持 **80%**（可点"本次充满"临时到 100%）。开启后电池 100% 即停止充电（`status=Discharging`），状态键 `regular_charge_protection_switch_state=1`、`regular_charge_protection_status=1`，内核 `charge_control_limit=4`；回滚 = 同页关闭开关。**80% 长时维持待观测**（停充已确认） | UI 截图（运行期 inventory）+ settings 键值 + sysfs 读数 |
+| 第三方应用清理 | 用户请求"删除无用第三方 APP"。按 [GRD-002](../../guardrails/GRD-002-no-system-package-uninstall.md) **仅 `pm disable-user --user 0`**（不卸载系统包）：目标 41 个，实际新禁用 28（13 个已禁用），累计禁用 45；保留 KernelSU/SystemUI/Settings/Launcher/Phone/Sogou 输入法/电池服务；回滚 `pm enable <pkg>`；真正卸载（释放空间）未做，如需需备份 APK/数据后另行授权 | 运行期 `debloat.log`、`pm list packages -d` |
 | 入站最小化（复核） | iptables/ip6tables INPUT 仍为 DROP + lo/established/DHCP/NDP 白名单；新增监听 22/9100/1055/18080 **全部仅 127.0.0.1**；未开放局域网/公网新端口 | `iptables -S INPUT`、`ss -ltn` |
 | 网络地址 | 按 [MTH-002 §5.3.1](../../methodology/01-assessment.md) 与 [PIT-021](../../pitfalls/PIT-021-dhcp-lease-assumption.md) 保持**动态地址 + 发现机制**（当前 DHCP `192.168.31.50/24`）；未固定 DHCP 租约/静态地址（需路由器权限，仅可选优化；与旧方案稿 P1 草案的差异已在此记录） | `ip -4 addr show wlan0` |
 | 偏差/限制 | tailscaled 为 userspace 模式（未验证内核 TUN 模式；`/dev/net/tun` 状态待测）；tailnet 本机自连超时（userspace 自连不适用），**端到端 SSH 需用户第二节点验证**；Uptime Kuma 与外部告警通道未部署（需外部节点与凭据）；**充电上限语义未验证**（`charge_control_limit=0` / `max=4`、`charge_type=Standard`，未写测试值，避免误改 7×24 供电策略）；ADB 仍保持 USB 维护通道，待 tailnet 登录可用后再关闭 | 运行期记录 |
