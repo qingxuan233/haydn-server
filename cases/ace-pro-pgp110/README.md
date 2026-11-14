@@ -125,7 +125,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | chroot 基线 | `dd` 256MB（fsync）≈532 MB/s；chroot 内 uname/nproc/free 正常；proot 对照未做（Termux 未安装） |
 | 观测与约束 | 内核无 `CONFIG_NF_TABLES` → 使用 iptables；无 user_ns/CGROUP_PIDS/NFT，cgroup v2 无委派 → 容器/systemd 仍不可用；电池 100%、电池温度约 28°C、温区峰值观测 82.2°C（只读，未改充电/温控） |
 | 已知限制 | KernelSU 模块脚本运行在私有 mount namespace：chroot 挂载仅对该 namespace 内服务可见，ADB shell 侧需经入口脚本重新挂载；服务管理走 supervisor control socket；遥测循环无外部看门狗（模块仅开机启动一次） |
-| 未完成（不得写"完成"） | tailnet 登录（待用户 auth key）、用户自有 SSH 公钥替换（当前为运行期管理员密钥）、备份目标/口令与定期恢复演练、24h soak（run #2 计时中，未满）、proot vs chroot 基准、资源/电源调优、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接 |
+| 未完成（不得写"完成"） | tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时）、用户自有 SSH 公钥替换（当前为运行期管理员密钥）、备份目标/口令与定期恢复演练、24h soak（run #2 计时中，未满）、proot vs chroot 基准、资源/电源调优、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接 |
 
 ### 6.2 P1 管理面准备（2026-11-14，部分完成）
 
@@ -134,7 +134,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | 项 | 结果 | 证据 |
 |---|---|---|
 | 常电/唤醒 | `wake_lock=haydn-server` 已持有；屏幕 Asleep；Wi‑Fi power save **off**；三项均由 KernelSU 模块 `service.sh` 在 boot_completed 后重新应用（**5/5 重启验证通过**） | `/sys/power/wake_lock`、`iw dev wlan0 get power_save`、`/data/server/logs/boot.log` 中的 `P1 runtime:` 行 |
-| 远程管理（Tailscale） | tailscale/tailscaled **1.104.7** 官方 static（下载后 SHA-256 校验一致）安装于 `/usr/local/bin`；tailscaled 以 userspace networking 运行（SOCKS 仅 `127.0.0.1:1055`）；`tailscale status` = **Logged out**，登录与 tailnet 访问验证**未完成**（待用户提供 auth key） | 安装日志 `p1-tailscale-install.log`、supervisor status |
+| 远程管理（Tailscale） | tailscale/tailscaled **1.104.7** 官方 static（下载后 SHA-256 校验一致）安装于 `/usr/local/bin`；tailscaled 以 userspace networking 运行（SOCKS 仅 `127.0.0.1:1055`）。**已用 auth key 登录成功**：`BackendState=Running`、节点名 `haydn-pgp110`、取得 tailnet 地址（具体 IP/DNS 不入库）；配置 **tailnet TCP 转发 `:22 → 127.0.0.1:22`**（tailnet-only，本机 sshd 仍仅 loopback）；tailscaled 重启后登录与转发配置保持（未重启设备）。auth key 以 `--auth-key=file:` 文件方式传递，临时文件已删除，未打印/未入库。**从其它 tailnet 节点做端到端 SSH 验证待用户**（本机自连超时属 userspace 模式限制，不作失败证据） | 安装日志、`tailscale status`/`serve status`、运行期验证输出 |
 | SSH | openssh-server 9.6p1；仅 `127.0.0.1:22`；`PasswordAuthentication no`、`KbdInteractiveAuthentication no`、`PermitRootLogin prohibit-password`、`X11Forwarding no`；`sshd -t` 通过。先以**临时 ed25519 密钥**经 `adb forward` 完成端到端验证（`uid=0(root)`/`SSH_OK`）；随后生成**长期管理员 ed25519 密钥**（公钥写入 `/root/.ssh/authorized_keys`，私钥保存在运行期 `inventory/`，未入库），再次端到端验证通过。**仍建议用户替换为自己的公钥** | `sshd -T` 输出、`/etc/ssh/sshd_config.d/99-haydn.conf`、运行期 SSH 验证输出 |
 | 可观测 | prometheus-node-exporter 1.7.0 仅 `127.0.0.1:9100`；cron 每 5 分钟运行 `/usr/local/bin/haydn-healthcheck.sh`（检查 supervisor/http/node_exporter/sshd/disk），OK/FAIL 写 `/var/log/haydn/health.log`；telemetry-loop 每 5 分钟调用 `alert-watch.sh`，**FAIL 时在设备上发 Android 通知**并写 `/data/server/logs/alerts.log`（同一 FAIL 行去重，恢复 OK 自动清状态）。受控验证：暂停 local-http → `FAIL supervisor http` → 通知/告警日志 → 恢复 → `OK` | supervisor status、`health.log`、`alerts.log`、运行期验证输出 |
 | 备份工具 | restic 0.16.4 与 rclone 1.60.1 已安装。**restic 加密备份/恢复演练（本机临时仓库）通过**：19 文件/619.867KiB，`restic check` 无错误，restore 32 文件/目录，3 个配置文件 SHA-256 **MATCH**；演练后临时仓库与口令已删除。**该演练不是持久备份**；真实 NAS/远端目标、口令与定期恢复演练**未开始**（待用户） | `restic init/backup/check/restore` 运行期输出 |
@@ -146,7 +146,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | soak 中期数据 | run #1（已中止）：4.91h、60 个 5 分钟采样、0 缺口、0 重启、supervisord/http 可用率 100%、温区峰值 44°C、电池 33.9°C；run #2 开始后 23:08/23:13 两个周期正常。**24h 未满，不得写通过** | `telemetry.csv`（gitignored）+ 运行期统计脚本 |
 | 入站最小化（复核） | iptables/ip6tables INPUT 仍为 DROP + lo/established/DHCP/NDP 白名单；新增监听 22/9100/1055/18080 **全部仅 127.0.0.1**；未开放局域网/公网新端口 | `iptables -S INPUT`、`ss -ltn` |
 | 网络地址 | 按 [MTH-002 §5.3.1](../../methodology/01-assessment.md) 与 [PIT-021](../../pitfalls/PIT-021-dhcp-lease-assumption.md) 保持**动态地址 + 发现机制**（当前 DHCP `192.168.31.50/24`）；未固定 DHCP 租约/静态地址（需路由器权限，仅可选优化；与旧方案稿 P1 草案的差异已在此记录） | `ip -4 addr show wlan0` |
-| 偏差/限制 | tailscaled 为 userspace 模式（未验证内核 TUN 模式；`/dev/net/tun` 状态待测）；Uptime Kuma 与外部告警通道未部署（需外部节点与凭据）；**充电上限语义未验证**（`charge_control_limit=0` / `max=4`、`charge_type=Standard`，未写测试值，避免误改 7×24 供电策略）；ADB 仍保持 USB 维护通道，待 tailnet 登录可用后再关闭 | 运行期记录 |
+| 偏差/限制 | tailscaled 为 userspace 模式（未验证内核 TUN 模式；`/dev/net/tun` 状态待测）；tailnet 本机自连超时（userspace 自连不适用），**端到端 SSH 需用户第二节点验证**；Uptime Kuma 与外部告警通道未部署（需外部节点与凭据）；**充电上限语义未验证**（`charge_control_limit=0` / `max=4`、`charge_type=Standard`，未写测试值，避免误改 7×24 供电策略）；ADB 仍保持 USB 维护通道，待 tailnet 登录可用后再关闭 | 运行期记录 |
 
 ### 6.3 P1 配置要点（可复现，不含任何密钥）
 
@@ -183,6 +183,18 @@ haydn-tailscaled      command=/usr/local/bin/tailscaled --tun=userspace-networki
 ```
 
 **健康检查与告警**：cron `*/5 * * * * root /usr/local/bin/haydn-healthcheck.sh`（检查 supervisor/http/node_exporter/sshd/disk，OK/FAIL 写 `/var/log/haydn/health.log`）；telemetry-loop 每 5 分钟调用 `alert-watch.sh`，FAIL 时发 Android 通知并写 `/data/server/logs/alerts.log`（同一 FAIL 行去重，恢复后自动清状态）。
+
+**Tailscale（登录与 tailnet SSH 入口，密钥不入库）**：
+```sh
+# 登录：auth key 用 file: 方式传递，避免出现在命令行/日志
+# （先把 key 放在 chroot 内临时文件 /tmp/.tskey，用完立即删除）
+/data/server/bin/chroot-enter.sh /usr/local/bin/tailscale up \
+  --auth-key=file:/tmp/.tskey --hostname=haydn-pgp110 --accept-dns=false
+
+# tailnet 内 TCP 转发 :22 -> 本机 loopback sshd（tailnet-only）
+/data/server/bin/chroot-enter.sh /usr/local/bin/tailscale serve --bg --tcp 22 tcp://127.0.0.1:22
+/data/server/bin/chroot-enter.sh /usr/local/bin/tailscale serve status
+```
 
 **验收/回滚命令**：
 ```sh
