@@ -47,7 +47,8 @@ DEFAULT_POLICY: dict[str, Any] = {
         "toolkit/templates/*.md": 130,
         "adr/*.md": 120,
         "adr/README.md": 90,
-        "backlog.json": 640,
+        "backlog.json": 600,
+        "backlog-archive.json": 640,
     },
     "byte_limits": {
         "changelog/*.md": 262144,
@@ -85,6 +86,10 @@ DEFAULT_POLICY: dict[str, Any] = {
     },
     "backlog": {
         "schema_file": "toolkit/schema/backlog.schema.json",
+        "archive_schema_file": "toolkit/schema/backlog-archive.schema.json",
+        "archive_file": "backlog-archive.json",
+        "max_active_done": 5,
+        "note": "active done 超过 max_active_done 报 BACKLOG_DONE_WINDOW；归档条目只许 status=done，active+归档并集 ID 必须连续（MTH-011 §2.2）",
     },
 }
 """内置默认策略（与 toolkit/schema/doc-policy.json 保持一致，作为缺失/损坏时回退）。"""

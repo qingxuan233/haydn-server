@@ -173,7 +173,7 @@ probe 的 12 项能力（顺序固定）：`proot`、`containers`、`systemd`、
 ### 4.1 front matter 契约（新层 Markdown）
 
 解析器：[frontmatter.py](repurpose/frontmatter.py)；schema：[frontmatter.schema.json](schema/frontmatter.schema.json)。
-必需键：`id,title,type,status,audience,tags,updated,agent_hint`（详见 [AGENTS.md](../AGENTS.md) §4.2）；
+必需键：`id,title,type,status,audience,tags,updated,agent_hint`（详见 [AGENTS.md](../AGENTS.md) §4.1 与 [MTH-009](../methodology/08-agent-handoff.md) §4）；
 `audience`/`tags`/`depends` 是逗号分隔列表（`[a, b]` 也兼容）；flat YAML，不接受嵌套。
 额外约定：pitfall 用 `severity: S1..S4` + `domain`；guardrail 用 `severity: blocker|warning` + `scope: device|server|agent|repo`；
 `type` 另含 `adr`/`request`，`status` 另含 `accepted`/`superseded`（ADR）；ADR 用 4 位 ID（如 `ADR-0001`），`id` 正则允许 3/4 位数字。
@@ -275,15 +275,15 @@ python -m toolkit.repurpose validate --mtime-check  # 本地排查才用：按 m
    - PIT：编号连续/正文五段（症状/根因/规避/验证/证据）/条目数 ≤40（不强制旧条目补新字段）；
    - ADR：`NNNN-slug.md` 连续、id/type/status（proposed/accepted/superseded）、四段、`superseded_by` 回链、索引无孤儿；
    - CHANGELOG §4 归档索引 ↔ `changelog/*.md` 双向一致（文件存在/条数/版本范围）；
-   - backlog：按 [backlog.schema.json](schema/backlog.schema.json) 校验结构，并检查 ID 连续/active 状态字段/depends 断链；
+   - backlog：按 [backlog.schema.json](schema/backlog.schema.json) 校验结构，并检查 ID 连续/active 状态字段/depends 断链；active done 超过 5 条报 `BACKLOG_DONE_WINDOW`；[backlog-archive.json](../backlog-archive.json) 按 [backlog-archive.schema.json](schema/backlog-archive.schema.json) 校验（只许 done、保留 owner/updated/result、与 active 无重复），并集 ID 必须连续；
    - Agent 回归 AR-02（红线区每条含 GRD 链接且 ≥9 条）/ AR-03（manifest.invariants 覆盖关键红线词）；
    - 缺新结构文件的临时 fixture 仓库会**降级跳过**（不误报 error）；真实仓库必须全绿。
 5. **doc-policy**（[schema/doc-policy.json](schema/doc-policy.json)，schema `repurpose.doc-policy.v1`）：
    - 行数上限：`AGENTS.md`≤320、`README.md`≤280、`methodology/*.md`≤300、`pitfalls/PIT-*.md`≤90、
      `pitfalls/README.md`≤150、`guardrails/GRD-*.md`≤90、`guardrails/README.md`≤130、`cases/*/README.md`≤280、
-     `cases/*/oem-profile.md`≤200、`toolkit/README.md`≤440、`toolkit/templates/*.md`≤130、`adr/*.md`≤120、`adr/README.md`≤90、`backlog.json`≤640；
+     `cases/*/oem-profile.md`≤200、`toolkit/README.md`≤440、`toolkit/templates/*.md`≤130、`adr/*.md`≤120、`adr/README.md`≤90、`backlog.json`≤600、`backlog-archive.json`≤640；
    - `changelog/*.md`≤256KB；CHANGELOG **当前窗口数据行**（`| 2026-11-11 | vX.Y | … |` 形式）≤8；
-     `changelog/` 归档默认不读、只读，仅追溯时读单个文件（见 [MTH-011](../methodology/10-document-lifecycle.md)）；
+     `changelog/` 归档默认不读、只读，仅追溯时读单个文件（见 [MTH-015](../methodology/15-archive-and-context-budget.md)）；
    - `AGENTS.md`/`README.md` 的"状态段落"≤8 行（只留结论与链接）；
    - 策略文件缺失/损坏时回退内置默认策略并记 `POLICY_MISSING`/`POLICY_INVALID` warning。
 6. **manifest 根/分片一致性**：根 ≤160 行/≤16KB 且不含完整 content；四层 `shards` 映射完整；
@@ -320,6 +320,7 @@ python -m toolkit.repurpose validate --mtime-check  # 本地排查才用：按 m
 | [schema/manifest-shard.schema.json](schema/manifest-shard.schema.json) | `repurpose.manifest-shard.v1` 按层分片（entries 字段/≤40 条） |
 | [schema/frontmatter.schema.json](schema/frontmatter.schema.json) | 新层 Markdown front matter 契约（含 pitfall/guardrail 额外键、adr/request 类型） |
 | [schema/backlog.schema.json](schema/backlog.schema.json) | `repurpose.backlog.v1` backlog.json 字段/枚举/正则 + 语义规则（governance 内置小校验器读取） |
+| [schema/backlog-archive.schema.json](schema/backlog-archive.schema.json) | `repurpose.backlog-archive.v1` backlog-archive.json（归档只许 done、与 active 并集 ID 连续） |
 | [schema/doc-policy.json](schema/doc-policy.json) | `repurpose.doc-policy.v1` 文档行数/协议/命名/治理/归档窗口/manifest 上限策略（validate/index 读取） |
 
 Schema 均为**自描述 JSON Schema（draft-07）**，校验器不依赖 `jsonschema` 库；
@@ -372,7 +373,7 @@ rescue-kit（清单/相对路径/自排除/修改/缺失/新增/空目录/CLI 0/
 5. 涉及 front matter/ID/schema 时同步更新 `schema/` 与模板；
 6. 运行 `python -m toolkit.repurpose preflight`（index + validate --strict + 全量测试 + check-links，退出码 0 才算完成）；
    `agent-manifest.json` + `agent-manifest.d/` 与内容一致（`index --check` exit 0；根摘要 ≤160 行、分片 ≤300 行/≤40 条、doc-policy 全部在限内）；
-7. 对外契约变化在 CHANGELOG.md 当前窗口记录（Lead/维护者提交；窗口将超 8 条时先按 MTH-011 归档），并按
+7. 对外契约变化在 CHANGELOG.md 当前窗口记录（Lead/维护者提交；窗口将超 8 条时先按 MTH-015 归档），并按
    [MTH-009](../methodology/08-agent-handoff.md) 做影响传播（MTH/PIT/GRD/CASE 交叉链接）。
    > "一条命令跑所有 CI 门"即 TOOL-013 `preflight`；CI 调 `index --check` + **完整** `preflight`（不要用 `--no-index`，会因 SKIPPED 退 3）。
 
@@ -383,7 +384,8 @@ rescue-kit（清单/相对路径/自排除/修改/缺失/新增/空目录/CLI 0/
 | [AGENTS.md](../AGENTS.md) | 工具是唯一机器索引/校验入口；`index` 生成根摘要 + 四层分片（生成物不手改）；DoD 命令必须全绿 |
 | [MTH-000](../methodology/README.md) / [MTH-002](../methodology/01-assessment.md) | profile/assessment 字段与门禁 ID（G-A/G-B0/G-B1/G-B2/G-C/G-D）以本工具 schema 为准；文档不得另造字段 |
 | [MTH-009](../methodology/08-agent-handoff.md) | 改契约的传播流程：工具 + schema + 模板 + 测试 + 文档 + manifest 同步 |
-| [MTH-011](../methodology/10-document-lifecycle.md) | 文档窗口/归档/上下文预算规则；doc-policy.json 是它的机器可执行投影 |
+| [MTH-011](../methodology/10-document-lifecycle.md) | 文档归属、命名、索引、ADR 与变更联动规则 |
+| [MTH-015](../methodology/15-archive-and-context-budget.md) | 文档窗口/归档/上下文预算/机检上限规则；doc-policy.json 是它的机器可执行投影 |
 | [pitfalls/README.md](../pitfalls/README.md) | manifest 条目必须带 `severity`/`domain`，供 Agent 过滤；PIT 复现优先用工具只读命令 |
 | [guardrails/README.md](../guardrails/README.md) | 工具不得通过写设备/提权"绕过"红线；验证命令只读 |
 | [cases/README.md](../cases/README.md) | 案例 profile 用 `repurpose.device-profile.v1`，经 assess 验证；敏感值脱敏 |

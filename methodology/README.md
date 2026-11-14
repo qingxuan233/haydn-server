@@ -47,7 +47,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 
 1. [AGENTS.md](../AGENTS.md)：工作协议、红线、DoD、任务协议。
 2. [agent-manifest.json](../agent-manifest.json)：根摘要（≤160 行）；需要某层时只读一个 `agent-manifest.d/` 分片。
-3. 按任务**只选 1 篇**主题 MTH（评估/路线图/服务器/桥/控制面/安全/验收之一）；扩展/交接读 [MTH-009](08-agent-handoff.md)，归档/上下文预算读 [MTH-011](10-document-lifecycle.md)，项目推进/阶段门读 [MTH-013](12-delivery-governance.md)，SOP/评审/分支/回归读 [MTH-014](13-agent-sop.md)。
+3. 按任务**只选 1 篇**主题 MTH（评估/路线图/服务器/桥/控制面/安全/验收之一）；扩展/交接读 [MTH-009](08-agent-handoff.md)，归档/上下文预算读 [MTH-015](15-archive-and-context-budget.md)，项目推进/阶段门读 [MTH-013](12-delivery-governance.md)，SOP/评审/分支/回归读 [MTH-014](13-agent-sop.md)。
 4. [README](../README.md) 只读"仓库地图/阅读路径"段；[backlog.json](../backlog.json) 领取任务。
 5. 动手前按 AGENTS §0 跑基线校验；只读优先、小步变更、证据不伪造。
 
@@ -81,7 +81,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | ③ 单一事实源 | 本页 §4.4 | 每类事实只认哪一处（禁止两处维护） | 维护者；归属变化时更新 |
 | ④ 维护规则 | 本页 §8 + [AGENTS.md](../AGENTS.md) §10 | 谁维护、何时更新、更新后跑什么校验 | Lead/维护者 |
 
-### 4.2 文档地图（MTH-000 ~ MTH-014）
+### 4.2 文档地图（MTH-000 ~ MTH-015）
 
 | ID | 文档 | 解决什么问题 | 主要读者 |
 |---|---|---|---|
@@ -96,10 +96,11 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | MTH-008 | [验收与稳定性](07-validation.md) | 5 重启、24h soak、故障注入、恢复演练、证据格式 | Agent 为主 |
 | MTH-009 | [Agent 交接与扩展协议](08-agent-handoff.md) | 目录/ID/任务/扩展/变更传播/CLI 契约/DoD 摘要（Agent 必读） | Agent |
 | MTH-010 | [术语表](09-glossary.md) | 统一术语口径（proot/FGS/AVB/soak/Tier/DRI/G0–G7 等） | 人 + Agent |
-| MTH-011 | [文档生命周期、归档与上下文预算](10-document-lifecycle.md) | 命名/索引/ADR/联动矩阵/归档/阅读预算/截断检测/知识债 | 人 + Agent |
+| MTH-011 | [文档生命周期、归属、命名与变更联动](10-document-lifecycle.md) | 记录边界/命名/索引四表/ADR/联动矩阵/知识债 | 人 + Agent |
 | MTH-012 | [Root 实验设备方法论](11-root-lab.md) | 采购准入、解锁/Root 门禁、方案选型、OTA/ARB、救援、验收、割接（**仅授权实验设备**） | 人 + Agent |
 | MTH-013 | [项目推进与交付治理](12-delivery-governance.md) | 风险分级 L/M/H、角色与 DRI、需求卡、阶段门 G0–G7、用户验收、发布/割接、兼容/弃用、数据/许可、Continue/Pivot/Stop | 人 + Agent |
 | MTH-014 | [Agent 工作 SOP 与协作治理](13-agent-sop.md) | 生命周期、计划外置、DoD/证据卡、评审/测试、汇报、多 Agent、分支与版本、提示词治理、AR-01..10 回归 | Agent 为主 |
+| MTH-015 | [归档、上下文预算与机器校验](15-archive-and-context-budget.md) | CHANGELOG 窗口/归档、状态段上限、阅读预算、分层加载、截断检测、机检 | 人 + Agent |
 
 **配套层入口**
 
@@ -120,14 +121,15 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | 第一次接手/新会话 | [AGENTS.md](../AGENTS.md) §0 | [agent-manifest.json](../agent-manifest.json) → 本页 §2.2 |
 | 评估一台手机能否做服务器 | [MTH-002](01-assessment.md) | [MTH-003](02-roadmap.md) §1 |
 | 知道当前阶段与下一步 | [MTH-003](02-roadmap.md) | 相关轨道 MTH-004/005/006 |
-| 服务器栈/服务守护/备份/排障 | [MTH-004](03-server-stack.md) | [MTH-011](10-document-lifecycle.md)（证据与归档） |
+| 服务器栈/服务守护/备份/排障 | [MTH-004](03-server-stack.md) | [MTH-015](15-archive-and-context-budget.md)（证据与归档） |
 | 宿主遥测桥 | [MTH-005](04-telemetry-bridge.md) | [MTH-006](05-control-plane.md)、[MTH-007](06-security.md) |
 | 控制面/受控运维/Tier 分级 | [MTH-006](05-control-plane.md) | [MTH-007](06-security.md)、[MTH-008](07-validation.md) |
 | 安全/凭据/网络暴露 | [MTH-007](06-security.md) | [GRD-006](../guardrails/GRD-006-secret-hygiene.md)、[GRD-007](../guardrails/GRD-007-network-least-exposure.md) |
 | 验收/soak/故障注入/恢复演练 | [MTH-008](07-validation.md) | [MTH-003](02-roadmap.md) P6、[MTH-013](12-delivery-governance.md) §7 |
 | 立项/需求基线/发布/割接/用户验收 | [MTH-013](12-delivery-governance.md) | [MTH-008](07-validation.md)、[MTH-003](02-roadmap.md)、[MTH-014](13-agent-sop.md) |
 | Agent 工作 SOP/评审/汇报/多 Agent/分支/回归 | [MTH-014](13-agent-sop.md) | [AGENTS.md](../AGENTS.md)、[MTH-009](08-agent-handoff.md) |
-| 新增/修改/移动文档、归档、上下文预算 | [MTH-011](10-document-lifecycle.md) | [MTH-009](08-agent-handoff.md)、[MTH-010](09-glossary.md) |
+| 新增/修改/移动文档 | [MTH-011](10-document-lifecycle.md) | [MTH-009](08-agent-handoff.md)、[MTH-010](09-glossary.md) |
+| 归档/窗口/阅读预算/机检 | [MTH-015](15-archive-and-context-budget.md) | [MTH-011](10-document-lifecycle.md) |
 | 决策留痕/为什么这样定 | [adr/README.md](../adr/README.md) | [MTH-011](10-document-lifecycle.md) §2.4 |
 | 交接/扩展新层（新增 MTH/PIT/GRD/案例） | [MTH-009](08-agent-handoff.md) | [MTH-011](10-document-lifecycle.md)、[模板](../toolkit/templates/methodology-doc.md) |
 | 实验设备解锁/Root | [MTH-012](11-root-lab.md) | [GRD-015](../guardrails/GRD-015-root-lab-controlled.md)、[MTH-002](01-assessment.md) |
@@ -149,7 +151,8 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | 工具契约、退出码、命令与数值上限 | [toolkit/README.md](../toolkit/README.md) + [doc-policy](../toolkit/schema/doc-policy.json) | 链接；不复制数字 |
 | 机器索引与阅读顺序摘要 | [agent-manifest.json](../agent-manifest.json) + 分片（生成物） | 只引用，不手改 |
 | 术语口径 | [MTH-010](09-glossary.md) | 出处文档给出处上下文 |
-| 文档命名/索引/ADR/联动/归档规则 | [MTH-011](10-document-lifecycle.md) | 链接 |
+| 文档命名/索引/ADR/联动规则 | [MTH-011](10-document-lifecycle.md) | 链接 |
+| 归档窗口/状态段/阅读预算/机检上限 | [MTH-015](15-archive-and-context-budget.md) | 链接 |
 | 风险分级/交付门/用户验收/兼容/隐私/许可 | [MTH-013](12-delivery-governance.md) | 链接 |
 | Agent 工作 SOP/评审/回归/提示词治理 | [MTH-014](13-agent-sop.md) | 链接；AGENTS 只留摘要 |
 
@@ -161,7 +164,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 
 | 层 | 结论 |
 |---|---|
-| methodology | v2 初版可用（MTH-000..014；随实践修订，变更进 CHANGELOG 窗口/归档）；MTH-012 为 Root 实验轨规范、MTH-013 交付治理与 MTH-014 Agent SOP **多数机制已立规范、未全实测**（待落地项见各篇） |
+| methodology | v2 初版可用（MTH-000..015；随实践修订，变更进 CHANGELOG 窗口/归档）；MTH-012 为 Root 实验轨规范、MTH-013 交付治理与 MTH-014 Agent SOP **多数机制已立规范、未全实测**（待落地项见各篇） |
 | cases | 实证案例 1 个（**部分验收**，不得表述为全通过）；实验案例 1 个（一加 Ace Pro，已完成解锁/Root/救援演练，仍属实验轨） |
 | toolkit | alpha：fixture 单测可跑、**尚未真机回归**；限制与测试数见 toolkit/README |
 | pitfalls / guardrails | 初版条目，均含证据/检查方式；新增/变更进 CHANGELOG |
@@ -219,8 +222,8 @@ python scripts/dev/check-links.py --strict-anchors
 7. **破坏性变更**（目录结构、ID 前缀、权威顺序、对外契约）必须走 ADR + 迁移说明 + 同步索引/模板/校验器。
 8. **诚实优先**：未实测不标完成；目标值/实测值分列；失败与偏差保留在案例与踩坑库。
 9. **索引责任**：§4.1 索引四表必须随文档增删同步；新文档未登记索引视为丢失（规则见 [MTH-011](10-document-lifecycle.md) §2.1）。
-10. **机器校验**：`validate` 增加协议/命名/PIT/ADR/backlog/CHANGELOG 归档检查，新增统一入口 `preflight`；在工具尚未包含某项前按人工核对并如实标注"未机检"，不得写成已通过（契约见 [MTH-011](10-document-lifecycle.md) §6）。
-11. **容量分级**：AGENTS 协议 ≤200 行推荐、201–320 行警示、>320 行债务；当前 AGENTS 处于警示档，分流项已登记 backlog（知识债）。
+10. **机器校验**：`validate` 增加协议/命名/PIT/ADR/backlog/CHANGELOG 归档检查，新增统一入口 `preflight`；在工具尚未包含某项前按人工核对并如实标注"未机检"，不得写成已通过（契约见 [MTH-015](15-archive-and-context-budget.md) §5）。
+11. **容量分级**：AGENTS 协议 ≤200 行推荐、201–320 行警示、>320 行债务；当前 AGENTS 已分流至健康档（≤200），后续超限按 [MTH-015](15-archive-and-context-budget.md) §5.4 拆篇/下沉并登记知识债。
 
 ---
 

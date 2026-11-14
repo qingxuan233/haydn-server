@@ -444,7 +444,7 @@ def validate_doc_policy(root: Path, policy: dict[str, Any], strict: bool) -> tup
                     "CHANGELOG_WINDOW",
                     rel_posix(current_path, root),
                     f"CHANGELOG 当前窗口有 {len(rows)} 条数据行，超过上限 {max_entries}；"
-                    "请按 MTH-011 归档最旧条目到 changelog/YYYY-MM.md",
+                    "请按 MTH-015 归档最旧条目到 changelog/YYYY-MM.md",
                 )
             )
 

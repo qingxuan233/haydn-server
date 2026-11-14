@@ -7,7 +7,7 @@ audience: human, agent
 tags: agent-handoff, protocol, extension, lifecycle, cli-contract, governance, adr, preflight
 depends: MTH-000, MTH-001, MTH-002, MTH-003, MTH-008
 updated: 2026-11-13
-agent_hint: 每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；本文件只保留协议与扩展契约，SOP 细节见 MTH-014、文档生命周期见 MTH-011、交付治理见 MTH-013。
+agent_hint: 每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；本文件只保留协议与扩展契约，SOP 细节见 MTH-014、文档生命周期见 MTH-011、归档与阅读预算见 MTH-015、交付治理见 MTH-013。
 ---
 
 # MTH-009 · Agent 交接与扩展协议
@@ -43,7 +43,7 @@ agent_hint: 每个新 Agent 开工前必读；先协议后动手，任务是取�
 
 1. [AGENTS.md](../AGENTS.md)：分层与权威顺序、红线、DoD。
 2. [agent-manifest.json](../agent-manifest.json)：根摘要（≤160 行；过期先 `python -m toolkit.repurpose index`）；需要某层时**只读一个** `agent-manifest.d/<layer>.json` 分片，禁止一次加载全部分片。
-3. 按任务**只选 1 篇**主题 MTH（MTH-001..008 之一；Root 实验设备读 [MTH-012](11-root-lab.md)）；扩展/交接任务读本文件，归档/上下文预算读 [MTH-011](10-document-lifecycle.md)。
+3. 按任务**只选 1 篇**主题 MTH（MTH-001..008 之一；Root 实验设备读 [MTH-012](11-root-lab.md)）；扩展/交接任务读本文件，归档/上下文预算读 [MTH-015](15-archive-and-context-budget.md)。
 4. [README.md](../README.md) 只读"仓库地图/阅读路径"段；[backlog.json](../backlog.json) 领取任务或确认优先级。
 
 **只读优先**：先看状态与证据再改文件；不了解影响面时禁止批量重写。基线校验必须全绿（红基线先修基线，禁止叠加变更）：
@@ -113,7 +113,7 @@ agent_hint: 一句话说明何时读、先做什么
 | 3 | 变更：最小步、可回滚；只写授权范围；M/H 任务先需求卡或变更单（[MTH-013](12-delivery-governance.md) §4） | 不越界、不顺手重构 |
 | 4 | 自检：§3 基线命令全绿；改动范围内链接 0 错误；`git diff --check` | 失败项先修 |
 | 5 | 索引：`python -m toolkit.repurpose index` 重建 manifest，确认无 warnings | 不手改 manifest |
-| 6 | 记录：对外事实/契约变化写 [CHANGELOG](../CHANGELOG.md) 当前窗口（≤8 条）；超窗先把最旧条目归档到 `changelog/YYYY-MM.md` 并更新索引（规则见 [MTH-011](10-document-lifecycle.md) §3）；补交叉链接与 ADR | 日期 + 唯一递增记录，归档只读 |
+| 6 | 记录：对外事实/契约变化写 [CHANGELOG](../CHANGELOG.md) 当前窗口（≤8 条）；超窗先把最旧条目归档到 `changelog/YYYY-MM.md` 并更新索引（规则见 [MTH-015](15-archive-and-context-budget.md) §2）；补交叉链接与 ADR | 日期 + 唯一递增记录，归档只读 |
 | 7 | 报告并完成：五段格式 + 事实分级（[MTH-014](13-agent-sop.md) §9）；backlog 置 `done` + `result`，共享任务板 complete | 含证据；失败如实写；状态与产出路径一致 |
 
 ### 5.1 DoD 摘要
@@ -237,7 +237,7 @@ agent_hint: 一句话说明何时读、先做什么
 
 **统一约定**：退出码固定（0 成功 / 2 用法错 / 3 前置不满足 / 4 校验失败），CI 只按退出码判定；默认人类摘要，`--json`/`--format json` 输出稳定 schema；错误信息不含凭据/绝对路径/设备序列号；确定性（除时间戳/环境探测外不随机）；只写自己的产物（`index` 只写 manifest，`new-profile` 只写目标 profile）；设备能力必须支持注入 fixture 以在无真机环境测试。新增子命令见 §7.4，破坏性变更需版本化+迁移说明。
 
-**validate 已实现（契约与状态见 [toolkit/README.md](../toolkit/README.md)）**：`validate` 新增协议（`PROTOCOL_*`）、命名（`DOC_NAMING`）、PIT（`PIT_*`）、ADR（`ADR_*`）、backlog（`BACKLOG_*`）、CHANGELOG 归档（`CHANGELOG_ARCHIVE`）与 Agent 回归（`AGENT_REGRESSION`）检查（语义见 [MTH-011](10-document-lifecycle.md) §6.3）；`preflight` 退出码 **0=全绿 / 3=有 SKIPPED / 4=任一步 FAILED**，三态语义见 [MTH-014](13-agent-sop.md) §7。若工具尚未包含某检查，如实标注"未机检"，不得写已通过。
+**validate 已实现（契约与状态见 [toolkit/README.md](../toolkit/README.md)）**：`validate` 新增协议（`PROTOCOL_*`）、命名（`DOC_NAMING`）、PIT（`PIT_*`）、ADR（`ADR_*`）、backlog（`BACKLOG_*`）、CHANGELOG 归档（`CHANGELOG_ARCHIVE`）与 Agent 回归（`AGENT_REGRESSION`）检查（语义见 [MTH-015](15-archive-and-context-budget.md) §5.3）；`preflight` 退出码 **0=全绿 / 3=有 SKIPPED / 4=任一步 FAILED**，三态语义见 [MTH-014](13-agent-sop.md) §7。若工具尚未包含某检查，如实标注"未机检"，不得写已通过。
 
 ## 10. 禁止事项
 
@@ -267,18 +267,18 @@ agent_hint: 一句话说明何时读、先做什么
 
 1. 读 [AGENTS.md](../AGENTS.md) §2/§3/§7 与 [README.md](../README.md)。
 2. 跑基线校验（§3 四条命令）并记录结果；红基线先修。
-3. 读 [agent-manifest.json](../agent-manifest.json) 根摘要；按任务只加载一个 `agent-manifest.d/` 分片；阅读预算见 [MTH-011](10-document-lifecycle.md)（默认不读归档）。
+3. 读 [agent-manifest.json](../agent-manifest.json) 根摘要；按任务只加载一个 `agent-manifest.d/` 分片；阅读预算见 [MTH-015](15-archive-and-context-budget.md)（默认不读归档）。
 4. 读本文件 §4/§5/§7/§9，以及 [MTH-001](00-foundations.md)、[MTH-002](01-assessment.md)、[MTH-003](02-roadmap.md)。
 5. 从 [backlog.json](../backlog.json) 选 P0/P1 任务并 claim；写下计划（改动文件、验证方式、回滚）。
 6. 只读核对现状与相关 MTH/PIT/GRD/案例；确认写范围不与他人重叠。
 7. 小步变更；改完跑 §5 DoD 与 §3 基线命令。
-8. 更新 `index`（根摘要+分片）、必要索引 README、[CHANGELOG](../CHANGELOG.md) 当前窗口、backlog 状态；窗口超 8 条先归档（规则见 [MTH-011](10-document-lifecycle.md)）。
+8. 更新 `index`（根摘要+分片）、必要索引 README、[CHANGELOG](../CHANGELOG.md) 当前窗口、backlog 状态；窗口超 8 条先归档（规则见 [MTH-015](15-archive-and-context-budget.md)）。
 9. 报告证据（命令输出摘要/链接/审计引用）、风险与回滚、未完成项。
 10. 任务超出授权范围或触及 Tier3/危险命令 → 停下并报告 Lead/用户。
 
 ## 13. 维护与链接
 
 - 本协议是活文件：流程/契约变化必须同步更新并记入 [CHANGELOG](../CHANGELOG.md) 当前窗口；结构性变更按 §8 处理；任何 Agent 不得删除本文件或降低红线。变更记录：2026-11-11 初版（分层/读序/生命周期/front matter/扩展 SOP/CLI 契约/DoD），2026-11-11 v1.1（归档/上下文预算/分层 manifest），2026-11-13（ADR/REQ 前缀、SOP 细节移交 MTH-014、preflight 与新机检、多 Agent 冲突/失联处置、需求卡/交付卡 SOP）。
-- 规范层：[methodology/README.md](README.md)、[MTH-001](00-foundations.md)、[MTH-002](01-assessment.md)、[MTH-003](02-roadmap.md)、[MTH-004](03-server-stack.md)、[MTH-005](04-telemetry-bridge.md)、[MTH-006](05-control-plane.md)、[MTH-007](06-security.md)、[MTH-008](07-validation.md)、[MTH-010](09-glossary.md)、[MTH-011](10-document-lifecycle.md)、[MTH-012](11-root-lab.md)、[MTH-013](12-delivery-governance.md)、[MTH-014](13-agent-sop.md)。
+- 规范层：[methodology/README.md](README.md)、[MTH-001](00-foundations.md)、[MTH-002](01-assessment.md)、[MTH-003](02-roadmap.md)、[MTH-004](03-server-stack.md)、[MTH-005](04-telemetry-bridge.md)、[MTH-006](05-control-plane.md)、[MTH-007](06-security.md)、[MTH-008](07-validation.md)、[MTH-010](09-glossary.md)、[MTH-011](10-document-lifecycle.md)、[MTH-012](11-root-lab.md)、[MTH-013](12-delivery-governance.md)、[MTH-014](13-agent-sop.md)、[MTH-015](15-archive-and-context-budget.md)。
 - 证据/实现/案例：[pitfalls/README.md](../pitfalls/README.md)、[guardrails/README.md](../guardrails/README.md)、[toolkit/README.md](../toolkit/README.md)、[cases 入口](../cases/README.md)；模板与脚本见 [methodology-doc.md](../toolkit/templates/methodology-doc.md)、[pitfall.md](../toolkit/templates/pitfall.md)、[guardrail.md](../toolkit/templates/guardrail.md)、[case-study.md](../toolkit/templates/case-study.md)、[soak.sh](../toolkit/termux/soak.sh)、[healthcheck.sh](../toolkit/termux/healthcheck.sh)。
 - 仓库协议与队列：[AGENTS.md](../AGENTS.md)、[backlog.json](../backlog.json)、[CHANGELOG](../CHANGELOG.md)、[changelog/README.md](../changelog/README.md)、[README.md](../README.md)、[docs/README.md](../docs/README.md)、[scripts/README.md](../scripts/README.md)、[haydn K40 Pro 案例](../cases/haydn-k40pro/README.md)。

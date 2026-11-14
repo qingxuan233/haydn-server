@@ -69,9 +69,11 @@
       "result": true
     },
     "done_requires_result": true,
+    "active_done_window": "active status=done 最多 5 条；超出须把最旧 done 移入 backlog-archive.json（BACKLOG_DONE_WINDOW）",
+    "archive_file": "backlog-archive.json（契约见 backlog-archive.schema.json；归档只许 done，active+归档并集 ID 必须连续）",
     "depends_must_exist": true,
     "outputs_relative_paths": true,
     "outputs_existence": "not_enforced（outputs 允许指向待产出文件；不因路径暂不存在报 error）",
-    "note": "语义规则由 governance.check_backlog 实现；字段/枚举/正则来自本文件 required/properties。检查码：BACKLOG_SCHEMA（结构） / BACKLOG_SEMANTIC（语义）。"
+    "note": "语义规则由 governance.check_backlog 实现；字段/枚举/正则来自本文件 required/properties。检查码：BACKLOG_SCHEMA（结构） / BACKLOG_SEMANTIC（语义） / BACKLOG_DONE_WINDOW（done 窗口） / BACKLOG_ARCHIVE（归档文件）。"
   }
 }

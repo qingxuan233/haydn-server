@@ -6,13 +6,13 @@ status: draft
 audience: human, agent
 tags: oneplus, ace-pro, pgp110, ovaltine, root, kernelsu, apatch, coloros, arb, chroot
 depends: MTH-012, MTH-002, MTH-008, GRD-015, PIT-022, PIT-023, PIT-024, PIT-025
-updated: 2026-11-13
-agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮救援演练，但 24h soak/chroot 基准/服务迁移未完成；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电上限、无用应用禁用、Quark 加密备份一次跑通）；不得标记生产可用，未实测项仍按 unknown 处理。
+updated: 2026-11-14
+agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮救援演练，但 24h soak/chroot 基准/服务迁移未完成；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电上限、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；不得标记生产可用，未实测项仍按 unknown 处理。
 ---
 
 # CASE-003 · 一加 Ace Pro（PGP110 / ovaltine）Root 实验平台预研
 
-> **状态：draft（部分实测）**。2026-11-13 已完成真机官方解锁与 KernelSU Root，并完成 3 轮救援演练；2026-11-14 P1 管理面部分落地（Tailscale 登录/SSH、充电上限 80%、无用应用禁用、Quark 加密备份一次跑通）；24h soak run #2、chroot 基准、服务迁移与割接验收未完成。本页同时保留采购/规划结论与实测证据，未完成项不得表述为"已验证"。
+> **状态：draft（部分实测）**。2026-11-13 已完成真机官方解锁与 KernelSU Root，并完成 3 轮救援演练；2026-11-14 P1 管理面部分落地（Tailscale 登录/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；24h soak run #2、chroot 基准、服务迁移与割接验收未完成。本页同时保留采购/规划结论与实测证据，未完成项不得表述为"已验证"。
 > 定位：生产机 [haydn K40 Pro](../haydn-k40pro/README.md) 继续无 Root 运行；本设备是**专用实验/候选服务器**。
 > 用户决策（2026-11-11）：下一部手机选一加 Ace Pro 16+256GB 作为 Root 平台；接受解锁清数据、失保、硬砖与数据丢失风险；生产机不 Root。
 
@@ -29,7 +29,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | 已知后续系统 | ColorOS 15.0 正式版（2025-01 开放尝鲜，公开报道）；ColorOS 16 是否推送**待验证** |
 | 硬件要点 | 6.7" 2412×1080 120Hz；双电芯 4800mAh / 150W；USB 2.0；无 microSD；Wi-Fi 6；NFC |
 | 改造路线 | **B（已解锁 + Root + chroot）**；C/D 仅作后续研究，不默认 |
-| 改造状态 | 部分实测（2026-11-13：官方解锁 + KernelSU Root + 3 轮救援演练）；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电、应用禁用、Quark 加密备份一次跑通）；24h soak run #2/chroot/割接未完成 |
+| 改造状态 | 部分实测（2026-11-13：官方解锁 + KernelSU Root + 3 轮救援演练）；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电、应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；24h soak run #2/chroot/割接未完成 |
 | 权威状态源 | 本页 + [profile.json](profile.json)（documented）；实测后另建运行期记录 |
 
 ---
@@ -125,7 +125,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | chroot 基线 | `dd` 256MB（fsync）≈532 MB/s；chroot 内 uname/nproc/free 正常；proot 对照未做（Termux 未安装） |
 | 观测与约束 | 内核无 `CONFIG_NF_TABLES` → 使用 iptables；无 user_ns/CGROUP_PIDS/NFT，cgroup v2 无委派 → 容器/systemd 仍不可用；电池 100%、电池温度约 28°C、温区峰值观测 82.2°C（只读，未改充电/温控） |
 | 已知限制 | KernelSU 模块脚本运行在私有 mount namespace：chroot 挂载仅对该 namespace 内服务可见，ADB shell 侧需经入口脚本重新挂载；服务管理走 supervisor control socket；遥测循环无外部看门狗（模块仅开机启动一次） |
-| 未完成（不得写"完成"） | tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时）、夸克备份定时自动化与口令异地保管、定期恢复演练、24h soak（run #2 计时中，未满）、充电上限 80% 长时维持观测、proot vs chroot 基准、资源/电源调优、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接 |
+| 未完成（不得写"完成"） | tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时）、夸克备份计划任务注册（自动化脚本已二次执行）与口令异地保管、定期恢复演练、24h soak（run #2 计时中，未满）、充电上限 80% 长时维持观测、proot vs chroot 基准、资源/电源调优、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接 |
 
 ### 6.2 P1 管理面准备（2026-11-14，部分完成）
 

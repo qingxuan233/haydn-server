@@ -1,8 +1,8 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "methodology",
-  "generated_at": "2026-11-14T02:29:21Z",
-  "count": 15,
+  "generated_at": "2026-11-14T03:22:54Z",
+  "count": 16,
   "entries": [
     {"id":"MTH-000","title":"方法论门户：定位、路径与文档地图","path":"methodology/README.md","type":"index","status":"current","tags":["methodology","portal","index","navigation"],"agent_hint":"先读本页确认定位、索引四表与阅读路径；Agent 的完整启动顺序以根 AGENTS.md 为准，本页不是工作协议。"},
     {"id":"MTH-001","title":"方法论边界与原则","path":"methodology/00-foundations.md","type":"methodology","status":"current","tags":["methodology","foundations","scope","principles","architecture"],"agent_hint":"任何改造任务开工前先读本页；确认适用前提与三轨边界，再按 MTH-002 评估设备。"},
@@ -13,11 +13,12 @@
     {"id":"MTH-006","title":"AI 控制面（Track C）","path":"methodology/05-control-plane.md","type":"methodology","status":"current","tags":["control-plane","agent","ops","tiering","audit","watchdog","blue-green"],"agent_hint":"控制面是解释层与受控运维层而非运行时必需；先落地 Tier1 只读与审计，再谈 Tier2；Tier3 永不对 Agent 开放"},
     {"id":"MTH-007","title":"安全与密钥生命周期","path":"methodology/06-security.md","type":"methodology","status":"current","tags":["security","secrets","tls","pinning","least-exposure","audit"],"agent_hint":"任何涉及 token/证书/口令/备份/公网入口/日志的改动先读本文件；敏感值绝不入库；泄露处置顺序是止损→轮换→排查→记录"},
     {"id":"MTH-008","title":"验收与稳定性","path":"methodology/07-validation.md","type":"methodology","status":"current","tags":["validation","acceptance","soak","fault-injection","recovery","evidence"],"agent_hint":"没有证据就没有完成；先定证据类型与门禁，再跑 5 次重启/24h soak/故障注入；soak 期间禁止变更，结果不得伪造"},
-    {"id":"MTH-009","title":"Agent 交接与扩展协议","path":"methodology/08-agent-handoff.md","type":"methodology","status":"current","tags":["agent-handoff","protocol","extension","lifecycle","cli-contract","governance","adr","preflight"],"agent_hint":"每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；本文件只保留协议与扩展契约，SOP 细节见 MTH-014、文档生命周期见 MTH-011、交付治理见 MTH-013。"},
+    {"id":"MTH-009","title":"Agent 交接与扩展协议","path":"methodology/08-agent-handoff.md","type":"methodology","status":"current","tags":["agent-handoff","protocol","extension","lifecycle","cli-contract","governance","adr","preflight"],"agent_hint":"每个新 Agent 开工前必读；先协议后动手，任务是取→claim→只读核对→变更→自检→索引→报告；本文件只保留协议与扩展契约，SOP 细节见 MTH-014、文档生命周期见 MTH-011、归档与阅读预算见 MTH-015、交付治理见 MTH-013。"},
     {"id":"MTH-010","title":"术语表（统一口径）","path":"methodology/09-glossary.md","type":"methodology","status":"current","tags":["glossary","terminology","conventions"],"agent_hint":"遇到不确定术语先查本表；新增术语必须一句定义+为何重要，并回链唯一出处文档。"},
-    {"id":"MTH-011","title":"文档生命周期、归档与 Agent 上下文预算","path":"methodology/10-document-lifecycle.md","type":"methodology","status":"current","tags":["documentation","archival","context-budget","changelog","manifest","agent","adr","naming"],"agent_hint":"任何要新增/移动文档、记录变更/决策、或读仓库前，先按本文确定归属、命名、预算与归档规则；归档默认不读。"},
+    {"id":"MTH-011","title":"文档生命周期、归属、命名与变更联动","path":"methodology/10-document-lifecycle.md","type":"methodology","status":"current","tags":["documentation","naming","adr","index","linkage","manifest","agent","knowledge-debt"],"agent_hint":"新增/移动文档、判断事实归属、命名、写 ADR 或同步变更时读本文；归档窗口、阅读预算与机器校验读 MTH-015；归档默认不读。"},
     {"id":"MTH-012","title":"Root 实验设备方法论：受控解锁与特权应用","path":"methodology/11-root-lab.md","type":"methodology","status":"current","tags":["root","bootloader","kernelsu","apatch","magisk","lab-device","arb","ota","recovery","privilege"],"agent_hint":"只有\"专用实验设备 + 用户书面授权\"才可按本页推进；先过采购准入与救援演练，再解锁；生产/主力设备仍按 GRD-001 默认拒绝。"},
     {"id":"MTH-013","title":"项目推进与交付治理","path":"methodology/12-delivery-governance.md","type":"methodology","status":"current","tags":["delivery","governance","risk","gates","acceptance","release","compatibility","privacy"],"agent_hint":"领取 M/H 级任务、准备发布/割接或做换机迁移前先读；先按 §2 定风险档，再按 §5 过交付门。"},
-    {"id":"MTH-014","title":"Agent 工作 SOP 与协作治理","path":"methodology/13-agent-sop.md","type":"methodology","status":"current","tags":["agent","sop","workflow","review","testing","reporting","branch","regression","prompts"],"agent_hint":"每次领取任务后先读 §3–§10 的 SOP 增补；改协议/提示词/校验器前必读 §12–§13 与 §16 自检清单。"}
+    {"id":"MTH-014","title":"Agent 工作 SOP 与协作治理","path":"methodology/13-agent-sop.md","type":"methodology","status":"current","tags":["agent","sop","workflow","review","testing","reporting","branch","regression","prompts"],"agent_hint":"每次领取任务后先读 §3–§10 的 SOP 增补；改协议/提示词/校验器前必读 §12–§13 与 §16 自检清单。"},
+    {"id":"MTH-015","title":"归档、上下文预算与机器校验","path":"methodology/15-archive-and-context-budget.md","type":"methodology","status":"current","tags":["documentation","archival","context-budget","changelog","manifest","agent","machine-check"],"agent_hint":"归档 CHANGELOG、限制状态段、控制阅读预算或核对数值上限时读本文；文档归属/命名/ADR/联动读 MTH-011；归档默认不读。"}
   ]
 }

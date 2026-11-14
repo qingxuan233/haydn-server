@@ -26,6 +26,7 @@ from toolkit.tests.fixtures.repo_builder import (
     write_adr_index,
     write_agents_md,
     write_backlog,
+    write_backlog_archive,
     write_backlog_raw,
     write_changelog_with_archive,
     write_doc,
@@ -513,6 +514,70 @@ class BacklogCheckTests(_RepoTestCase):
         report = validate_repo(self.root)
         self.assertFalse(report["checked"]["backlog"])
         self.assertNotIn("BACKLOG_SCHEMA", _codes(report))
+
+    # ------------------------------------------------------------------
+    # 归档窗口（backlog-archive.json / BACKLOG_DONE_WINDOW / BACKLOG_ARCHIVE）
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _done(entry_id: str, **overrides: object) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "status": "done",
+            "owner": "toolkit",
+            "updated": "2026-11-11",
+            "result": "已完成：fixture",
+        }
+        payload.update(overrides)
+        return make_backlog_item(entry_id, **payload)
+
+    def test_archive_valid_and_depends_resolve_across_files(self) -> None:
+        write_backlog(self.root, [make_backlog_item("BL-002", depends=["BL-001"])])
+        write_backlog_archive(self.root, [self._done("BL-001")])
+        report = validate_repo(self.root, strict=True)
+        self.assertNotIn("BACKLOG_ARCHIVE", _codes(report))
+        self.assertNotIn("BACKLOG_SEMANTIC", _codes(report))
+        self.assertNotIn("BACKLOG_DONE_WINDOW", _codes(report))
+        self.assertTrue(report["ok"], msg=_codes(report))
+
+    def test_done_window_exceeded(self) -> None:
+        write_backlog(self.root, [self._done(f"BL-{index:03d}") for index in range(1, 7)])
+        report = validate_repo(self.root)
+        self.assertIn("BACKLOG_DONE_WINDOW", _codes(report))
+        self.assertIn("5", " ".join(_messages(report, "BACKLOG_DONE_WINDOW")))
+        self.assertFalse(report["ok"])
+
+    def test_archive_item_must_be_done(self) -> None:
+        write_backlog(self.root, [make_backlog_item("BL-002")])
+        write_backlog_archive(self.root, [make_backlog_item("BL-001")])
+        report = validate_repo(self.root)
+        self.assertIn("BACKLOG_ARCHIVE", _codes(report))
+        self.assertIn("done", " ".join(_messages(report, "BACKLOG_ARCHIVE")))
+
+    def test_archive_duplicate_with_active(self) -> None:
+        write_backlog(self.root, [make_backlog_item("BL-001")])
+        write_backlog_archive(self.root, [self._done("BL-001")])
+        report = validate_repo(self.root)
+        self.assertIn("BACKLOG_ARCHIVE", _codes(report))
+        self.assertIn("BL-001", " ".join(_messages(report, "BACKLOG_ARCHIVE")))
+
+    def test_archive_union_gap(self) -> None:
+        write_backlog(self.root, [make_backlog_item("BL-003")])
+        write_backlog_archive(self.root, [self._done("BL-001")])
+        report = validate_repo(self.root)
+        self.assertIn("BACKLOG_SEMANTIC", _codes(report))
+        self.assertIn("BL-002", " ".join(_messages(report, "BACKLOG_SEMANTIC")))
+
+    def test_archive_schema_const(self) -> None:
+        write_backlog(self.root, [make_backlog_item("BL-001")])
+        write_backlog_archive(self.root, [self._done("BL-002")], schema="repurpose.backlog.v1")
+        self.assertIn("BACKLOG_ARCHIVE", self.codes())
+
+    def test_archive_missing_result(self) -> None:
+        write_backlog(self.root, [make_backlog_item("BL-002")])
+        write_backlog_archive(self.root, [self._done("BL-001", result="")])
+        report = validate_repo(self.root)
+        self.assertIn("BACKLOG_ARCHIVE", _codes(report))
+        self.assertIn("result", " ".join(_messages(report, "BACKLOG_ARCHIVE")))
 
 
 # ---------------------------------------------------------------------------

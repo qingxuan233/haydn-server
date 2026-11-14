@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.doc-policy.v1",
-  "description": "文档体积、CHANGELOG 归档窗口、协议/命名/治理策略与 manifest 分层预算；由 validate 读取执行，index 读取 manifest 上限。修改上限属于契约变更：必须同步 AGENTS/MTH-011 与测试。",
+  "description": "文档体积、CHANGELOG 归档窗口、协议/命名/治理策略与 manifest 分层预算；由 validate 读取执行，index 读取 manifest 上限。修改上限属于契约变更：必须同步 AGENTS/MTH-015 与测试。",
   "archival": {
     "current_file": "CHANGELOG.md",
     "archive_dir": "changelog",
@@ -31,7 +31,8 @@
     "toolkit/templates/*.md": 130,
     "adr/*.md": 120,
     "adr/README.md": 90,
-    "backlog.json": 640
+    "backlog.json": 600,
+    "backlog-archive.json": 640
   },
   "line_limit_note": "AGENTS.md 硬上限 320 与 protocol.hard_max_lines 联动；PIT/GRD 单条按条目文件计数，索引 README 单独放宽；toolkit/templates 模板单独上限",
   "byte_limits": {
@@ -70,6 +71,10 @@
     "adr_filename_pattern": "^\\d{4}-[a-z0-9]+(?:-[a-z0-9]+)*\\.md$"
   },
   "backlog": {
-    "schema_file": "toolkit/schema/backlog.schema.json"
+    "schema_file": "toolkit/schema/backlog.schema.json",
+    "archive_schema_file": "toolkit/schema/backlog-archive.schema.json",
+    "archive_file": "backlog-archive.json",
+    "max_active_done": 5,
+    "note": "active done 超过 max_active_done 报 BACKLOG_DONE_WINDOW；归档条目只许 status=done，active+归档并集 ID 必须连续（MTH-011 §2.2）"
   }
 }

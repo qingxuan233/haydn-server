@@ -1,20 +1,20 @@
 # 变更记录（CHANGELOG）
 
 > 本文件是**当前迭代对外可感知变更摘要**，不是工作日志。当前窗口最多 **8 条**；更早条目按月归档到 `changelog/YYYY-MM.md`（**归档默认不读**，只在追溯时读单个文件）。
-> 记录边界、归档与 Agent 上下文预算规则见 [MTH-011](methodology/10-document-lifecycle.md)；归档索引见 §4。
+> 记录边界见 [MTH-011](methodology/10-document-lifecycle.md)，归档窗口与上下文预算规则见 [MTH-015](methodology/15-archive-and-context-budget.md)；归档索引见 §4。
 
 | 项目 | 内容 |
 |---|---|
 | 文档 ID | HB-CHANGELOG-001 |
 | 版本 | v2.0（2026-11-11 归档规范化） |
 | 状态 | 现行 |
-| 关联 | [MTH-011](methodology/10-document-lifecycle.md) · [changelog/README.md](changelog/README.md) · [当前状态](docs/00-overview/当前状态.md) · [README](README.md) · [AGENTS](AGENTS.md) |
+| 关联 | [MTH-011](methodology/10-document-lifecycle.md) · [MTH-015](methodology/15-archive-and-context-budget.md) · [changelog/README.md](changelog/README.md) · [当前状态](docs/00-overview/当前状态.md) · [README](README.md) · [AGENTS](AGENTS.md) |
 
 ## 1. 记录边界
 
 | 内容 | 唯一位置 |
 |---|---|
-| 当前方法/规范/边界 | `methodology/`（MTH-001..014） |
+| 当前方法/规范/边界 | `methodology/`（MTH-001..015） |
 | 红线与必须检查项 | `guardrails/`（GRD-001..016） |
 | 踩坑证据与修复 | `pitfalls/`（PIT-001..025） |
 | 当前任务/未完成/需要授权 | [backlog.json](backlog.json) |
@@ -35,17 +35,17 @@
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
-| 2026-11-14 | v1.56 | **Ace Pro P1 文档维护与证据回写**：更新 README/AGENTS 现状描述、案例索引与 CASE-003（管理员→用户 SSH 公钥轮换、Tailscale 登录与 tailnet SSH、ColorOS 原生充电上限保护 80%、无用应用禁用清单、Quark Skill 安装与 AES-256-GCM 加密备份链路一次跑通：设备 tar.gz 286 文件→加密→CLI 上传 `haydn-server-backup`→远端回下载哈希一致→设备恢复演练 286/286）；登记 OTA 决策 [BL-032](backlog.json)；验证：preflight 全绿（validate --strict 0/0、285 单测、check-links、index 一致）；未完成：Quark 备份定时化与口令异地保管、tailnet 端到端、24h soak run #2、OTA 评估。 |
+| 2026-11-14 | v1.59 | **MTH-011 拆分（BL-033 / ADR-0004）**：`methodology/10-document-lifecycle.md` 299→158 行，拆出 [MTH-015 归档、上下文预算与机器校验](methodology/15-archive-and-context-budget.md)（190 行）承接 CHANGELOG 窗口/归档、状态段上限、阅读预算与分层加载、截断检测、机检上限；MTH-011 保留归属/记录边界/命名/ADR/联动矩阵；不删规则、两篇互链不抄写；同步 AGENTS/README/methodology/README/MTH-009（08）/MTH-013（12）/MTH-014（13）/pitfalls/toolkit/README/doc-policy 描述/changelog 索引与 [adr 台账](adr/README.md)（ADR-0004）；backlog BL-033 done、BL-023 移入 [backlog-archive.json](backlog-archive.json)（active done ≤5）；v1.51 归档至 `changelog/2026-11.md`（窗口 8 条）；验证：preflight 全绿（validate --strict 0/0、单测、check-links、index 一致）；未完成：历史 ADR-0001/0002 中指向旧篇的引用不改写（ADR 不改写历史，文件仍存在）。 |
+| 2026-11-14 | v1.58 | **AGENTS 容量分流至健康档（BL-029 / ADR-0003）**：AGENTS.md 291→197 行（validate `protocol_tier=healthy`）——§0 阅读预算/停止条件、§4 文档约定、§5 任务协议、§6 扩展 SOP 去重并改为指向 MTH-009/011/014 的摘要，删除重复的 §8.1 YAML（改指 agent-manifest 的 `entrypoints`/`exit_codes`）；协议版本 v1.2→v1.3（MINOR，ADR-0003），未删红线、未改权威顺序、未弱化校验；backlog.json 上限 640→600 行（超限先压缩/归档，与 done ≤5 窗口共同机检）；同步 README 协议版本、MTH-011 §2.2 归属表；验证：preflight 全绿（validate --strict 0/0、292 单测、check-links、index 一致）。 |
+| 2026-11-14 | v1.57 | **backlog 完成项归档与容量治理**：新增 [backlog-archive.json](backlog-archive.json)（schema `repurpose.backlog-archive.v1`，归档 6 条早期 done：BL-003/015/016/018/020/021，active 仅保留最近 5 条 done）；`validate` 新增 `BACKLOG_DONE_WINDOW`（active done >5）与 `BACKLOG_ARCHIVE`（归档非 done/缺 result/与 active 重复），ID 连续性与 depends 改为 active+归档并集解析；新增 [backlog-archive.schema.json](toolkit/schema/backlog-archive.schema.json)、doc-policy 归档上限与 7 项单测；CHANGELOG v1.49 归档至 `changelog/2026-11.md`（窗口 8 条）；验证：preflight 全绿（validate --strict 0/0、292 单测、check-links、index 一致）；未完成：manifest 单层 >40 条自动拆分（BL-017 剩余部分）。 |
+| 2026-11-14 | v1.56 | **Ace Pro P1 文档维护与证据回写**：更新 README/AGENTS 现状描述、案例索引与 CASE-003（管理员→用户 SSH 公钥轮换、Tailscale 登录与 tailnet SSH、ColorOS 原生充电上限保护 80%、无用应用禁用清单、Quark Skill 安装与 AES-256-GCM 加密备份链路跑通：设备 tar.gz 286 文件→加密→CLI 上传 `haydn-server-backup`→远端回下载哈希一致→设备恢复演练 286/286；自动化脚本已二次执行成功，计划任务未注册）；登记 OTA 决策 [BL-032](backlog.json)；验证：preflight 全绿（validate --strict 0/0、285 单测、check-links、index 一致）；未完成：Quark 备份计划任务注册与口令异地保管、tailnet 端到端、24h soak run #2、OTA 评估。 |
 | 2026-11-13 | v1.55 | **对齐 Agent-Harness v1.3（定向采纳）**：AGENTS 协议 v1.2（容量分级/哨兵/机器可读摘要/停止条件 7 条）、新增 [ADR 决策层](adr/README.md)（ADR-0001/0002 与 [GRD-016](guardrails/GRD-016-agent-protocol-regression.md) 回归红线）、[MTH-013 交付治理](methodology/12-delivery-governance.md)、[MTH-014 Agent SOP](methodology/13-agent-sop.md)、模板扩充与 backlog schema；toolkit 新增 `preflight`、`index --check` 与协议/命名/PIT/ADR/backlog/归档回归机检（validate --strict 覆盖）；同步 README/backlog/manifest/CI workflow；验证：preflight 全绿（index 重建无 warnings（内容未变时*不重写*、保留原 generated_at）、validate --strict 0 error/0 warning、282 项单测 OK、check-links 0 missing）、index --check 一致、CI 首跑 success（GitHub Actions run #43465049307）；未完成：真实割接 Go/No-Go 演练（BL-027）与 secret scan（BL-010）。 |
 | 2026-11-11 | v1.54 | **Root 工具配套**：新增 `rootcheck` 子命令（`repurpose.rootcheck.v1`：9 项技术检查+7 项人工确认，`--strict` 非 tech-ready 退 4）与 `rescue-kit`（救援包相对路径+SHA-256 清单 `--init/--verify`，不一致退 4）；均离线、不连接设备；新增 ready/预研/边界 fixture 与测试，更新 [toolkit/README.md](toolkit/README.md)、[MTH-012](methodology/11-root-lab.md)、[MTH-008](methodology/07-validation.md)；[BL-021](backlog.json) 完成（验证：198 项单测、validate --strict、check-links、index 全绿） |
 | 2026-11-11 | v1.53 | **Root 实验轨预研与规范**：用户确认下一部一加 Ace Pro 作为可解锁/Root 平台（接受清数据/失保/硬砖风险，生产 haydn 保持无 Root）；新增 [MTH-012 Root 实验设备方法论](methodology/11-root-lab.md)（采购准入、G-L0..G-L6、KernelSU LKM/APatch 选型、特权能力目录、OTA/ARB、救援、验收、割接）、[GRD-015 受控操作边界](guardrails/GRD-015-root-lab-controlled.md)、[PIT-022](pitfalls/PIT-022-oem-unlock-quota.md)/[PIT-023](pitfalls/PIT-023-oneplus-arb-hard-brick.md)/[PIT-024](pitfalls/PIT-024-flash-tool-supply-chain.md)/[PIT-025](pitfalls/PIT-025-root-module-regression.md)、[CASE-003/004 预研案例](cases/ace-pro-pgp110/README.md)（**draft/未实测**）；同步 AGENTS 红线例外、MTH-002/003/004/007/008/009/010、README 索引、toolkit manifest invariants 文案（验证：validate --strict 0 error、check-links 0 missing、164 项单测通过、index 无 warnings） |
 | 2026-11-11 | v1.52 | **网络方案改为动态地址/多 Wi-Fi**：删除"必须固定 IP/DHCP 租约"假设，改为动态地址 + 发现兜底（页面/扫码/mDNS/广播发现，受控隧道需授权）；新增 [PIT-021](pitfalls/PIT-021-dhcp-lease-assumption.md)、[GRD-007](guardrails/GRD-007-network-least-exposure.md) R7；[MTH-002](methodology/01-assessment.md) §5.3.1 / [MTH-004](methodology/03-server-stack.md) §4.1 / [MTH-008](methodology/07-validation.md) F13 补网络决策与验收；toolkit 网络建模列入 [BL-019](backlog.json)（验证：validate --strict、check-links、163 项单测） |
-| 2026-11-11 | v1.51 | **文档归档与 Agent 上下文预算治理**：CHANGELOG 改为当前窗口 ≤8 条 + 按月归档到 `changelog/`（默认不读、只读）；新增 [MTH-011 文档生命周期与上下文预算](methodology/10-document-lifecycle.md)、[changelog/README.md](changelog/README.md)；AGENTS/README 增加阅读预算、分层加载与停止条件；`agent-manifest.json` 拆为根摘要 + `agent-manifest.d/` 按层分片；toolkit `validate` 依据 [doc-policy](toolkit/schema/doc-policy.json) 检查体积/窗口上限（验证：163 项单测、validate --strict 0 error、check-links 0 missing） |
-| 2026-11-11 | v1.50 | **Agent 可读性独立审计修复**：权威优先级调整为 用户 > AGENTS > 红线 > 方法论 > PIT > toolkit > 案例；新增 [toolkit/README.md](toolkit/README.md) TOOL-001..010 工具登记表（新增工具先登记）；backlog 增加 requires/owner/updated/result 与 BL-015 机器校验项；统一 front matter 表述（头部而非首尾）、depends 可选、PIT/GRD 额外必需键（strict 校验）；修正 README fixture 示例、案例"部分验收"口径、`scripts/dev/check-links.py` 冻结例外；模板增加"示例 ID 不占号/正式 H2 无编号"警告（验证：validate --strict、check-links、单测全绿） |
-| 2026-11-11 | v1.49 | **仓库升级为「安卓手机改造通用方法论」v2.0**：新增 `methodology/`（MTH-001..010）、`pitfalls/`（PIT-001..020）、`guardrails/`（GRD-001..014）、`toolkit/`（零依赖 Python CLI + schema/模板/Termux 脚本/单元测试）、`cases/haydn-k40pro/`（案例 `profile.json` + OEM profile）、根 [AGENTS.md](AGENTS.md)（Agent 工作协议）、[backlog.json](backlog.json)（机器可读待办）、`agent-manifest.json`（生成式内容索引）；旧 `docs/scripts/android-bridge` 保留为案例冻结证据；[scripts/dev/check-links.py](scripts/dev/check-links.py) 扫描范围扩展至新层；`.gitignore` 增加 `/profiles/` 与全局密钥兜底 |
 
 ## 4. 归档索引
 
 | 月份 | 条目 | 文件 |
 |---|---|---|
-| 2026-11 | 49 条（v1.0–v1.48，记录日期 2026-11-10/11） | [changelog/2026-11.md](changelog/2026-11.md) |
+| 2026-11 | 52 条（v1.0–v1.51，记录日期 2026-11-10/11） | [changelog/2026-11.md](changelog/2026-11.md) |

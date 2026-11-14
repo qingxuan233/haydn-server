@@ -37,20 +37,20 @@
 ## 3. 仓库地图（四层知识 + 决策层 + 一案例）
 
 ```text
-AGENTS.md                     Agent 工作协议（协议 v1.2；新会话/新 Agent 从这里开始）
+AGENTS.md                     Agent 工作协议（协议 v1.3；红线/边界/索引，细节见 MTH）
 agent-manifest.json           机器可读索引根摘要（≤160 行，由 toolkit index 生成）
 agent-manifest.d/             按层分片（methodology/pitfalls/guardrails/case-studies，按需只读一个）
 backlog.json                  结构化待办（Agent 领取任务用；schema 见 toolkit/schema/backlog.schema.json）
 adr/                          决策记录层（ADR-0001..，Nygard 五段；索引见 adr/README.md）
 README.md                     本文件：人类入口
-methodology/                  规范层：可迁移的方法论正文（MTH-001..014；MTH-012 Root 实验轨、MTH-013 交付治理、MTH-014 Agent SOP）
+methodology/                  规范层：可迁移的方法论正文（MTH-001..015；MTH-012 Root 实验轨、MTH-013 交付治理、MTH-014 Agent SOP、MTH-015 归档与上下文预算）
 pitfalls/                     证据层：踩过的坑（PIT-001..025），每条含根因/规避/验证/证据
 guardrails/                   约束层：红线与注意事项（GRD-001..016），每条含检查方式
 toolkit/                      工具层：零依赖 Python CLI + schema + 模板 + Termux 脚本 + 测试
 cases/                        案例层：真实设备落地记录（haydn K40 Pro 部分验收；Ace Pro 实验机，已解锁/Root，P1 管理面部分落地）
 docs/ scripts/ android-bridge/  旧项目冻结证据（案例原始文档、脚本、Bridge 源码）
-CHANGELOG.md                  当前变更窗口（≤8 条；最新 v1.56）
-changelog/                    历史变更归档（按月，默认不读；规则见 MTH-011）
+CHANGELOG.md                  当前变更窗口（≤8 条；最新 v1.59）
+changelog/                    历史变更归档（按月，默认不读；规则见 MTH-015）
 ```
 
 **权威优先级**：用户指令 > [AGENTS.md](AGENTS.md) > `guardrails/` 红线 > `methodology/` 规范 > `pitfalls/` 案例证据 + `adr/` 已接受决策 > `toolkit/` 实现细节 > `cases/` 与旧目录历史事实。冲突时以更高层为准（红线永远压过"应当"），但必须修正低层并记录。
@@ -69,10 +69,10 @@ changelog/                    历史变更归档（按月，默认不读；规�
 ### Agent / 新会话（10 分钟）
 1. [AGENTS.md](AGENTS.md)（工作协议、红线、DoD）
 2. [agent-manifest.json](agent-manifest.json)（根摘要与阅读顺序；**不要**一次加载全部分片）
-3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md) → [MTH-011 文档生命周期与上下文预算](methodology/10-document-lifecycle.md) → [MTH-014 Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md)（任务/评审/分支/回归）
+3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md) → [MTH-011 文档生命周期](methodology/10-document-lifecycle.md) → [MTH-015 归档与上下文预算](methodology/15-archive-and-context-budget.md) → [MTH-014 Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md)（任务/评审/分支/回归）
 4. [backlog.json](backlog.json) 领取任务、[adr/README.md](adr/README.md) 查已接受决策；变更前跑 `python -m toolkit.repurpose preflight`（统一质量门）
 
-**上下文预算（防膨胀，详见 [MTH-011](methodology/10-document-lifecycle.md)）**：
+**上下文预算（防膨胀，详见 [MTH-015](methodology/15-archive-and-context-budget.md)）**：
 - 单任务最多读 **3 份**规范/主题文档（索引/模板/任务卡/`--help` 不计）；
 - **默认不读** `changelog/` 归档、`docs/90-archive`、旧 `docs/` 案例全文与旧 `scripts/`；追溯时才读**单个**归档文件；
 - 禁止整读 >300 行的文件；先读索引/标题，按需 `grep` + 分段；
@@ -133,10 +133,11 @@ python scripts/dev/check-links.py --strict-anchors
 | MTH-008 | [验收与稳定性](methodology/07-validation.md) | 5 重启、24h soak、故障注入、恢复演练 |
 | MTH-009 | [Agent 交接与扩展协议](methodology/08-agent-handoff.md) | 目录/协议/任务/扩展/DoD（Agent 必读） |
 | MTH-010 | [术语表](methodology/09-glossary.md) | proot/FGS/AVB/FBE/soak/Tier 等统一口径 |
-| MTH-011 | [文档生命周期、归档与上下文预算](methodology/10-document-lifecycle.md) | 记录边界、CHANGELOG 归档、阅读预算、分层加载 |
+| MTH-011 | [文档生命周期、归属、命名与变更联动](methodology/10-document-lifecycle.md) | 记录边界、命名、索引四表、ADR、变更联动矩阵 |
 | MTH-012 | [Root 实验设备方法论](methodology/11-root-lab.md) | 实验机准入、G-L0..G-L6、解锁/Root/救援/割接（多数待实测） |
 | MTH-013 | [项目推进与交付治理](methodology/12-delivery-governance.md) | 风险分级、需求基线、G0–G7 阶段门、用户验收、发布就绪与 Go/No-Go、兼容/隐私/供应链 |
 | MTH-014 | [Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md) | 任务生命周期、评审/测试、汇报、分支与协议版本、提示词治理、Agent 回归 |
+| MTH-015 | [归档、上下文预算与机器校验](methodology/15-archive-and-context-budget.md) | CHANGELOG 窗口与归档、状态段上限、阅读预算、分层加载、机检 |
 
 ---
 
@@ -190,9 +191,9 @@ python scripts/dev/check-links.py --strict-anchors
 
 > 本节只写摘要（≤8 行）；详细状态见 [CHANGELOG.md](CHANGELOG.md) 当前窗口、[backlog.json](backlog.json) 与 [cases/README.md](cases/README.md)；历史见 [changelog/](changelog/README.md)（默认不读）。
 
-- 方法论：MTH-001..014 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-014 Agent SOP 多为"已立规范、未全实测"）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.2 与 ADR 决策层已落地。
-- 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/3 轮救援，并部分落地 P1 管理面（Tailscale 登录与 SSH 密钥、原生充电上限 80%、无用应用禁用、Quark 加密备份跑通一次；24h soak run #2 未满、tailnet 端到端与备份定时化未完成），仍属实验轨（见 [CASE-003](cases/ace-pro-pgp110/README.md)）。
-- 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-011](methodology/10-document-lifecycle.md)；决策记录见 [adr/README.md](adr/README.md)。
+- 方法论：MTH-001..015 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-014 Agent SOP 多为"已立规范、未全实测"）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.3（AGENTS 容量分流，细节下沉 MTH）与 ADR 决策层已落地。
+- 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/3 轮救援，并部分落地 P1 管理面（Tailscale 登录与 SSH 密钥、原生充电上限 80%、无用应用禁用、Quark 加密备份跑通（含自动化脚本二次执行）；24h soak run #2 未满、tailnet 端到端与备份计划任务（未注册）未完成），仍属实验轨（见 [CASE-003](cases/ace-pro-pgp110/README.md)）。
+- 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-015](methodology/15-archive-and-context-budget.md)；决策记录见 [adr/README.md](adr/README.md)。
 
 ---
 
@@ -208,7 +209,7 @@ python scripts/dev/check-links.py --strict-anchors
 - 新增工具能力：实现命令 + 单元测试 + 更新 `toolkit/README.md` 与 schema；
 - 新增设备案例：复制 [toolkit/templates/case-study.md](toolkit/templates/case-study.md) 并填 `profile.json`。
 
-索引不会手工维护：`python -m toolkit.repurpose index` 从各文档 front matter 重建根 [agent-manifest.json](agent-manifest.json) 摘要与 [agent-manifest.d/](agent-manifest.d/) 分片；`validate --strict` 校验 ID 唯一、front matter、断链、文档体积与 CHANGELOG 窗口上限。**同样的变更**若改变对外事实/契约，还要在当前 [CHANGELOG.md](CHANGELOG.md) 窗口加一条；与相邻 `changelog/` 归档规则见 [MTH-011](methodology/10-document-lifecycle.md)。
+索引不会手工维护：`python -m toolkit.repurpose index` 从各文档 front matter 重建根 [agent-manifest.json](agent-manifest.json) 摘要与 [agent-manifest.d/](agent-manifest.d/) 分片；`validate --strict` 校验 ID 唯一、front matter、断链、文档体积与 CHANGELOG 窗口上限。**同样的变更**若改变对外事实/契约，还要在当前 [CHANGELOG.md](CHANGELOG.md) 窗口加一条；与相邻 `changelog/` 归档规则见 [MTH-015](methodology/15-archive-and-context-budget.md)。
 
 ---
 
@@ -216,7 +217,7 @@ python scripts/dev/check-links.py --strict-anchors
 
 - **历史**：本仓库前身 `haydn-server`（2026-11-10 ~ 2026-11-11），原始 README 已归档于 [docs/90-archive/README-2026-11-10.md](docs/90-archive/README-2026-11-10.md)；变更历史见 [CHANGELOG.md](CHANGELOG.md)（当前窗口）与 [changelog/](changelog/README.md)（按月归档，默认不读）；案例状态以 [docs/00-overview/当前状态.md](docs/00-overview/当前状态.md) 为准（仅描述 haydn 案例，不描述方法论层）。
 - **决策**：架构选型、口径裁决与不可逆变更记录在 [adr/README.md](adr/README.md)（ADR-0001 起）；历史决策不改写，被取代只标 `superseded` 并回链新 ADR。
-- **归档**：`CHANGELOG.md` 当前窗口 ≤8 条；超窗条目按月移入 `changelog/YYYY-MM.md`（只读、默认不读）；记录边界与操作步骤见 [MTH-011](methodology/10-document-lifecycle.md) 与 [changelog/README.md](changelog/README.md)。
+- **归档**：`CHANGELOG.md` 当前窗口 ≤8 条；超窗条目按月移入 `changelog/YYYY-MM.md`（只读、默认不读）；记录边界与操作步骤见 [MTH-015](methodology/15-archive-and-context-budget.md) 与 [changelog/README.md](changelog/README.md)。
 - **安全**：任何 token/密码/证书私钥/备份口令都不进入仓库、日志、文档、聊天；发现泄露先轮换再清理历史（[GRD-006](guardrails/GRD-006-secret-hygiene.md)）。
 - **许可**：个人自用与研究项目；第三方项目仅按许可证参考/使用，GPL 只读参考不复制（[GRD-010](guardrails/GRD-010-license-compliance.md)）。
 

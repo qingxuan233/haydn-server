@@ -462,7 +462,7 @@ class DocPolicyTests(unittest.TestCase):
         self.assertEqual(policy["line_limits"]["AGENTS.md"], 320)
         self.assertEqual(policy["line_limits"]["toolkit/README.md"], 440)
         self.assertEqual(policy["line_limits"]["toolkit/templates/*.md"], 130)
-        self.assertEqual(policy["line_limits"]["backlog.json"], 640)
+        self.assertEqual(policy["line_limits"]["backlog.json"], 600)
         self.assertEqual(policy["manifest"]["shard_max_entries"], 40)
         self.assertEqual(policy["archival"]["current_file"], DEFAULT_POLICY["archival"]["current_file"])
         self.assertEqual(
@@ -477,6 +477,12 @@ class DocPolicyTests(unittest.TestCase):
         self.assertEqual(policy["protocol"]["sentinel"], "<!-- END-OF-PROTOCOL -->")
         self.assertEqual(policy["governance"]["pitfall_max_entries"], 40)
         self.assertEqual(policy["backlog"]["schema_file"], "toolkit/schema/backlog.schema.json")
+        self.assertEqual(
+            policy["backlog"]["archive_schema_file"],
+            "toolkit/schema/backlog-archive.schema.json",
+        )
+        self.assertEqual(policy["backlog"]["archive_file"], "backlog-archive.json")
+        self.assertEqual(policy["backlog"]["max_active_done"], 5)
 
 
 if __name__ == "__main__":

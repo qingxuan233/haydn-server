@@ -235,6 +235,27 @@ def write_backlog_raw(root: Path, text: str) -> Path:
     return write_text(root, "backlog.json", text)
 
 
+def write_backlog_archive(
+    root: Path,
+    items: Sequence[Mapping[str, object]],
+    *,
+    schema: str = "repurpose.backlog-archive.v1",
+    updated: str = DEFAULT_UPDATED,
+    omit_keys: Iterable[str] = (),
+) -> Path:
+    """写 backlog-archive.json（归档条目默认按传入顺序；调用方负责 ID 升序与 status=done）。"""
+    payload: dict[str, object] = {
+        "schema": schema,
+        "updated": updated,
+        "items": list(items),
+    }
+    for key in omit_keys:
+        payload.pop(key, None)
+    return write_text(
+        root, "backlog-archive.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    )
+
+
 # -------------------------------------------------------------------
 # CHANGELOG.md + changelog/YYYY-MM.md（CHANGELOG_ARCHIVE 样本）
 # -------------------------------------------------------------------

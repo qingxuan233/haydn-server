@@ -1,0 +1,70 @@
+{
+  "schema": "repurpose.backlog-archive.v1",
+  "$id": "toolkit/schema/backlog-archive.schema.json",
+  "title": "backlog-archive.json（已完成的 backlog 归档）",
+  "description": "根 backlog-archive.json 的自描述契约：只有 status=done 的历史条目、按 ID 升序；与 backlog.json 的并集必须为连续 BL-001..BL-N。由 toolkit.repurpose.governance 内置小校验器读取（零第三方依赖）。",
+  "type": "object",
+  "required": ["schema", "updated", "items"],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "repurpose.backlog-archive.v1"
+    },
+    "updated": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "notes": {
+      "description": "可选：归档说明（字符串或字符串数组，不参与机器校验）"
+    },
+    "items": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/item"}
+    }
+  },
+  "definitions": {
+    "item": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "priority",
+        "area",
+        "status",
+        "acceptance",
+        "outputs",
+        "depends",
+        "notes",
+        "agent_hint",
+        "owner",
+        "updated",
+        "result"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^BL-[0-9]{3}$"},
+        "title": {"type": "string", "minLength": 1},
+        "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
+        "area": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "enum": ["done"]},
+        "acceptance": {"type": "string", "minLength": 1},
+        "outputs": {"type": "array", "items": {"type": "string"}},
+        "depends": {"type": "array", "items": {"type": "string", "pattern": "^BL-[0-9]{3}$"}},
+        "notes": {"type": "string"},
+        "agent_hint": {"type": "string", "minLength": 1},
+        "requires": {"type": "string"},
+        "owner": {"type": "string", "minLength": 1},
+        "updated": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "result": {"type": "string", "minLength": 1},
+        "risk": {"type": "string", "enum": ["L", "M", "H"]}
+      }
+    }
+  },
+  "semantics": {
+    "status_must_be_done": true,
+    "id_unique_with_backlog": true,
+    "id_contiguous_union": "backlog.json 与 backlog-archive.json 的并集必须为 BL-001..BL-N（只增不复用）",
+    "depends_must_exist_in_union": true,
+    "active_done_window": "backlog.json 中 status=done 的条目最多 5 条（超出须归档最旧条目）",
+    "note": "语义规则由 governance.check_backlog 实现；检查码：BACKLOG_ARCHIVE（归档结构/语义）、BACKLOG_DONE_WINDOW（active done 窗口）、BACKLOG_SEMANTIC（并集 ID 连续/depends 断链）。"
+  }
+}

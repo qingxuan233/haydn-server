@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.backlog.v1",
-  "updated": "2026-11-13",
+  "updated": "2026-11-14",
   "owner": "maintainers / agents",
   "notes": [
     "本文件是 Agent 领取任务的机器可读队列；状态取值 pending/in_progress/done/blocked。",
@@ -45,26 +45,6 @@
       "owner": "lead",
       "updated": "2026-11-13",
       "result": "CI 配置已落地：本地 index --check + 完整 preflight 全绿；GitHub Actions 首次实跑成功（run #43465049307，commit 6c3bf74，2026-11-13T16:40Z，conclusion=success）。secret scan 仍未纳入（BL-010），故保持 in_progress。"
-    },
-    {
-      "id": "BL-003",
-      "title": "toolkit 增加 preflight 子命令并统一校验入口",
-      "priority": "P1",
-      "area": "toolkit",
-      "status": "done",
-      "acceptance": "`python -m toolkit.repurpose preflight` 串行运行 validate、index 一致性、unittest、check-links，输出简洁汇总与失败定位，退出码可被 CI 消费。",
-      "outputs": [
-        "toolkit/repurpose/",
-        "toolkit/tests/",
-        "AGENTS.md"
-      ],
-      "depends": [],
-      "notes": "避免 CI 与文档命令漂移。",
-      "agent_hint": "已实现；CI workflow 见 .github/workflows/quality.yml。",
-      "requires": "",
-      "owner": "toolkit",
-      "updated": "2026-11-13",
-      "result": "已实现 preflight（index→validate --strict→unittest→check-links；--root/--json/--skip-tests/--skip-links/--no-index；三态退出码 0=全绿/3=有跳过/4=失败），并新增 .github/workflows/quality.yml（index --check + 完整 preflight）。"
     },
     {
       "id": "BL-004",
@@ -241,50 +221,6 @@
       "agent_hint": "不要直接改名；先列影响面。"
     },
     {
-      "id": "BL-015",
-      "title": "backlog/工具登记表的机器校验（schema + validate 联动）",
-      "priority": "P2",
-      "area": "repo",
-      "status": "done",
-      "acceptance": "backlog.json 有正式 JSON Schema（必填/可选字段、status/priority 枚举）；toolkit validate 校验 backlog 语义与 TOOL 登记表（toolkit/README）一致性；新增/修改时自动发现缺字段、非法优先级、未登记 TOOL。",
-      "outputs": [
-        "toolkit/schema/backlog.schema.json",
-        "toolkit/repurpose/validate.py",
-        "toolkit/tests/",
-        "AGENTS.md"
-      ],
-      "depends": [
-        "BL-003"
-      ],
-      "notes": "2026-11-13 完成 schema + 语义检查（ID 连续/枚举/in_progress 与 done 必填字段/depends 引用）。TOOL 登记表一致性尚未机检，遗留为后续项。",
-      "agent_hint": "改 backlog 字段时先改 schema 再改 validate 与测试。",
-      "requires": "",
-      "owner": "toolkit",
-      "updated": "2026-11-13",
-      "result": "已实现：toolkit/schema/backlog.schema.json + governance 检查（必填键、priority/status/risk 枚举、ID 唯一且连续、in_progress/done 必须有 owner/updated/result、depends 指向存在 ID）；单测覆盖。"
-    },
-    {
-      "id": "BL-016",
-      "title": "文档体积与归档窗口机器校验（doc-policy + manifest 分片）",
-      "priority": "P1",
-      "area": "toolkit",
-      "status": "done",
-      "acceptance": "validate 依据 toolkit/schema/doc-policy.json 校验 AGENTS/README/CHANGELOG 窗口/各层文档行数与 manifest 根/分片大小；index 产出根摘要+四层分片；测试覆盖。",
-      "outputs": [
-        "toolkit/schema/doc-policy.json",
-        "toolkit/repurpose/validate.py",
-        "agent-manifest.d/",
-        "toolkit/tests/"
-      ],
-      "depends": [
-        "BL-003"
-      ],
-      "notes": "2026-11-11 完成初版；backlog 归档与 >40 条分片仍待 BL-017。",
-      "agent_hint": "改动上限时先改 doc-policy 再跑 validate。",
-      "requires": "",
-      "owner": "toolkit", "updated": "2026-11-11", "result": "已实现：docpolicy.py + doc-policy.json + 根/分片索引与一致性校验；163 项单测全绿，validate --strict 0 error。"
-    },
-    {
       "id": "BL-017",
       "title": "单层 >40 条的分片拆分与 backlog 归档机检",
       "priority": "P2",
@@ -300,32 +236,10 @@
       "depends": [
         "BL-016"
       ],
-      "notes": "当前四层均 ≤40 条，尚未触发；规则见 MTH-011。",
-      "agent_hint": "先定拆分键（ID 区间或 domain），再改 index/validate 与测试。",
+      "notes": "2026-11-14 已完成 backlog 归档机检（backlog-archive.json + done 窗口 ≤5 + 并集 ID 连续）；manifest 单层 >40 条自动拆分仍未实现（当前四层均 ≤40，尚未触发）。规则见 MTH-015。",
+      "agent_hint": "剩余部分：先定拆分键（ID 区间或 domain），再改 index/validate 与测试。",
       "requires": "",
       "owner": "", "updated": "", "result": ""
-    },
-    {
-      "id": "BL-018",
-      "title": "CHANGELOG §4 归档索引与归档文件条数/版本一致性机检",
-      "priority": "P1",
-      "area": "toolkit",
-      "status": "done",
-      "acceptance": "validate --strict 解析 CHANGELOG §4 索引行与 changelog/YYYY-MM.md，校验月份条目数、版本范围、链接存在且无重复/缺失；不符即 exit 4，并有临时 repo 测试。",
-      "outputs": [
-        "toolkit/repurpose/validate.py",
-        "toolkit/tests/test_validate.py",
-        "methodology/10-document-lifecycle.md"
-      ],
-      "depends": [
-        "BL-016"
-      ],
-      "notes": "2026-11-13 实现；同时修正旧镜像漂移（changelog/README.md §2 与 CHANGELOG §4 曾不一致）。",
-      "agent_hint": "已实现；归档操作须同步 §4 与 changelog/README.md 镜像。",
-      "requires": "",
-      "owner": "toolkit",
-      "updated": "2026-11-13",
-      "result": "已实现：validate 解析 CHANGELOG §4 归档索引（月份/条数/版本范围/文件存在）与 changelog/*.md 双向一致；本次归档 v1.47 后通过机检。"
     },
     {
       "id": "BL-019",
@@ -351,44 +265,6 @@
       "owner": "", "updated": "", "result": ""
     },
     {
-      "id": "BL-020",
-      "title": "一加 Ace Pro（PGP110/ovaltine）采购核验与解锁/Root 门禁落地",
-      "priority": "P1",
-      "area": "device",
-      "status": "done",
-      "acceptance": "按 MTH-012 §7 完成采购前 10 项核验；G-L0/G-L1 证据入库；版本/ARB/解锁政策/救援包结论写入 CASE-003；不可行则记录并换机，不伪造进度。",
-      "outputs": [
-        "cases/ace-pro-pgp110/README.md",
-        "cases/ace-pro-pgp110/profile.json",
-        "methodology/11-root-lab.md"
-      ],
-      "depends": [],
-      "notes": "设备未购入；先只读核验，不解锁不刷写；用户已授权该实验机接受硬砖/数据丢失风险（2026-11-11）。",
-      "agent_hint": "收货后先只读 detect/核对 build 与 ARB 状态，再备救援包，最后才走官方解锁。",
-      "requires": "真机 + 用户授权（解锁/Root）",
-      "owner": "lead", "updated": "2026-11-13", "result": "真机（PGP110/COS15.0.0.1901）完成：G-L0 身份/版本核验；官方 fastboot 解锁成功（清数据）；G-L1 官方同版本全量包 + 原厂 boot + SHA-256 清单 + 双线/第二台电脑/离线双副本；3/3 救援演练通过。证据见 CASE-003 §6 与运行期 inventory（gitignored）。"
-    },
-    {
-      "id": "BL-021",
-      "title": "Root 工具配套：rootcheck + rescue-kit + fixture/assess 回归",
-      "priority": "P1",
-      "area": "toolkit",
-      "status": "done",
-      "acceptance": "以 cases/ace-pro-pgp110/profile.json 断言 assess route=A、G-B0=unknown；新增 rootcheck 技术姿态检查与 rescue-kit 清单校验；单测全绿且不改变现有路线选择顺序。",
-      "outputs": [
-        "toolkit/repurpose/rootcheck.py",
-        "toolkit/repurpose/rescuekit.py",
-        "toolkit/tests/",
-        "toolkit/tests/fixtures/profile-root-lab-ready.json",
-        "toolkit/README.md"
-      ],
-      "depends": [],
-      "notes": "rootcheck 只读消费 profile，不替代授权/演练；rescue-kit 只证明目录与清单一致；工具门禁顺序以 assess.py 为准。",
-      "agent_hint": "已实现；后续真机 profile 采集后用 rootcheck --strict、救援包用 rescue-kit --verify 复核。",
-      "requires": "",
-      "owner": "toolkit", "updated": "2026-11-11", "result": "已实现 rootcheck（9 技术项+7 人工项）与 rescue-kit（SHA-256 清单 init/verify）；ready/预研/边界/清单 34 项新增测试；validate/index/198 项单测全绿。"
-    },
-    {
       "id": "BL-022",
       "title": "Root 后服务器栈/灾备实测（5 重启、soak、救援演练、chroot 基准）",
       "priority": "P1",
@@ -406,37 +282,7 @@
       "notes": "未实测不得标完成；按 G-L5/G-L6 与 MTH-008 G-R1..G-R5 验收。网盘备份候选（2026-11-14 用户提出夸克网盘）：rclone 无原生 Quark 后端；可选 A) restic 加密仓库经 PC 拉取后由夸克客户端同步（依赖 PC 定期执行）；B) Alist+WebDAV+rclone（第三方组件与 cookie 维护）。恢复演练前不得标 done。",
       "agent_hint": "先 Root 最小基线，再 chroot 基准，再救援演练；一次一变更并留回滚证据。",
       "requires": "真机 + 用户授权（解锁/Root）",
-      "owner": "lead", "updated": "2026-11-14", "result": "已完成（截至 2026-11-13）：KernelSU LKM Root、5/5 重启 Root 存活、3/3 救援演练；服务器化准备（Ubuntu 24.04.5 arm64 chroot、supervisord 心跳+loopback HTTP、root 特权遥测、iptables 入站 DROP、KernelSU 开机模块、5/5 重启自启）。P1 管理面（2026-11-14，部分完成）：wake_lock 与 Wi‑Fi 省电关闭并持久化；openssh-server 仅 loopback 密钥登录，临时密钥验证后已生成长期管理员 ed25519 密钥并端到端验证（建议用户替换）；prometheus-node-exporter 仅 loopback；cron 每 5 分钟健康检查（跨重启 OK）；本地告警升级：health FAIL 时设备 Android 通知 + alerts.log 去重记录，受控验证通过；restic/rclone 已安装，restic 本机加密备份/恢复演练通过（19 文件、check 无错误、restore SHA-256 MATCH，临时仓库已删除；非持久备份）；Tailscale 1.104.7 官方 static（SHA-256 校验）已安装，**已用 auth key 登录成功（BackendState=Running，节点 haydn-pgp110）**，配置 tailnet TCP 转发 :22→127.0.0.1:22（tailnet-only，tailscaled 重启后保持），auth key 以 file: 方式传参、临时文件已删除（建议用户在 Tailscale 管理台 revoke）；P1 后 5/5 重启矩阵通过；30 分钟 7 线程满载热测试 180 采样：温区峰值 79.0°C、电池峰值 35.9°C。soak：run #1 于 2026-11-13T18:00:03Z 起、4.91h 后因遥测循环脚本语法错误（22:54–23:08Z 缺口）中止（设备未重启）；已改用 LF 文本 + setsid 重启遥测循环并核对采集周期，**soak run #2 于 2026-11-13T23:08:20Z 重新计时**。追加（2026-11-14）：开启 ColorOS 原生「充电上限保护」（电量维持 80%，状态键=1；100% 时已停充；80% 长时维持待观测）；第三方应用按 GRD-002 仅 disable-user 清理（41 目标/新禁用 28/累计 45，保留核心与 KernelSU）。用户自有 ed25519 公钥（轮换、取消口令）已安装并自动化端到端验证通过（uid=0；旧公钥与管理员回退密钥均已从 authorized_keys 移除，旧管理员密钥登录被拒绝）。夸克备份链路已跑通一次（设备 tar.gz 快照 286 文件/37.4MB → PC AES-256-GCM 加密 → Quark CLI 上传至 haydn-server-backup 文件夹；远端回下载 SHA-256 与本地一致；设备恢复演练 286/286 清单 OK；加密口令本地保管；自动化脚本二次执行成功（code 0/2 文件/37,421,705 B 至同一目录）；计划任务未注册）。未完成：tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时属 userspace 限制）、用户自有 SSH 公钥替换、夸克备份计划任务/口令异地保管/定期恢复演练、24h soak run #2 满期核对、proot vs chroot 基准、资源/电源调优（含充电上限语义）、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接。"
-    },
-    {
-      "id": "BL-023",
-      "title": "Agent-Harness v1.3 规范对齐与机器校验落地",
-      "priority": "P1",
-      "area": "repo",
-      "status": "done",
-      "acceptance": "以 Agent-Harness v1.3 为参照完成定向采纳：AGENTS 协议 v1.2（容量分级/哨兵/机器可读摘要/停止条件 7 条）、ADR 决策层、GRD-016、MTH-013/MTH-014、模板与 backlog schema；validate 新增协议/命名/PIT/ADR/backlog/归档/回归机检；preflight 与 CI 落地；全量质量门绿。",
-      "outputs": [
-        "AGENTS.md",
-        "adr/",
-        "methodology/12-delivery-governance.md",
-        "methodology/13-agent-sop.md",
-        "guardrails/GRD-016-agent-protocol-regression.md",
-        "toolkit/schema/backlog.schema.json",
-        "toolkit/repurpose/governance.py",
-        ".github/workflows/quality.yml"
-      ],
-      "depends": [
-        "BL-003",
-        "BL-015",
-        "BL-018"
-      ],
-      "notes": "参考 https://github.com/qingxuan233/Agent-Harness（v1.3）；定向采纳，未改冻结案例；未实测项如实保留。",
-      "agent_hint": "先读 adr/0001-adopt-agent-harness-v1-3.md 了解采纳/裁剪清单。",
-      "requires": "",
-      "owner": "lead",
-      "updated": "2026-11-13",
-      "result": "已落地并验证：协议 v1.2、ADR-0001/0002、GRD-016、MTH-013/014、模板新增 2 个（adr、request-card）/更新 4 个（acceptance、agent-task、pitfall、runbook）、backlog schema、validate 新检查、preflight/index --check、CI workflow；验收证据：preflight exit 0（index 重建无 warnings；validate --strict 0 error/0 warning；282 项单测 OK；check-links 0 missing）、index --check exit 0；提交 6c3bf74；CI 首跑 success（run #43465049307）。后续改进（2026-11-14）：index 幂等——内容未变时不重写、保留原 generated_at；单测 282→285。",
-      "risk": "H"
+      "owner": "lead", "updated": "2026-11-14", "result": "已完成（截至 2026-11-13）：KernelSU LKM Root、5/5 重启 Root 存活、3/3 救援演练；服务器化准备（Ubuntu 24.04.5 arm64 chroot、supervisord 心跳+loopback HTTP、root 特权遥测、iptables 入站 DROP、KernelSU 开机模块、5/5 重启自启）。P1 管理面（2026-11-14，部分完成）：wake_lock 与 Wi‑Fi 省电关闭并持久化；openssh-server 仅 loopback 密钥登录，临时密钥验证后已生成长期管理员 ed25519 密钥并端到端验证（后由用户自有密钥替换）；prometheus-node-exporter 仅 loopback；cron 每 5 分钟健康检查（跨重启 OK）；本地告警升级：health FAIL 时设备 Android 通知 + alerts.log 去重记录，受控验证通过；restic/rclone 已安装，restic 本机加密备份/恢复演练通过（19 文件、check 无错误、restore SHA-256 MATCH，临时仓库已删除；非持久备份）；Tailscale 1.104.7 官方 static（SHA-256 校验）已安装，**已用 auth key 登录成功（BackendState=Running，节点 haydn-pgp110）**，配置 tailnet TCP 转发 :22→127.0.0.1:22（tailnet-only，tailscaled 重启后保持），auth key 以 file: 方式传参、临时文件已删除（建议用户在 Tailscale 管理台 revoke）；P1 后 5/5 重启矩阵通过；30 分钟 7 线程满载热测试 180 采样：温区峰值 79.0°C、电池峰值 35.9°C。soak：run #1 于 2026-11-13T18:00:03Z 起、4.91h 后因遥测循环脚本语法错误（22:54–23:08Z 缺口）中止（设备未重启）；已改用 LF 文本 + setsid 重启遥测循环并核对采集周期，**soak run #2 于 2026-11-13T23:08:20Z 重新计时**。追加（2026-11-14）：开启 ColorOS 原生「充电上限保护」（电量维持 80%，状态键=1；100% 时已停充；80% 长时维持待观测）；第三方应用按 GRD-002 仅 disable-user 清理（41 目标/新禁用 28/累计 45，保留核心与 KernelSU）。用户自有 ed25519 公钥（轮换、取消口令）已安装并自动化端到端验证通过（uid=0；旧公钥与管理员回退密钥均已从 authorized_keys 移除，旧管理员密钥登录被拒绝）。夸克备份链路已跑通一次（设备 tar.gz 快照 286 文件/37.4MB → PC AES-256-GCM 加密 → Quark CLI 上传至 haydn-server-backup 文件夹；远端回下载 SHA-256 与本地一致；设备恢复演练 286/286 清单 OK；加密口令本地保管；自动化脚本二次执行成功（code 0/2 文件/37,421,705 B 至同一目录）；计划任务未注册）。未完成：tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时属 userspace 限制）、夸克备份计划任务注册（自动化脚本已二次执行成功）/口令异地保管/定期恢复演练、24h soak run #2 满期核对、proot vs chroot 基准、资源/电源调优（含充电上限语义）、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接。"
     },
     {
       "id": "BL-024",
@@ -554,20 +400,21 @@
       "title": "AGENTS.md 容量分流（警示档降至健康档 ≤200 行）",
       "priority": "P2",
       "area": "repo",
-      "status": "pending",
+      "status": "done",
       "acceptance": "AGENTS.md 从当前警示档（201~320 行）降至 ≤200 行健康档：把操作细节下沉到 MTH-009/MTH-011/MTH-014，协议只留一线指针与 agent_hint；validate 协议检查报 healthy。",
       "outputs": [
         "AGENTS.md",
         "methodology/08-agent-handoff.md",
-        "methodology/10-document-lifecycle.md"
+        "methodology/10-document-lifecycle.md",
+        "adr/0003-agents-capacity-split.md"
       ],
       "depends": [],
-      "notes": "协议 v1.2 实测 290 行（2026-11-13）；参考规范要求警示档下一迭代必须分流并登记知识债。",
-      "agent_hint": "先统计各节行数；优先把 §0/§4 细则与命令示例下沉。",
+      "notes": "2026-11-14 完成：291→199 行；§0 预算/停止条件、§4 文档约定、§5 任务协议、§6 扩展 SOP 去重并加 MTH 指针，删除重复的 §8.1 YAML（改指 agent-manifest）；协议 v1.2→v1.3（ADR-0003），未删红线/未改权威顺序。",
+      "agent_hint": "后续新增规则优先写入对应 MTH，AGENTS 只加指针；每次结构性变更复核行数档位。",
       "requires": "",
-      "owner": "",
-      "updated": "",
-      "result": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "AGENTS.md 199 行（validate protocol_tier=healthy）；新增 ADR-0003 并在 adr 索引登记；README 协议版本同步 v1.3；preflight 全绿。",
       "risk": "L"
     },
     {
@@ -627,6 +474,31 @@
       "updated": "",
       "result": "",
       "risk": "H"
+    },
+    {
+      "id": "BL-033",
+      "title": "MTH-011 拆分：归档/预算/机检独立为 MTH-015",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "methodology/10-document-lifecycle.md 从 299/300 行降至健康档：按单一事实源拆为 MTH-011（归属/命名/ADR/联动）与 MTH-015（归档/上下文预算/机检），不删规则、不重复抄写；同步全仓引用、manifest、ADR 与 CHANGELOG；preflight 全绿且未弱化检查。",
+      "outputs": [
+        "methodology/10-document-lifecycle.md",
+        "methodology/15-archive-and-context-budget.md",
+        "AGENTS.md",
+        "README.md",
+        "methodology/README.md",
+        "adr/0004-mth-011-split.md",
+        "toolkit/README.md"
+      ],
+      "depends": [],
+      "notes": "2026-11-14 完成：两篇 158/190 行；历史 ADR-0001/0002 不改写，ADR-0004 记录拆分决策；backlog done 窗口保持 ≤5（BL-023 移入 backlog-archive.json）。",
+      "agent_hint": "改归档/预算/机检读 MTH-015；改归属/命名/ADR/联动读 MTH-011；两篇不得互相抄写。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "MTH-011 158 行、MTH-015 190 行（均 ≤200）；新增 ADR-0004 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-009/013/014/pitfalls/toolkit/README/doc-policy 描述/changelog 索引；preflight 全绿。",
+      "risk": "L"
     }
   ]
 }

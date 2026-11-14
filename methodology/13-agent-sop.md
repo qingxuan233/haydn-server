@@ -5,7 +5,7 @@ type: methodology
 status: current
 audience: human, agent
 tags: agent, sop, workflow, review, testing, reporting, branch, regression, prompts
-depends: MTH-009, MTH-011
+depends: MTH-009, MTH-011, MTH-015
 updated: 2026-11-13
 agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/提示词/校验器前必读 §12–§13 与 §16 自检清单。
 ---
@@ -13,7 +13,7 @@ agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/�
 # MTH-014 · Agent 工作 SOP 与协作治理
 
 > **一句话**：本仓库的 Agent 工作流细节只在本篇维护——任务生命周期、先搜后读、计划外置、DoD/证据卡、评审与测试、汇报与事实分级、多 Agent 协作、分支与规范版本、提示词治理、Agent 回归与安全五问；其余文档只保留摘要 + 指针。
-> **边界**：操作边界与红线的**权威**是 [AGENTS.md](../AGENTS.md) §2.1/§3；交接与扩展协议是 [MTH-009](08-agent-handoff.md)；文档预算/归档是 [MTH-011](10-document-lifecycle.md)。本文落地参考 Agent-Harness v1.3 的 02 册增量，**尚未用 AR 回归集在本仓库完成一次全量评估**（待落地，见 §13）。
+> **边界**：操作边界与红线的**权威**是 [AGENTS.md](../AGENTS.md) §2.1/§3；交接与扩展协议是 [MTH-009](08-agent-handoff.md)；文档预算/归档是 [MTH-015](15-archive-and-context-budget.md)。本文落地参考 Agent-Harness v1.3 的 02 册增量，**尚未用 AR 回归集在本仓库完成一次全量评估**（待落地，见 §13）。
 
 ## 1. 结论先行
 
@@ -32,7 +32,8 @@ agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/�
 | 操作边界三级表、红线、停止条件、DoD 清单 | [AGENTS.md](../AGENTS.md) §2.1/§3/§0/§7（**以它为准**） |
 | 任务生命周期/DoD/证据卡/评审/测试/汇报/多 Agent/分支/回归/提示词 | 本文（SOP 增量唯一维护处） |
 | 交接与恢复、ID/front matter、五类扩展 SOP、CLI 契约、backlog 指针 | [MTH-009](08-agent-handoff.md) |
-| 阅读预算、归档窗口、索引四表、ADR、联动矩阵 | [MTH-011](10-document-lifecycle.md) |
+| 索引四表、命名、ADR、变更联动矩阵 | [MTH-011](10-document-lifecycle.md) |
+| 阅读预算、归档窗口、状态段上限、机检上限 | [MTH-015](15-archive-and-context-budget.md) |
 | 风险分级、需求基线、交付门 G0–G7、用户验收、发布/割接、数据/许可 | [MTH-013](12-delivery-governance.md) |
 
 ## 3. 任务生命周期（单 Agent）
@@ -52,7 +53,7 @@ agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/�
 - **先搜索后读**：不得对源码树做全量 glob/递归读取；先按关键词/文件名 `grep`/`glob`，再 read 指定文件。读未知目录先列一层，识别入口（README/AGENTS.md）。
 - **大文件纪律**：>300 行文件禁止整读——先 `grep '^#{1,3} '` 形成目录，再按 offset/limit 分段精读所需小节；结构化索引/契约可只读相关段。
 - **跳过清单**：`profiles/`、`backup/`、`inventory/` 中的隐私/一次性产物默认不读（任务明确需要时才读目标文件）；`changelog/` 归档、旧 `docs/` 全文、旧 `scripts/` 默认不读（追溯时读**单个**文件）。
-- **预算**：单任务最多读 3 份规范/主题文档（AGENTS/索引/模板/任务卡/`--help` 不计入）；分层加载与默认不读清单见 [MTH-011](10-document-lifecycle.md) §5。
+- **预算**：单任务最多读 3 份规范/主题文档（AGENTS/索引/模板/任务卡/`--help` 不计入）；分层加载与默认不读清单见 [MTH-015](15-archive-and-context-budget.md) §4。
 - **只读优先**：先看状态/证据/`--help` 再改文件；不了解影响面时禁止批量重写。
 
 ## 5. 计划外置与步数预算

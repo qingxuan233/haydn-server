@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: cases, index, evidence, device-profile, onboarding
 depends: MTH-000, MTH-002
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 新增设备案例先读本页：复制模板 → 填 profile → 标注证据 → toolkit assess/validate → 登记清单
 ---
 
@@ -94,8 +94,9 @@ cases/
 
 | 案例 ID | 目录 | 设备 | 系统 | 关键约束 | 路线 | 验证状态 | 入口 |
 |---|---|---|---|---|---|---|---|
-| CASE-001 | `cases/haydn-k40pro/` | Redmi K40 Pro（`M2012K11C` / `haydn` / SM8350 / 8GB / 256GB） | Android 14 / HyperOS 1.0（国行） | BL 锁定、AVB green、无 Root、内核缺 USER_NS/PID_NS | A（Termux + proot，无 Root） | Phase 0/1 完成，Phase 2 部分完成；24h soak 未完成 | [案例正文](haydn-k40pro/README.md) · [profile](haydn-k40pro/profile.json) · [OEM profile](haydn-k40pro/oem-profile.md) |
-| CASE-003 | `cases/ace-pro-pgp110/` | OnePlus Ace Pro（`PGP110` / `ovaltine` / SM8475 / 16GB / 256GB） | ColorOS 12.1→15（Android 12→15） | 已购机；2026-11-13 完成官方解锁 + KernelSU LKM Root + 3/3 救援演练；P1 管理面部分落地（Tailscale/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通一次）；24h soak run #2/chroot 基准/割接未完成 | 目标 B（Root + chroot，受控实验） | **draft/实验轨（部分实测，未全验收）**；按 [MTH-012](../methodology/11-root-lab.md) 门禁推进 | [实验轨正文](ace-pro-pgp110/README.md) · [profile](ace-pro-pgp110/profile.json) |
+| CASE-001 | `cases/haydn-k40pro/` | Redmi K40 Pro（`M2012K11C` / `haydn` / SM8350 / 8GB / 256GB） | Android 14 / HyperOS 1.0（国行） | BL 锁定、AVB green、无 Root、内核缺 USER_NS/PID_NS | A（Termux + proot，无 Root） | Phase 0/1 完成，Phase 2 部分完成；24h soak 未完成 | [案例正文](haydn-k40pro/README.md) · [profile](haydn-k40pro/profile.json) |
+| CASE-002 | `cases/haydn-k40pro/` | 同上（OEM 侧清单） | 小米 / HyperOS | OEM 私有设置无标准 API；本机实测 5/5 debug + 1/1 release 重启与权限重置 | A | 小米实例已实测；其他 OEM 未验证 | [OEM profile](haydn-k40pro/oem-profile.md) |
+| CASE-003 | `cases/ace-pro-pgp110/` | OnePlus Ace Pro（`PGP110` / `ovaltine` / SM8475 / 16GB / 256GB） | ColorOS 12.1→15（Android 12→15） | 已购机；2026-11-13 完成官方解锁 + KernelSU LKM Root + 3/3 救援演练；P1 管理面部分落地（Tailscale/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；24h soak run #2/chroot 基准/割接未完成 | 目标 B（Root + chroot，受控实验） | **draft/实验轨（部分实测，未全验收）**；按 [MTH-012](../methodology/11-root-lab.md) 门禁推进 | [实验轨正文](ace-pro-pgp110/README.md) · [profile](ace-pro-pgp110/profile.json) |
 | CASE-004 | `cases/ace-pro-pgp110/` | 同上（OEM 侧清单） | 一加 / ColorOS | 深度测试、ARB、Root 后指纹/完整性部分待实测 | B | **draft/实验轨（OEM 侧部分待实测）** | [OEM profile](ace-pro-pgp110/oem-profile.md) |
 
 > 清单按案例 ID 递增；一个案例一行，状态写"已完成/部分/未验证"的事实，不写目标值。

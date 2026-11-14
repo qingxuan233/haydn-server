@@ -24,6 +24,8 @@ ADR_INDEX             ``adr/README.md`` 索引缺失、id 不是 ADR-000、或�
 CHANGELOG_ARCHIVE     CHANGELOG §4 归档索引与 ``changelog/*.md`` 不一致（§3.5）
 BACKLOG_SCHEMA        ``backlog.json`` 结构违反 ``toolkit/schema/backlog.schema.json``（§3.6）
 BACKLOG_SEMANTIC      backlog ID 跳号/重复、active 状态缺 owner/updated/result、depends 断链等
+BACKLOG_DONE_WINDOW   active done 条目超过 ``backlog.max_active_done``（默认 5），须归档最旧条目
+BACKLOG_ARCHIVE       ``backlog-archive.json`` 结构/语义违规（非 done、缺 result、与 active 重复 ID 等）
 AGENT_REGRESSION      AR-02 红线缺 GRD 链接 / AR-03 manifest.invariants 缺关键红线词（§3.7）
 ====================  ====================================================
 
@@ -73,8 +75,11 @@ DEFAULT_GOVERNANCE_POLICY: dict[str, Any] = {
 
 DEFAULT_BACKLOG_POLICY: dict[str, Any] = {
     "schema_file": "toolkit/schema/backlog.schema.json",
+    "archive_schema_file": "toolkit/schema/backlog-archive.schema.json",
+    "archive_file": "backlog-archive.json",
+    "max_active_done": 5,
 }
-"""§3.6 默认策略：backlog schema 文件（缺失时回退内置最小 schema）。"""
+"""§3.6 默认策略：backlog/归档 schema 文件与 done 归档窗口（缺文件时降级/回退内置）。"""
 
 DEFAULT_BACKLOG_SCHEMA: dict[str, Any] = {
     "schema": "repurpose.backlog.v1",
@@ -127,6 +132,19 @@ DEFAULT_BACKLOG_SCHEMA: dict[str, Any] = {
     },
 }
 """内置最小 backlog schema（schema 文件缺失/损坏时的回退；与 schema/backlog.schema.json 同步）。"""
+
+DEFAULT_BACKLOG_ARCHIVE_SCHEMA: dict[str, Any] = {
+    "schema": "repurpose.backlog-archive.v1",
+    "type": "object",
+    "required": ["schema", "updated", "items"],
+    "properties": {
+        "schema": {"type": "string", "const": "repurpose.backlog-archive.v1"},
+        "updated": {"type": "string", "pattern": r"^\d{4}-\d{2}-\d{2}$"},
+        "items": {"type": "array", "items": {"$ref": "#/definitions/item"}},
+    },
+    "definitions": {"item": DEFAULT_BACKLOG_SCHEMA["definitions"]["item"]},
+}
+"""内置最小 backlog 归档 schema（与 schema/backlog-archive.schema.json 同步）。"""
 
 
 # ---------------------------------------------------------------------------
@@ -802,6 +820,25 @@ def load_backlog_schema(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
     return DEFAULT_BACKLOG_SCHEMA
 
 
+def load_backlog_archive_schema(root: Path, policy: dict[str, Any]) -> dict[str, Any]:
+    """读取 backlog 归档 schema（与 :func:`load_backlog_schema` 同样的三级回退）。"""
+    backlog_policy = _policy_section(policy, "backlog", DEFAULT_BACKLOG_POLICY)
+    relative = str(
+        backlog_policy.get("archive_schema_file", DEFAULT_BACKLOG_POLICY["archive_schema_file"])
+    )
+    candidates = [Path(root) / relative, SCHEMA_DIR / Path(relative).name]
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        try:
+            payload = load_json(candidate)
+        except Exception:
+            continue
+        if isinstance(payload, dict) and payload.get("schema") == "repurpose.backlog-archive.v1":
+            return payload
+    return DEFAULT_BACKLOG_ARCHIVE_SCHEMA
+
+
 def _resolve_ref(ref: Any, root_schema: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(ref, str) or not ref.startswith("#/definitions/"):
         return None
@@ -874,7 +911,7 @@ def _validate_against_schema(
 
 
 def check_backlog(root: Path, policy: dict[str, Any], strict: bool) -> tuple[list[dict[str, Any]], int]:
-    """§3.6：backlog.json 结构与语义（缺字段/非法枚举/active 状态字段/ID 连续/depends 断链）。"""
+    """§3.6：backlog 结构与语义（含归档窗口/并集 ID 连续/depends 跨文件解析）。"""
     _ = strict
     path = Path(root) / "backlog.json"
     if not path.is_file():
@@ -899,23 +936,110 @@ def check_backlog(root: Path, policy: dict[str, Any], strict: bool) -> tuple[lis
     items = payload.get("items") if isinstance(payload.get("items"), list) else []
     checked = len(items)
     ids = [item.get("id") for item in items if isinstance(item, dict) and isinstance(item.get("id"), str)]
-    expected = [f"BL-{index:03d}" for index in range(1, len(items) + 1)]
-    if ids != expected:
-        duplicates = sorted(identifier for identifier in set(ids) if ids.count(identifier) > 1)
-        missing = sorted(set(expected) - set(ids))
+
+    # --- 归档文件：结构/语义校验（缺文件时降级跳过，兼容临时 fixture） ---
+    backlog_policy = _policy_section(policy, "backlog", DEFAULT_BACKLOG_POLICY)
+    archive_name = str(backlog_policy.get("archive_file", DEFAULT_BACKLOG_POLICY["archive_file"]))
+    archive_path = Path(root) / archive_name
+    archive_relative = rel_posix(archive_path, root)
+    archived: list[dict[str, Any]] = []
+    if archive_path.is_file():
+        try:
+            archive_payload = load_json(archive_path)
+        except Exception as exc:
+            issues.append(_contract_issue("BACKLOG_ARCHIVE", archive_relative, f"JSON 无法解析：{exc}"))
+            archive_payload = None
+        if archive_payload is not None and not isinstance(archive_payload, dict):
+            issues.append(_contract_issue("BACKLOG_ARCHIVE", archive_relative, "顶层必须是 JSON object"))
+            archive_payload = None
+        if isinstance(archive_payload, dict):
+            archive_schema = load_backlog_archive_schema(Path(root), policy)
+            archive_errors: list[str] = []
+            _validate_against_schema(archive_payload, archive_schema, "$", archive_schema, archive_errors)
+            for message in archive_errors:
+                issues.append(_contract_issue("BACKLOG_ARCHIVE", archive_relative, message))
+            archived = [
+                item
+                for item in archive_payload.get("items", [])
+                if isinstance(item, dict)
+            ] if isinstance(archive_payload.get("items"), list) else []
+            for index, item in enumerate(archived):
+                location = f"items[{index}]"
+                entry_id = item.get("id")
+                if item.get("status") != "done":
+                    issues.append(
+                        _contract_issue(
+                            "BACKLOG_ARCHIVE",
+                            archive_relative,
+                            f"{entry_id}（{location}）归档条目 status 必须为 done（当前：{item.get('status')!r}）",
+                        )
+                    )
+                for key in ("owner", "updated", "result"):
+                    value = item.get(key)
+                    if not isinstance(value, str) or not value.strip():
+                        issues.append(
+                            _contract_issue(
+                                "BACKLOG_ARCHIVE",
+                                archive_relative,
+                                f"{entry_id}（{location}）归档条目必须保留非空 {key}",
+                            )
+                        )
+                updated = item.get("updated")
+                if isinstance(updated, str) and updated.strip() and not re.fullmatch(
+                    r"\d{4}-\d{2}-\d{2}", updated.strip()
+                ):
+                    issues.append(
+                        _contract_issue(
+                            "BACKLOG_ARCHIVE",
+                            archive_relative,
+                            f"{entry_id}（{location}）的 updated 必须是 YYYY-MM-DD（当前：{updated!r}）",
+                        )
+                    )
+
+    archive_ids = [
+        item.get("id") for item in archived if isinstance(item.get("id"), str)
+    ]
+    overlap = sorted(set(ids) & set(archive_ids))
+    if overlap:
+        issues.append(
+            _contract_issue(
+                "BACKLOG_ARCHIVE",
+                archive_relative,
+                "归档与 active 重复 ID：" + "、".join(overlap) + "（同一 BL-ID 只能存在于一处）",
+            )
+        )
+
+    combined = ids + archive_ids
+    expected = [f"BL-{index:03d}" for index in range(1, len(combined) + 1)]
+    if sorted(combined) != expected:
+        duplicates = sorted(identifier for identifier in set(combined) if combined.count(identifier) > 1)
+        missing = sorted(set(expected) - set(combined))
         detail: list[str] = []
         if missing:
             detail.append("跳号：" + "、".join(missing))
         if duplicates:
             detail.append("重复：" + "、".join(duplicates))
         if not missing and not duplicates:
-            detail.append("ID 序列与 BL-001..BL-%03d 不一致" % len(items))
+            detail.append("ID 序列与 BL-001..BL-%03d 不一致" % len(combined))
         issues.append(
-            _contract_issue("BACKLOG_SEMANTIC", relative, "；".join(detail) + "（ID 只增不复用、必须连续）")
+            _contract_issue(
+                "BACKLOG_SEMANTIC",
+                relative,
+                "；".join(detail) + "（active 与归档并集 ID 只增不复用、必须连续升序）",
+            )
         )
-        ids_set = set(ids)
-    else:
-        ids_set = set(expected)
+    ids_set = set(combined)
+
+    done_count = sum(1 for item in items if isinstance(item, dict) and item.get("status") == "done")
+    max_done = int(backlog_policy.get("max_active_done", DEFAULT_BACKLOG_POLICY["max_active_done"]))
+    if done_count > max_done:
+        issues.append(
+            _contract_issue(
+                "BACKLOG_DONE_WINDOW",
+                relative,
+                f"active done {done_count} 条超过窗口上限 {max_done}；请把最旧 done 条目移入 {archive_name}",
+            )
+        )
 
     for index, item in enumerate(items):
         if not isinstance(item, dict):

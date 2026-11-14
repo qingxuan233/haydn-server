@@ -285,5 +285,6 @@ M/H 级且面向用户/业务结果的改动（换机迁移、割接、桥/控�
 | [MTH-012 Root 实验设备](11-root-lab.md) | 授权实验设备的 G-L0..G-L6 执行门禁 | H 级 Root 变更同时受两者约束 |
 | [MTH-008 验收与稳定性](07-validation.md) | 证据类型、5 重启/soak/故障注入/恢复演练 | 本文 §6/§7 引用其证据口径 |
 | [MTH-014 Agent SOP](13-agent-sop.md) | 生命周期、DoD、汇报、多 Agent、分支与回归 | 执行层 SOP；本文只管项目/交付层 |
-| [MTH-011 文档生命周期](10-document-lifecycle.md) | 索引/归档/ADR/变更联动矩阵 | 本文产生的决策与证据按它归档 |
+| [MTH-011 文档生命周期](10-document-lifecycle.md) | 索引/命名/ADR/变更联动矩阵 | 本文产生的决策与证据按它归档 |
+| [MTH-015 归档与上下文预算](15-archive-and-context-budget.md) | CHANGELOG 窗口/归档、状态段上限、阅读预算、机检 | 本文产生的变更记录按它归档 |
 | [adr/README.md](../adr/README.md) | 决策记录与台账 | H 级决策、Stop/Pivot、MAJOR 变更留痕 |

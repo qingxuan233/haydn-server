@@ -15,7 +15,7 @@ domain: docs
 # 踩坑库（Pitfalls）
 
 > 这里是**证据层**：把真实改造过程中踩过的坑沉淀成可检索、可复现、可被 Agent 直接消费的条目。
-> 每条 PIT 回答：**怎么坏掉的 / 为什么坏 / 怎么避免和修 / 怎么验证修好了**。上位与边界：[AGENTS.md](../AGENTS.md) · [MTH-011](../methodology/10-document-lifecycle.md)（归档与阅读预算）· [方法论文档地图](../methodology/README.md)。
+> 每条 PIT 回答：**怎么坏掉的 / 为什么坏 / 怎么避免和修 / 怎么验证修好了**。上位与边界：[AGENTS.md](../AGENTS.md) · [MTH-015](../methodology/15-archive-and-context-budget.md)（归档与阅读预算）· [方法论文档地图](../methodology/README.md)。
 
 ## 1. 用途
 
