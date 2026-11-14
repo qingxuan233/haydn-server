@@ -223,4 +223,4 @@ curl --fail --cacert "$BRIDGE_CA" -H "Authorization: Bearer $BRIDGE_TOKEN" "$BRI
 - 工具：[toolkit 索引](../toolkit/README.md)、[健康检查脚本](../toolkit/termux/healthcheck.sh)。
 - 后续路线：[MTH-002 评估与可行性](01-assessment.md)、[MTH-006 控制面](05-control-plane.md)、[MTH-007 安全](06-security.md)、[MTH-008 验收](07-validation.md)、[术语表](09-glossary.md)。
 
-> 契约变更（端点、字段语义、schema 版本）必须同步：服务器客户端 + 聚合 API + 控制面解释 + 验收用例 + 案例记录 + [CHANGELOG](../CHANGELOG.md)。传播规则见 [MTH-009](08-agent-handoff.md)。
+> 契约变更（端点、字段语义、schema 版本）必须同步：服务器客户端 + 聚合 API + 控制面解释 + 验收用例 + 案例记录 + [CHANGELOG](../CHANGELOG.md)。传播规则见 [MTH-017](17-expansion-and-cli-contract.md) §2。

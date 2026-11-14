@@ -185,6 +185,51 @@
       "updated": "2026-11-13",
       "result": "已落地：adr/README.md + ADR-0001（采纳清单/备选/后果）+ ADR-0002（协议版本与回归）+ 模板；validate ADR 机检覆盖，索引无孤儿。",
       "risk": "M"
+    },
+    {
+      "id": "BL-025",
+      "title": "MTH-013 项目推进与交付治理（阶段门/用户验收/发布就绪）",
+      "priority": "P1",
+      "area": "methodology",
+      "status": "done",
+      "acceptance": "MTH-013 成文：风险分级 L/M/H、角色与 DRI、需求基线卡、G0–G7 阶段门与 P0–P6 映射、用户验收卡、发布/割接就绪与 Go/No-Go、兼容/弃用、数据隐私、依赖许可/制品来源、Continue/Pivot/Stop；配 request-card/runbook 模板。",
+      "outputs": [
+        "methodology/12-delivery-governance.md",
+        "toolkit/templates/request-card.md",
+        "toolkit/templates/runbook.md"
+      ],
+      "depends": [
+        "BL-023"
+      ],
+      "notes": "G0–G7 与 MTH-003 的 P0–P6/路线门禁关系已写明（交付治理门不替代路线门）；尚未在真实割接中演练（见 BL-027）。",
+      "agent_hint": "交付/发布任务先读 §5 阶段门与 MTH-016 §2 Go/No-Go。",
+      "requires": "",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "已成文并通过 validate/链接检查；未实测部分（真实割接演练）明确标注'待验证'并转 BL-027。",
+      "risk": "M"
+    },
+    {
+      "id": "BL-026",
+      "title": "MTH-014 Agent SOP 与 AR-01..AR-10 回归基线",
+      "priority": "P1",
+      "area": "methodology",
+      "status": "done",
+      "acceptance": "MTH-014 成文（生命周期/计划外置/评审/测试/汇报/多 Agent/分支与版本/提示词治理/Agent 回归/安全五问）；AR-01..AR-10 中可机检部分落为 toolkit 测试（含 AR-04 反例自证）。",
+      "outputs": [
+        "methodology/13-agent-sop.md",
+        "toolkit/tests/test_governance.py"
+      ],
+      "depends": [
+        "BL-023"
+      ],
+      "notes": "MTH-009 保留交接/扩展协议，不再重复 SOP 细节（单一事实源）。",
+      "agent_hint": "协议/提示词/模板变更后按 §13 跑回归。",
+      "requires": "",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "已成文；AR-04/AR-05 等机检用例在 test_governance.py 落地，其余依赖模型的回归项明确标注'人工/半自动'。",
+      "risk": "M"
     }
   ]
 }

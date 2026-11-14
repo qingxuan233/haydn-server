@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: root, bootloader, lab-device, authorization, arb, privilege, supply-chain
 depends: GRD-001, GRD-004, GRD-005, GRD-014, MTH-012
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 只有"专用实验设备+用户授权记录+救援包+G-L 门禁"同时满足才允许解锁/Root；任一缺失即回到 GRD-001 默认拒绝。
 severity: blocker
 scope: device
@@ -70,7 +70,5 @@ adb shell pm list packages | grep -E 'magisk|kernelsu|apatch'
 
 ## 5. 关联
 
-- 护栏：[GRD-001](GRD-001-no-root-no-unlock-default.md) · [GRD-004](GRD-004-backup-before-change.md) · [GRD-005](GRD-005-tiered-ops-confirmation.md) · [GRD-014](GRD-014-firmware-freeze-ota.md)
-- 方法论：[MTH-012 Root 实验设备](../methodology/11-root-lab.md) · [MTH-002 评估](../methodology/01-assessment.md) · [MTH-008 验收](../methodology/07-validation.md)
-- 踩坑：[PIT-022](../pitfalls/PIT-022-oem-unlock-quota.md) · [PIT-023](../pitfalls/PIT-023-oneplus-arb-hard-brick.md) · [PIT-024](../pitfalls/PIT-024-flash-tool-supply-chain.md) · [PIT-025](../pitfalls/PIT-025-root-module-regression.md)
-- 案例：[一加 Ace Pro 预研](../cases/ace-pro-pgp110/README.md)
+- 护栏：[GRD-001](GRD-001-no-root-no-unlock-default.md) · [GRD-004](GRD-004-backup-before-change.md) · [GRD-005](GRD-005-tiered-ops-confirmation.md) · [GRD-014](GRD-014-firmware-freeze-ota.md)；方法论：[MTH-012 Root 实验设备](../methodology/11-root-lab.md) · [MTH-002 评估](../methodology/01-assessment.md) · [MTH-008 验收](../methodology/07-validation.md)
+- 踩坑：[PIT-022](../pitfalls/PIT-022-oem-unlock-quota.md) · [PIT-023](../pitfalls/PIT-023-oneplus-arb-hard-brick.md) · [PIT-024](../pitfalls/PIT-024-flash-tool-supply-chain.md) · [PIT-025](../pitfalls/PIT-025-root-module-regression.md)；案例：[一加 Ace Pro 预研](../cases/ace-pro-pgp110/README.md)

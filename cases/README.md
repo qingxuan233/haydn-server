@@ -55,7 +55,8 @@ cases/
 └── <codename>/                    # 设备代号，ASCII（如 haydn-k40pro）
     ├── README.md                  # CASE-00N，type: case-study（案例正文）
     ├── profile.json               # repurpose.device-profile.v1（机器可读档案）
-    └── oem-profile.md             # CASE-00N，type: oem-profile（OEM 人工适配清单）
+    ├── oem-profile.md             # CASE-00N，type: oem-profile（OEM 人工适配清单）
+    └── <appendix>.md              # CASE-00N，type: case-study（正文下沉的结构性附录，不是新设备）
 ```
 
 | 文件 | 必填 | 作用 | 约束 |
@@ -67,7 +68,7 @@ cases/
 命名与脱敏：
 
 - 目录名**全 ASCII**、小写、可用 `-`（不要用中文/空格/大写）；一个设备/代号一个目录。
-- 正文中文；`README.md`/`oem-profile.md` 顶部必须是 flat YAML front matter（首行与末行均为 `---`）。
+- 正文中文；`README.md`/`oem-profile.md`/结构性附录（`<appendix>.md`）顶部必须是 flat YAML front matter（首行与末行均为 `---`），附录 ID 只增不复用。
 - 不得出现序列号、账号、token、口令、私钥、IP、主机名、端口或绝对路径（如 `D:\...`）；引用旧文档给仓库相对路径链接即可。
 
 ### 3.1 profile.json 填写规则
@@ -94,9 +95,9 @@ cases/
 
 | 案例 ID | 目录 | 设备 | 系统 | 关键约束 | 路线 | 验证状态 | 入口 |
 |---|---|---|---|---|---|---|---|
-| CASE-001 | `cases/haydn-k40pro/` | Redmi K40 Pro（`M2012K11C` / `haydn` / SM8350 / 8GB / 256GB） | Android 14 / HyperOS 1.0（国行） | BL 锁定、AVB green、无 Root、内核缺 USER_NS/PID_NS | A（Termux + proot，无 Root） | Phase 0/1 完成，Phase 2 部分完成；24h soak 未完成 | [案例正文](haydn-k40pro/README.md) · [profile](haydn-k40pro/profile.json) |
+| CASE-001 | `cases/haydn-k40pro/` | Redmi K40 Pro（`M2012K11C` / `haydn` / SM8350 / 8GB / 256GB） | Android 14 / HyperOS 1.0（国行） | BL 锁定、AVB green、无 Root、内核缺 USER_NS/PID_NS | A（Termux + proot，无 Root） | Phase 0/1 完成，Phase 2 部分完成；24h soak 未完成 | [案例正文](haydn-k40pro/README.md) · [profile](haydn-k40pro/profile.json) · [复用指南附录](haydn-k40pro/reuse-guide.md) |
 | CASE-002 | `cases/haydn-k40pro/` | 同上（OEM 侧清单） | 小米 / HyperOS | OEM 私有设置无标准 API；本机实测 5/5 debug + 1/1 release 重启与权限重置 | A | 小米实例已实测；其他 OEM 未验证 | [OEM profile](haydn-k40pro/oem-profile.md) |
-| CASE-003 | `cases/ace-pro-pgp110/` | OnePlus Ace Pro（`PGP110` / `ovaltine` / SM8475 / 16GB / 256GB） | ColorOS 12.1→15（Android 12→15） | 已购机；2026-11-13 完成官方解锁 + KernelSU LKM Root + 3/3 救援演练；P1 管理面部分落地（Tailscale/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；24h soak run #2/chroot 基准/割接未完成 | 目标 B（Root + chroot，受控实验） | **draft/实验轨（部分实测，未全验收）**；按 [MTH-012](../methodology/11-root-lab.md) 门禁推进 | [实验轨正文](ace-pro-pgp110/README.md) · [profile](ace-pro-pgp110/profile.json) |
+| CASE-003 | `cases/ace-pro-pgp110/` | OnePlus Ace Pro（`PGP110` / `ovaltine` / SM8475 / 16GB / 256GB） | ColorOS 12.1→15（Android 12→15） | 已购机；2026-11-13 完成官方解锁 + KernelSU LKM Root + 3/3 救援演练；P1 管理面部分落地（Tailscale/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；24h soak run #2/chroot 基准/割接未完成 | 目标 B（Root + chroot，受控实验） | **draft/实验轨（部分实测，未全验收）**；按 [MTH-012](../methodology/11-root-lab.md) 门禁推进 | [实验轨正文](ace-pro-pgp110/README.md) · [profile](ace-pro-pgp110/profile.json) · [P1 配置附录](ace-pro-pgp110/p1-config.md) |
 | CASE-004 | `cases/ace-pro-pgp110/` | 同上（OEM 侧清单） | 一加 / ColorOS | 深度测试、ARB、Root 后指纹/完整性部分待实测 | B | **draft/实验轨（OEM 侧部分待实测）** | [OEM profile](ace-pro-pgp110/oem-profile.md) |
 
 > 清单按案例 ID 递增；一个案例一行，状态写"已完成/部分/未验证"的事实，不写目标值。

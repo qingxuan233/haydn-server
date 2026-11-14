@@ -38,6 +38,10 @@
   "byte_limits": {
     "changelog/*.md": 262144
   },
+  "line_limit_margin": {
+    "warning_within": 15,
+    "note": "行数未超上限但距上限不足 warning_within 行时由 validate 报 DOC_LINES_MARGIN（advisory 级：提示拆篇/精简，不使 strict/preflight 失败；见 MTH-015 §5）"
+  },
   "manifest": {
     "root_max_lines": 160,
     "root_max_bytes": 16384,

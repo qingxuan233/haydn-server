@@ -5,7 +5,7 @@ type: runbook
 status: draft
 audience: human, agent
 tags: template, runbook, replace-me
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 复制本模板后替换 id/title/tags；步骤必须可执行、可中断、可回滚，禁止包含凭据值
 ---
 
@@ -110,9 +110,4 @@ agent_hint: 复制本模板后替换 id/title/tags；步骤必须可执行、可
 
 ## 9. 关联
 
-```text
-相关护栏：<GRD-ID>
-相关踩坑：<PIT-ID>
-相关方法论：<MTH-ID>
-相关工具：<toolkit/termux 脚本>
-```
+相关护栏/踩坑/方法论/工具：`<GRD-ID>` / `<PIT-ID>` / `<MTH-ID>` / `<toolkit/termux 脚本>`

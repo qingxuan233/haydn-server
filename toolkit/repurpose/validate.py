@@ -376,6 +376,11 @@ def validate_doc_policy(root: Path, policy: dict[str, Any], strict: bool) -> tup
     """按 doc-policy 检查文档体积、CHANGELOG 窗口与状态段落。"""
     issues: list[dict[str, Any]] = []
     checked = 0
+    margin_cfg = policy.get("line_limit_margin") if isinstance(policy.get("line_limit_margin"), dict) else {}
+    try:
+        margin_within = int(margin_cfg.get("warning_within", 0))
+    except (TypeError, ValueError):
+        margin_within = 0
     line_limits = policy.get("line_limits") if isinstance(policy.get("line_limits"), dict) else {}
     for pattern, raw_limit in line_limits.items():
         try:
@@ -397,6 +402,16 @@ def validate_doc_policy(root: Path, policy: dict[str, Any], strict: bool) -> tup
                         "DOC_LINES",
                         rel_posix(path, root),
                         f"{rel_posix(path, root)} 行数 {lines} 超过 doc-policy 上限 {limit}",
+                    )
+                )
+            elif margin_within > 0 and limit - lines < margin_within:
+                issues.append(
+                    _issue(
+                        "advisory",
+                        "DOC_LINES_MARGIN",
+                        rel_posix(path, root),
+                        f"{rel_posix(path, root)} 行数 {lines}，距上限 {limit} 仅余 {limit - lines} 行"
+                        f"（<{margin_within}）；请登记拆篇/精简计划（MTH-015 §5.4），本项不阻断质量门",
                     )
                 )
 
@@ -932,6 +947,7 @@ def validate_repo(
     )
     errors = [item for item in issues if item["level"] == "error"]
     warnings = [item for item in issues if item["level"] == "warning"]
+    advisories = [item for item in issues if item["level"] == "advisory"]
     failed = bool(errors) or (strict and bool(warnings))
     checked: dict[str, Any] = {
         "markdown_files": markdown_count,
@@ -951,6 +967,7 @@ def validate_repo(
         "ok": not failed,
         "error_count": len(errors),
         "warning_count": len(warnings),
+        "advisory_count": len(advisories),
         "checked": checked,
         "issues": issues,
     }
@@ -969,7 +986,8 @@ def format_validation_human(report: dict[str, Any]) -> str:
         "- 治理：协议 {protocol_lines} 行（{protocol_tier}）/ 命名 {naming_files} 个 / "
         "PIT {pitfall_files} 条 / ADR {adr_files} 篇 / backlog {backlog_items} 条 / "
         "归档 {changelog_archive_rows} 条 / 回归 {agent_regression_checks} 项".format(**checked),
-        f"- 错误：{report['error_count']}；警告：{report['warning_count']}；strict={report['strict']}",
+        f"- 错误：{report['error_count']}；警告：{report['warning_count']}；"
+        f"预警：{report.get('advisory_count', 0)}（不阻断）；strict={report['strict']}",
     ]
     if report["issues"]:
         lines.append("")

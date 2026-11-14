@@ -5,7 +5,7 @@ type: methodology
 status: current
 audience: human, agent
 tags: agent, sop, workflow, review, testing, reporting, branch, regression, prompts
-depends: MTH-009, MTH-011, MTH-015
+depends: MTH-009, MTH-011, MTH-015, MTH-017
 updated: 2026-11-13
 agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/提示词/校验器前必读 §12–§13 与 §16 自检清单。
 ---
@@ -31,7 +31,8 @@ agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/�
 |---|---|
 | 操作边界三级表、红线、停止条件、DoD 清单 | [AGENTS.md](../AGENTS.md) §2.1/§3/§0/§7（**以它为准**） |
 | 任务生命周期/DoD/证据卡/评审/测试/汇报/多 Agent/分支/回归/提示词 | 本文（SOP 增量唯一维护处） |
-| 交接与恢复、ID/front matter、五类扩展 SOP、CLI 契约、backlog 指针 | [MTH-009](08-agent-handoff.md) |
+| 交接与恢复、ID/front matter、任务生命周期 | [MTH-009](08-agent-handoff.md) |
+| 七类扩展 SOP、变更传播、CLI 契约 | [MTH-017](17-expansion-and-cli-contract.md) |
 | 索引四表、命名、ADR、变更联动矩阵 | [MTH-011](10-document-lifecycle.md) |
 | 阅读预算、归档窗口、状态段上限、机检上限 | [MTH-015](15-archive-and-context-budget.md) |
 | 风险分级、需求基线、交付门 G0–G7、用户验收 | [MTH-013](12-delivery-governance.md) |
@@ -85,7 +86,7 @@ agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/�
 | `4` | FAILED（校验失败/断言失败） | 写"失败"并附差异/报错；修复后重跑 |
 | 其他非零 | FAILED（通用脚本失败，常见 `1`） | 同上；2 为用法错误，需修命令而非忽略 |
 
-`preflight`（子命令契约见 [MTH-009](08-agent-handoff.md) §9）统一返回 0/3/4：有 SKIPPED 即 3，任一步 FAILED 即 4。
+`preflight`（子命令契约见 [MTH-017](17-expansion-and-cli-contract.md) §3）统一返回 0/3/4：有 SKIPPED 即 3，任一步 FAILED 即 4。
 
 ### 7.2 验收证据卡（每个验收项）
 
@@ -228,10 +229,10 @@ Agent 行为改变不能靠"读起来更好了"判断，必须有可重复回归
 
 ## 16. 交接与恢复（指向 MTH-009）
 
-- **交接笔记字段**：目标、已完成（附证据）、进行中（卡在哪）、未做（优先级）、关键文件:行号、踩坑链接、给下个会话的第一步建议。位置与格式见 [MTH-009](08-agent-handoff.md) §5/§12。
+- **交接笔记字段**：目标、已完成（附证据）、进行中（卡在哪）、未做（优先级）、关键文件:行号、踩坑链接、给下个会话的第一步建议。位置与格式见 [MTH-009](08-agent-handoff.md) §5/§10。
 - **恢复 SOP**：读 AGENTS §0 → 读交接笔记/manifest → 只读核对现状（`git status` + 关键命令跑一遍）→ 接续未完工作。
 - **上下文将满时**：先沉淀笔记/回写文档再开新会话，禁止带满仓上下文硬续。
-- 详细交接协议、ID/front matter、扩展 SOP 与 CLI 契约**只维护在** [MTH-009](08-agent-handoff.md)，本文不重复。
+- 详细交接协议、ID/front matter **只维护在** [MTH-009](08-agent-handoff.md)，扩展 SOP 与 CLI 契约**只维护在** [MTH-017](17-expansion-and-cli-contract.md)，本文不重复。
 
 ## 17. 交付前自检清单
 

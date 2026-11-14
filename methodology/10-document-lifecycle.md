@@ -5,7 +5,7 @@ type: methodology
 status: current
 audience: human, agent
 tags: documentation, naming, adr, index, linkage, manifest, agent, knowledge-debt
-depends: MTH-009, MTH-001, MTH-015
+depends: MTH-009, MTH-001, MTH-015, MTH-017
 updated: 2026-11-14
 agent_hint: 新增/移动文档、判断事实归属、命名、写 ADR 或同步变更时读本文；归档窗口、阅读预算与机器校验读 MTH-015；归档默认不读。
 ---
@@ -140,7 +140,8 @@ agent_hint: 新增/移动文档、判断事实归属、命名、写 ADR 或同�
 | [adr/README.md](../adr/README.md) | 决策索引与轻量台账 | 格式与纪律见 §2.4 |
 | [toolkit/README.md](../toolkit/README.md) | CLI 契约与质量门 | MTH-015 §5 命令语义以它为准 |
 | [toolkit/schema/doc-policy.json](../toolkit/schema/doc-policy.json) | 数值上限唯一来源 | 本文只写语义，不抄数字 |
-| [MTH-009](08-agent-handoff.md) | 扩展/交接/变更传播/DoD | 新增文档与 caps 变更走它 |
+| [MTH-009](08-agent-handoff.md) | 交接、ID/front matter、任务生命周期、DoD | 新增文档取 ID 与交接走它 |
+| [MTH-017](17-expansion-and-cli-contract.md) | 扩展 SOP、变更传播、CLI 契约 | 新增文档与 caps 变更走它 |
 | [MTH-014](13-agent-sop.md) | Agent SOP/评审/汇报/回归 | 执行细节以它为准，本文不重复 |
 | [MTH-013](12-delivery-governance.md) | 交付治理/阶段门/用户验收 | 交付流程产生的决策/证据按本文归档 |
 | [MTH-016](16-release-compatibility-data.md) | 发布就绪/兼容弃用/数据隐私/依赖许可 | 交付流程产生的决策/证据按本文归档 |

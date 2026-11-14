@@ -483,6 +483,37 @@ class DocPolicyTests(unittest.TestCase):
         )
         self.assertEqual(policy["backlog"]["archive_file"], "backlog-archive.json")
         self.assertEqual(policy["backlog"]["max_active_done"], 5)
+        self.assertEqual(policy["line_limit_margin"], DEFAULT_POLICY["line_limit_margin"])
+        self.assertEqual(policy["line_limit_margin"]["warning_within"], 15)
+
+    def test_doc_lines_margin_advisory_does_not_fail_strict(self) -> None:
+        """距上限 <15 行报 advisory；strict 仍 ok，余量恢复后预警消失。"""
+        path = _write_long_doc(
+            self.root, "methodology/17-margin.md", entry_id="MTH-017", title="余量", body_lines=10
+        )
+        text = path.read_text(encoding="utf-8").rstrip("\n")
+
+        def _pad_to(target_lines: int) -> None:
+            missing = target_lines - len(text.splitlines())
+            self.assertGreater(missing, 0)
+            path.write_text(
+                text + "\n" + "\n".join("补充行" for _ in range(missing)) + "\n",
+                encoding="utf-8",
+            )
+
+        _pad_to(300 - 5)
+        write_bundle(self.root)
+        report = validate_repo(self.root, strict=True)
+        self.assertIn("DOC_LINES_MARGIN", _codes(report))
+        self.assertGreaterEqual(report["advisory_count"], 1)
+        self.assertEqual(report["warning_count"], 0)
+        self.assertTrue(report["ok"])
+
+        _pad_to(300 - 20)
+        report = validate_repo(self.root, strict=True)
+        self.assertNotIn("DOC_LINES_MARGIN", _codes(report))
+        self.assertEqual(report["advisory_count"], 0)
+        self.assertTrue(report["ok"])
 
 
 if __name__ == "__main__":

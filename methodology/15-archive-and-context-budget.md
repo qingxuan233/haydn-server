@@ -5,7 +5,7 @@ type: methodology
 status: current
 audience: human, agent
 tags: documentation, archival, context-budget, changelog, manifest, agent, machine-check
-depends: MTH-009, MTH-011
+depends: MTH-009, MTH-011, MTH-017
 updated: 2026-11-14
 agent_hint: 归档 CHANGELOG、限制状态段、控制阅读预算或核对数值上限时读本文；文档归属/命名/ADR/联动读 MTH-011；归档默认不读。
 ---
@@ -106,7 +106,7 @@ AGENTS.md / README.md（入口，不计预算）
 
 ### 5.1 上限唯一来源
 
-[toolkit/schema/doc-policy.json](../toolkit/schema/doc-policy.json) 是**所有数值上限的唯一来源**；MTH-011 与 AGENTS、README 只写语义，不另立数字表。改 caps 必须同步校验器与测试（走 [MTH-009](08-agent-handoff.md) 变更传播）。
+[toolkit/schema/doc-policy.json](../toolkit/schema/doc-policy.json) 是**所有数值上限的唯一来源**；MTH-011 与 AGENTS、README 只写语义，不另立数字表。改 caps 必须同步校验器与测试（变更传播见 [MTH-017](17-expansion-and-cli-contract.md) §2）。
 
 | 检查对象 | 上限语义 | 说明 |
 |---|---|---|
@@ -116,6 +116,7 @@ AGENTS.md / README.md（入口，不计预算）
 | AGENTS.md 容量 | ≤200 推荐 / 201–320 警示 / >320 债务 | 警示档需评审并登记知识债分流 |
 | `agent-manifest.json` / 分片 | 根 ≤160 行；分片大小与条目数有上限 | 超出须精简或按层再拆 |
 | `changelog/YYYY-MM.md` | 字节上限 | 接近上限按更细月份拆分 |
+| 单文件行数余量 | 距上限 < `line_limit_margin.warning_within` | `DOC_LINES_MARGIN`（advisory：提示拆篇/精简，不使 strict/preflight 失败） |
 | 归档索引一致性 | 条数/版本范围一致 | `CHANGELOG_ARCHIVE` 机检 |
 
 ### 5.2 命令与判定
@@ -127,7 +128,7 @@ python scripts/dev/check-links.py --strict-anchors
 python -m unittest discover -s toolkit/tests -t . -v
 ```
 
-`validate --strict` 下任何 error 或 warning 均视为失败；不得用"先提交后修"绕过，也不得以删除条目/降低上限来"通过校验"。`preflight` 退出码：`0`=全绿、`3`=有跳过、`4`=任一步失败（三态语义见 [MTH-014](13-agent-sop.md) §7）。
+`validate --strict` 下任何 error 或 warning 均视为失败；不得用"先提交后修"绕过，也不得以删除条目/降低上限来"通过校验"。唯一例外是 **advisory 级**提示（如 `DOC_LINES_MARGIN` 行数余量预警）：会打印但**不计入失败**，必须在 backlog 登记拆篇/精简计划。`preflight` 退出码：`0`=全绿、`3`=有跳过、`4`=任一步失败（三态语义见 [MTH-014](13-agent-sop.md) §7）。
 
 ### 5.3 机检清单
 
@@ -139,6 +140,7 @@ python -m unittest discover -s toolkit/tests -t . -v
 | ADR | `ADR_FILENAME/ID/STATUS/SECTION/SUPERSEDED/INDEX` | 未登记、状态非法、被取代无回链 |
 | backlog | `BACKLOG_SCHEMA`、`BACKLOG_SEMANTIC`、`BACKLOG_DONE_WINDOW`、`BACKLOG_ARCHIVE` | 字段缺失、ID 跳号、done 缺 result、active done >5、归档非法 |
 | CHANGELOG 归档 | `CHANGELOG_ARCHIVE` | 窗口超 8、索引与归档不一致 |
+| 行数余量 | `DOC_LINES_MARGIN`（advisory） | 未超上限但距上限不足阈值；提示拆篇/精简，不阻断 |
 | Agent 回归 | `AGENT_REGRESSION`（AR-01..10） | 协议/红线/回归契约退化 |
 | 统一入口 | `preflight`（`repurpose.preflight.v1`） | 任一步失败或有跳过未申报 |
 
@@ -151,6 +153,7 @@ python -m unittest discover -s toolkit/tests -t . -v
 | CHANGELOG 超 8 条 | 归档最旧一条 → 更新 §4 与归档索引 → 重跑质量门 |
 | 状态段落超 8 行 | 删除本地细节，改为链接；细节先落唯一源 |
 | 单篇文档超行数上限 | 拆篇（取新 ID，走 [MTH-009](08-agent-handoff.md)）或删重复/移证据；禁止删证据 |
+| 行数进入余量预警（未超限） | 登记拆篇/精简计划（进 backlog）；本轮不阻断，但不得新增内容使其触限 |
 | 根摘要或分片超限 | 精简根摘要/按层再拆分片；仍不够则改 doc-policy（同步校验器与本文） |
 | 归档索引不一致 | 以归档文件实际条目核对条数与版本范围，修索引后重跑 |
 | 断链/ID 冲突/命名违规 | 修正链接或改用未占用 ID/合规文件名；不得跳过或静默忽略 |
@@ -179,7 +182,8 @@ python -m unittest discover -s toolkit/tests -t . -v
 |---|---|---|
 | [AGENTS.md](../AGENTS.md) §0/§2.2/§7/§9 | 权威读序、操作边界、DoD、当前状态 | 读序与边界以它为准；§9 受本文 §3 约束 |
 | [MTH-011](10-document-lifecycle.md) | 文档归属、命名、ADR、变更联动矩阵 | 记录"写什么、放哪里"；本文只规定"留多少、何时归档、怎么读" |
-| [MTH-009](08-agent-handoff.md) | 扩展/交接/变更传播/DoD | 新增文档与 caps 变更走它 |
+| [MTH-009](08-agent-handoff.md) | 交接、ID/front matter、任务生命周期、DoD | 新增文档取 ID 与交接走它 |
+| [MTH-017](17-expansion-and-cli-contract.md) | 扩展 SOP、变更传播、CLI 契约 | 新增文档与 caps 变更走它 |
 | [MTH-014](13-agent-sop.md) | Agent SOP/评审/汇报/回归 | 执行细节以它为准，本文不重复 |
 | [CHANGELOG.md](../CHANGELOG.md) + [changelog/README.md](../changelog/README.md) | 当前窗口与归档索引 | 规则见本文 §2；`changelog/README.md` 是镜像 |
 | [backlog.json](../backlog.json) | 当前任务/未完成/需授权 | 窗口外的历史进 `backlog-archive.json`；状态详情不写进入口 |

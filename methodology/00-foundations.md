@@ -168,4 +168,4 @@ agent_hint: 任何改造任务开工前先读本页；确认适用前提与三�
 1. 本页的原则/边界变化 → 必须同步 [MTH-002](01-assessment.md) 决策条件、[MTH-003](02-roadmap.md) 门禁、[MTH-007](06-security.md) 安全底线，并更新术语表。
 2. 新增"不承诺项"或"新增前提"属于**对外契约变化**，必须写 ADR 与变更记录。
 3. 任何文档改动后运行：`python -m toolkit.repurpose validate --strict`、`python scripts/dev/check-links.py --strict-anchors`。
-4. 详细扩展协议见 [MTH-009 Agent 交接](08-agent-handoff.md)。
+4. 详细扩展协议见 [MTH-017 扩展 SOP/变更传播/CLI 契约](17-expansion-and-cli-contract.md)，交接与任务生命周期见 [MTH-009 Agent 交接](08-agent-handoff.md)。

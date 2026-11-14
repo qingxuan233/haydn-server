@@ -5,7 +5,7 @@ type: pitfall
 status: current
 audience: human, agent
 tags: bootloader, unlock-policy, oneplus, coloros, deep-test, quota, account
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 采购/解锁前先查机型现行政策与账号状态；把账号门槛当硬前置，不要假设"买来就能解"。
 severity: S2
 domain: boot
@@ -25,13 +25,7 @@ oem: oneplus
 影响范围：整条 B 路线（解锁→Root→迁移）全部阻塞。
 ```
 
-## 2. 触发场景
-
-| 项 | 内容 |
-|---|---|
-| 设备/ROM | 一加 ColorOS 16+ / 2025-10 后发布机型（政策分界）；老机型是否豁免需按机型核实 |
-| 触发动作 | 申请官方深度测试 / 执行 `fastboot flashing unlock` |
-| 频率 | 政策期内必现；老机型不一定 |
+**触发场景**：设备/ROM — 一加 ColorOS 16+ / 2025-10 后发布机型（政策分界，老机型是否豁免需按机型核实）；触发动作 — 申请官方深度测试 / `fastboot flashing unlock`；频率 — 政策期内必现，老机型不一定。
 
 ## 3. 根因
 
@@ -66,15 +60,10 @@ adb shell getprop ro.boot.verifiedbootstate
 
 ## 6. 关联
 
-- 护栏：[GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [GRD-001](../guardrails/GRD-001-no-root-no-unlock-default.md)
-- 方法论：[MTH-012 §2/§3](../methodology/11-root-lab.md)
-- 案例：[一加 Ace Pro 预研](../cases/ace-pro-pgp110/README.md)
-- 同类：[PIT-010 国行官方解锁关闭](PIT-010-cn-oem-unlock-closed.md)
+- 护栏：[GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [GRD-001](../guardrails/GRD-001-no-root-no-unlock-default.md)；方法论：[MTH-012 §2/§3](../methodology/11-root-lab.md)；案例：[一加 Ace Pro 预研](../cases/ace-pro-pgp110/README.md)；同类：[PIT-010 国行官方解锁关闭](PIT-010-cn-oem-unlock-closed.md)
 
 ## 7. 证据
 
-| 证据 | 位置 | 备注 |
-|---|---|---|
-| 一加深度测试调整公告与 QA（2026-07-24 公开报道） | 外部公开报道（未入库） | 账号 60 天/实名/人脸/7 天登录/30 天冷却/年 4 台/14 天名额；仓库不引外链 |
-| 一加 2025-08-14 ColorOS 16 解锁政策公告（公开报道） | 外部公开报道（未入库） | 新政策首批 ColorOS 16 机型 |
-| 老机型"不受影响"表述（官方 QA，公开报道） | 外部公开报道（未入库） | 仍需逐机型核实，**未实测** |
+- 一加深度测试调整公告与 QA（2026-07-24 公开报道；外部资料未入库）：账号 60 天/实名/人脸/7 天登录/30 天冷却/年 4 台/14 天名额；仓库不引外链。
+- 一加 2025-08-14 ColorOS 16 解锁政策公告（公开报道；外部资料未入库）：新政策首批 ColorOS 16 机型。
+- 老机型"不受影响"表述（官方 QA，公开报道；外部资料未入库）：仍需逐机型核实，**未实测**。

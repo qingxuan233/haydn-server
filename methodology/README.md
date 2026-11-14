@@ -47,7 +47,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 
 1. [AGENTS.md](../AGENTS.md)：工作协议、红线、DoD、任务协议。
 2. [agent-manifest.json](../agent-manifest.json)：根摘要（≤160 行）；需要某层时只读一个 `agent-manifest.d/` 分片。
-3. 按任务**只选 1 篇**主题 MTH（评估/路线图/服务器/桥/控制面/安全/验收之一）；扩展/交接读 [MTH-009](08-agent-handoff.md)，归档/上下文预算读 [MTH-015](15-archive-and-context-budget.md)，项目推进/阶段门读 [MTH-013](12-delivery-governance.md)，发布/兼容/数据读 [MTH-016](16-release-compatibility-data.md)，SOP/评审/分支/回归读 [MTH-014](13-agent-sop.md)。
+3. 按任务**只选 1 篇**主题 MTH（评估/路线图/服务器/桥/控制面/安全/验收之一）；交接读 [MTH-009](08-agent-handoff.md)，扩展 SOP/CLI 契约读 [MTH-017](17-expansion-and-cli-contract.md)，评估执行清单读 [MTH-018](18-assessment-execution.md)，归档/上下文预算读 [MTH-015](15-archive-and-context-budget.md)，项目推进/阶段门读 [MTH-013](12-delivery-governance.md)，发布/兼容/数据读 [MTH-016](16-release-compatibility-data.md)，SOP/评审/分支/回归读 [MTH-014](13-agent-sop.md)。
 4. [README](../README.md) 只读"仓库地图/阅读路径"段；[backlog.json](../backlog.json) 领取任务。
 5. 动手前按 AGENTS §0 跑基线校验；只读优先、小步变更、证据不伪造。
 
@@ -81,7 +81,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | ③ 单一事实源 | 本页 §4.4 | 每类事实只认哪一处（禁止两处维护） | 维护者；归属变化时更新 |
 | ④ 维护规则 | 本页 §8 + [AGENTS.md](../AGENTS.md) §10 | 谁维护、何时更新、更新后跑什么校验 | Lead/维护者 |
 
-### 4.2 文档地图（MTH-000 ~ MTH-016）
+### 4.2 文档地图（MTH-000 ~ MTH-018）
 
 | ID | 文档 | 解决什么问题 | 主要读者 |
 |---|---|---|---|
@@ -94,7 +94,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | MTH-006 | [AI 控制面（Track C）](05-control-plane.md) | Tier1/2/3、自愈、审计、蓝绿升级、边界 | 人 + Agent |
 | MTH-007 | [安全与密钥生命周期](06-security.md) | 威胁模型、凭据管理、暴露面、轮换、泄露处理 | 人 + Agent |
 | MTH-008 | [验收与稳定性](07-validation.md) | 5 重启、24h soak、故障注入、恢复演练、证据格式 | Agent 为主 |
-| MTH-009 | [Agent 交接与扩展协议](08-agent-handoff.md) | 目录/ID/任务/扩展/变更传播/CLI 契约/DoD 摘要（Agent 必读） | Agent |
+| MTH-009 | [Agent 交接与扩展协议](08-agent-handoff.md) | 分层/目录/ID/front matter/任务生命周期/DoD 摘要（Agent 必读） | Agent |
 | MTH-010 | [术语表](09-glossary.md) | 统一术语口径（proot/FGS/AVB/soak/Tier/DRI/G0–G7 等） | 人 + Agent |
 | MTH-011 | [文档生命周期、归属、命名与变更联动](10-document-lifecycle.md) | 记录边界/命名/索引四表/ADR/联动矩阵/知识债 | 人 + Agent |
 | MTH-012 | [Root 实验设备方法论](11-root-lab.md) | 采购准入、解锁/Root 门禁、方案选型、OTA/ARB、救援、验收、割接（**仅授权实验设备**） | 人 + Agent |
@@ -102,6 +102,8 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | MTH-014 | [Agent 工作 SOP 与协作治理](13-agent-sop.md) | 生命周期、计划外置、DoD/证据卡、评审/测试、汇报、多 Agent、分支与版本、提示词治理、AR-01..10 回归 | Agent 为主 |
 | MTH-015 | [归档、上下文预算与机器校验](15-archive-and-context-budget.md) | CHANGELOG 窗口/归档、状态段上限、阅读预算、分层加载、截断检测、机检 | 人 + Agent |
 | MTH-016 | [发布就绪、兼容与数据治理](16-release-compatibility-data.md) | 部署/观测/runbook/Go-No-Go、兼容矩阵与弃用、数据地图与六问、依赖许可与 SBOM | 人 + Agent |
+| MTH-017 | [扩展 SOP、变更传播与工具契约](17-expansion-and-cli-contract.md) | 七类扩展 SOP（MTH/PIT/GRD/TOOL/CASE/ADR/REQUEST）、变更传播矩阵、统一 CLI 契约 | Agent 为主 |
+| MTH-018 | [评估执行、OEM 清单与失败处理](18-assessment-execution.md) | detect/probe/assess/plan 命令、OEM 现场检查、产出物、失败处理、脱敏示例 | Agent 为主 |
 
 **配套层入口**
 
@@ -120,7 +122,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | 我要做的事 | 先读 | 再读 |
 |---|---|---|
 | 第一次接手/新会话 | [AGENTS.md](../AGENTS.md) §0 | [agent-manifest.json](../agent-manifest.json) → 本页 §2.2 |
-| 评估一台手机能否做服务器 | [MTH-002](01-assessment.md) | [MTH-003](02-roadmap.md) §1 |
+| 评估一台手机能否做服务器 | [MTH-002](01-assessment.md) | [MTH-018](18-assessment-execution.md)（执行清单）、[MTH-003](02-roadmap.md) §1 |
 | 知道当前阶段与下一步 | [MTH-003](02-roadmap.md) | 相关轨道 MTH-004/005/006 |
 | 服务器栈/服务守护/备份/排障 | [MTH-004](03-server-stack.md) | [MTH-015](15-archive-and-context-budget.md)（证据与归档） |
 | 宿主遥测桥 | [MTH-005](04-telemetry-bridge.md) | [MTH-006](05-control-plane.md)、[MTH-007](06-security.md) |
@@ -130,10 +132,11 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | 立项/需求基线/用户验收 | [MTH-013](12-delivery-governance.md) | [MTH-008](07-validation.md)、[MTH-003](02-roadmap.md)、[MTH-014](13-agent-sop.md) |
 | 发布/割接/兼容/弃用/数据/许可 | [MTH-016](16-release-compatibility-data.md) | [MTH-013](12-delivery-governance.md)、[GRD-010](../guardrails/GRD-010-license-compliance.md)、[GRD-011](../guardrails/GRD-011-privacy-inventory.md) |
 | Agent 工作 SOP/评审/汇报/多 Agent/分支/回归 | [MTH-014](13-agent-sop.md) | [AGENTS.md](../AGENTS.md)、[MTH-009](08-agent-handoff.md) |
-| 新增/修改/移动文档 | [MTH-011](10-document-lifecycle.md) | [MTH-009](08-agent-handoff.md)、[MTH-010](09-glossary.md) |
+| 新增/修改/移动文档 | [MTH-011](10-document-lifecycle.md) | [MTH-017](17-expansion-and-cli-contract.md)（扩展 SOP）、[MTH-009](08-agent-handoff.md)（ID/front matter）、[MTH-010](09-glossary.md) |
 | 归档/窗口/阅读预算/机检 | [MTH-015](15-archive-and-context-budget.md) | [MTH-011](10-document-lifecycle.md) |
 | 决策留痕/为什么这样定 | [adr/README.md](../adr/README.md) | [MTH-011](10-document-lifecycle.md) §2.4 |
-| 交接/扩展新层（新增 MTH/PIT/GRD/案例） | [MTH-009](08-agent-handoff.md) | [MTH-011](10-document-lifecycle.md)、[模板](../toolkit/templates/methodology-doc.md) |
+| 交接/恢复/任务生命周期 | [MTH-009](08-agent-handoff.md) | [MTH-014](13-agent-sop.md) §16、[AGENTS.md](../AGENTS.md) §0 |
+| 扩展新层（新增 MTH/PIT/GRD/案例/ADR/需求卡） | [MTH-017](17-expansion-and-cli-contract.md) | [MTH-011](10-document-lifecycle.md)、[模板](../toolkit/templates/methodology-doc.md) |
 | 实验设备解锁/Root | [MTH-012](11-root-lab.md) | [GRD-015](../guardrails/GRD-015-root-lab-controlled.md)、[MTH-002](01-assessment.md) |
 | 术语不确定/红线不确定 | [MTH-010](09-glossary.md) | [guardrails/README.md](../guardrails/README.md) |
 
@@ -157,6 +160,8 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 | 归档窗口/状态段/阅读预算/机检上限 | [MTH-015](15-archive-and-context-budget.md) | 链接 |
 | 风险分级/交付门/用户验收 | [MTH-013](12-delivery-governance.md) | 链接 |
 | 发布就绪/兼容弃用/数据隐私/依赖许可 | [MTH-016](16-release-compatibility-data.md) | 链接 |
+| 扩展 SOP/变更传播/CLI 契约 | [MTH-017](17-expansion-and-cli-contract.md) | 链接；MTH-009 只留交接 |
+| 评估执行/OEM 清单/失败处理 | [MTH-018](18-assessment-execution.md) | 链接；路线口径仍以 MTH-002 为准 |
 | Agent 工作 SOP/评审/回归/提示词治理 | [MTH-014](13-agent-sop.md) | 链接；AGENTS 只留摘要 |
 
 ---
@@ -167,7 +172,7 @@ agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的�
 
 | 层 | 结论 |
 |---|---|
-| methodology | v2 初版可用（MTH-000..016；随实践修订，变更进 CHANGELOG 窗口/归档）；MTH-012 为 Root 实验轨规范、MTH-013/MTH-016 交付治理与 MTH-014 Agent SOP **多数机制已立规范、未全实测**（待落地项见各篇） |
+| methodology | v2 初版可用（MTH-000..018；随实践修订，变更进 CHANGELOG 窗口/归档）；MTH-012 为 Root 实验轨规范、MTH-013/MTH-016 交付治理与 MTH-014 Agent SOP **多数机制已立规范、未全实测**（待落地项见各篇） |
 | cases | 实证案例 1 个（**部分验收**，不得表述为全通过）；实验案例 1 个（一加 Ace Pro，已完成解锁/Root/救援演练，仍属实验轨） |
 | toolkit | alpha：fixture 单测可跑、**尚未真机回归**；限制与测试数见 toolkit/README |
 | pitfalls / guardrails | 初版条目，均含证据/检查方式；新增/变更进 CHANGELOG |

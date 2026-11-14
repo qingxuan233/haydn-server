@@ -5,7 +5,7 @@ type: pitfall
 status: current
 audience: human, agent
 tags: root, modules, bootloop, ota, play-integrity, widevine, fingerprint, coloros, magisk
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: Root 后先最小基线、一次只装一个模块；OTA 前先恢复原厂镜像；出现指纹/支付异常先查模块与隐藏配置。
 severity: S2
 domain: device
@@ -27,13 +27,7 @@ oem: oneplus
 影响范围：设备不可用/反复重刷；服务中断；验收数据作废。
 ```
 
-## 2. 触发场景
-
-| 项 | 内容 |
-|---|---|
-| 设备/ROM | 已解锁并 Root 的一加/ColorOS 或第三方 ROM |
-| 触发动作 | 一次装多个模块/升级模块/OTA 后未恢复原厂镜像/补丁版本与系统不匹配 |
-| 频率 | 模块冲突偶发；OTA 错配常见；指纹/完整性问题在 ColorOS 上较常见 |
+**触发场景**：设备/ROM — 已解锁并 Root 的一加/ColorOS 或第三方 ROM；触发动作 — 一次装多个模块/升级模块/OTA 后未恢复原厂镜像/补丁版本与系统不匹配；频率 — 模块冲突偶发，OTA 错配常见，指纹/完整性问题在 ColorOS 上较常见。
 
 ## 3. 根因
 
@@ -71,14 +65,10 @@ adb shell dumpsys package | grep -A3 -E 'magisk|kernelsu|apatch'  # 视权限而
 
 ## 6. 关联
 
-- 护栏：[GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [GRD-004 备份](../guardrails/GRD-004-backup-before-change.md) · [GRD-014 固件冻结](../guardrails/GRD-014-firmware-freeze-ota.md)
-- 方法论：[MTH-012 §4/§5/§7/§9](../methodology/11-root-lab.md) · [MTH-008 验收](../methodology/07-validation.md)
-- 同类：[PIT-020 看门狗自愈级联](PIT-020-watchdog-selfheal-cascade.md) · [PIT-014 配置重载锁死](PIT-014-config-reload-lockout.md)
+- 护栏：[GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [GRD-004 备份](../guardrails/GRD-004-backup-before-change.md) · [GRD-014 固件冻结](../guardrails/GRD-014-firmware-freeze-ota.md)；方法论：[MTH-012 §4/§5/§7/§9](../methodology/11-root-lab.md) · [MTH-008 验收](../methodology/07-validation.md)；同类：[PIT-020 看门狗自愈级联](PIT-020-watchdog-selfheal-cascade.md) · [PIT-014 配置重载锁死](PIT-014-config-reload-lockout.md)
 
 ## 7. 证据
 
-| 证据 | 位置 | 备注 |
-|---|---|---|
-| 一加全能工具箱说明页"Root 后指纹失效 5 种情况"（社区工具文档） | 外部公开资料（未入库） | ColorOS + Magisk Hide 指纹异常；未实测 |
-| KernelSU/APatch/Magisk 官方安装与 OTA/卸载文档 | 官方文档（未入库） | LKM/补丁/恢复原厂镜像流程 |
-| Android Verified Boot 与 Play Integrity 公开资料 | 官方/公开文档（未入库） | 解锁导致完整性状态变化；未实测 |
+- 一加全能工具箱说明页"Root 后指纹失效 5 种情况"（社区工具文档；外部资料未入库）：ColorOS + Magisk Hide 指纹异常；未实测。
+- KernelSU/APatch/Magisk 官方安装与 OTA/卸载文档（官方文档未入库）：LKM/补丁/恢复原厂镜像流程。
+- Android Verified Boot 与 Play Integrity 公开资料（官方/公开文档未入库）：解锁导致完整性状态变化；未实测。

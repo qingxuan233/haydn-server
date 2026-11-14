@@ -1,7 +1,7 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "pitfalls",
-  "generated_at": "2026-11-14T03:29:57Z",
+  "generated_at": "2026-11-14T03:50:46Z",
   "count": 26,
   "entries": [
     {"id":"PIT-000","title":"踩坑库索引（Pitfalls Index）","path":"pitfalls/README.md","type":"pitfall","status":"current","tags":["index","pitfalls","severity","evidence"],"agent_hint":"先按严重度与域检索，再读对应 PIT；新增条目必须带可复现证据与验证步骤","severity":"S4","domain":"docs"},

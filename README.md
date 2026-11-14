@@ -43,7 +43,7 @@ agent-manifest.d/             按层分片（methodology/pitfalls/guardrails/cas
 backlog.json                  结构化待办（Agent 领取任务用；schema 见 toolkit/schema/backlog.schema.json）
 adr/                          决策记录层（ADR-0001..，Nygard 五段；索引见 adr/README.md）
 README.md                     本文件：人类入口
-methodology/                  规范层：可迁移的方法论正文（MTH-001..016；MTH-012 Root 实验轨、MTH-013 交付治理、MTH-014 Agent SOP、MTH-015 归档与预算、MTH-016 发布/兼容/数据）
+methodology/                  规范层：可迁移的方法论正文（MTH-001..018；MTH-012 Root 实验轨、MTH-013 交付治理、MTH-014 Agent SOP、MTH-015 归档与预算、MTH-016 发布/兼容/数据、MTH-017 扩展与 CLI 契约、MTH-018 评估执行）
 pitfalls/                     证据层：踩过的坑（PIT-001..025），每条含根因/规避/验证/证据
 guardrails/                   约束层：红线与注意事项（GRD-001..016），每条含检查方式
 toolkit/                      工具层：零依赖 Python CLI + schema + 模板 + Termux 脚本 + 测试
@@ -61,7 +61,7 @@ changelog/                    历史变更归档（按月，默认不读；规�
 
 ### 人类（约 30 分钟）
 1. 本文 → [MTH-001 边界与原则](methodology/00-foundations.md)
-2. [MTH-002 评估与决策](methodology/01-assessment.md) → [MTH-003 路线图](methodology/02-roadmap.md)
+2. [MTH-002 评估与决策](methodology/01-assessment.md) → [MTH-018 评估执行](methodology/18-assessment-execution.md) → [MTH-003 路线图](methodology/02-roadmap.md)
 3. 按兴趣选读：[MTH-004 服务器栈](methodology/03-server-stack.md)、[MTH-005 遥测桥](methodology/04-telemetry-bridge.md)、[MTH-006 控制面](methodology/05-control-plane.md)
 4. 动手前必读：[MTH-007 安全](methodology/06-security.md)、[guardrails/README](guardrails/README.md)
 5. 交付/验收前读 [MTH-013 项目推进与交付治理](methodology/12-delivery-governance.md)，发布/割接/兼容/数据前读 [MTH-016 发布就绪、兼容与数据治理](methodology/16-release-compatibility-data.md)；Agent 协作/评审/回归读 [MTH-014 Agent 工作 SOP](methodology/13-agent-sop.md)；重要决策留痕见 [adr/README.md](adr/README.md)
@@ -69,7 +69,7 @@ changelog/                    历史变更归档（按月，默认不读；规�
 ### Agent / 新会话（10 分钟）
 1. [AGENTS.md](AGENTS.md)（工作协议、红线、DoD）
 2. [agent-manifest.json](agent-manifest.json)（根摘要与阅读顺序；**不要**一次加载全部分片）
-3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md) → [MTH-011 文档生命周期](methodology/10-document-lifecycle.md) → [MTH-015 归档与上下文预算](methodology/15-archive-and-context-budget.md) → [MTH-014 Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md)（任务/评审/分支/回归）
+3. [MTH-009 Agent 交接与扩展协议](methodology/08-agent-handoff.md) → [MTH-017 扩展 SOP/变更传播/CLI 契约](methodology/17-expansion-and-cli-contract.md) → [MTH-011 文档生命周期](methodology/10-document-lifecycle.md) → [MTH-015 归档与上下文预算](methodology/15-archive-and-context-budget.md) → [MTH-014 Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md)（任务/评审/分支/回归）
 4. [backlog.json](backlog.json) 领取任务、[adr/README.md](adr/README.md) 查已接受决策；变更前跑 `python -m toolkit.repurpose preflight`（统一质量门）
 
 **上下文预算（防膨胀，详见 [MTH-015](methodology/15-archive-and-context-budget.md)）**：
@@ -131,7 +131,7 @@ python scripts/dev/check-links.py --strict-anchors
 | MTH-006 | [AI 控制面](methodology/05-control-plane.md) | Tier1/2/3、自愈、审计、蓝绿、边界 |
 | MTH-007 | [安全与密钥生命周期](methodology/06-security.md) | 威胁模型、秘密管理、轮换、暴露面 |
 | MTH-008 | [验收与稳定性](methodology/07-validation.md) | 5 重启、24h soak、故障注入、恢复演练 |
-| MTH-009 | [Agent 交接与扩展协议](methodology/08-agent-handoff.md) | 目录/协议/任务/扩展/DoD（Agent 必读） |
+| MTH-009 | [Agent 交接与扩展协议](methodology/08-agent-handoff.md) | 目录/协议/任务/交接/DoD（Agent 必读） |
 | MTH-010 | [术语表](methodology/09-glossary.md) | proot/FGS/AVB/FBE/soak/Tier 等统一口径 |
 | MTH-011 | [文档生命周期、归属、命名与变更联动](methodology/10-document-lifecycle.md) | 记录边界、命名、索引四表、ADR、变更联动矩阵 |
 | MTH-012 | [Root 实验设备方法论](methodology/11-root-lab.md) | 实验机准入、G-L0..G-L6、解锁/Root/救援/割接（多数待实测） |
@@ -139,6 +139,8 @@ python scripts/dev/check-links.py --strict-anchors
 | MTH-014 | [Agent 工作 SOP 与协作治理](methodology/13-agent-sop.md) | 任务生命周期、评审/测试、汇报、分支与协议版本、提示词治理、Agent 回归 |
 | MTH-015 | [归档、上下文预算与机器校验](methodology/15-archive-and-context-budget.md) | CHANGELOG 窗口与归档、状态段上限、阅读预算、分层加载、机检 |
 | MTH-016 | [发布就绪、兼容与数据治理](methodology/16-release-compatibility-data.md) | 部署/可观测/runbook/Go-No-Go、兼容矩阵与弃用、数据隐私、依赖许可与 SBOM |
+| MTH-017 | [扩展 SOP、变更传播与工具契约](methodology/17-expansion-and-cli-contract.md) | 七类扩展 SOP、变更传播矩阵、统一 CLI 契约 |
+| MTH-018 | [评估执行、OEM 清单与失败处理](methodology/18-assessment-execution.md) | detect/probe/assess/plan 命令、OEM 现场检查、产出物、失败处理 |
 
 ---
 
@@ -192,7 +194,7 @@ python scripts/dev/check-links.py --strict-anchors
 
 > 本节只写摘要（≤8 行）；详细状态见 [CHANGELOG.md](CHANGELOG.md) 当前窗口、[backlog.json](backlog.json) 与 [cases/README.md](cases/README.md)；历史见 [changelog/](changelog/README.md)（默认不读）。
 
-- 方法论：MTH-001..016 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-016 发布/兼容/数据、MTH-014 Agent SOP 多为"已立规范、未全实测"）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.3（AGENTS 容量分流，细节下沉 MTH）与 ADR 决策层已落地。
+- 方法论：MTH-001..018 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-016 发布/兼容/数据、MTH-014 Agent SOP 多为"已立规范、未全实测"；MTH-017/MTH-018 由 MTH-009/MTH-002 按容量规则拆出）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.3（AGENTS 容量分流，细节下沉 MTH）与 ADR 决策层已落地。
 - 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/3 轮救援，并部分落地 P1 管理面（Tailscale 登录与 SSH 密钥、原生充电上限 80%、无用应用禁用、Quark 加密备份跑通（含自动化脚本二次执行）；24h soak run #2 未满、tailnet 端到端与备份计划任务（未注册）未完成），仍属实验轨（见 [CASE-003](cases/ace-pro-pgp110/README.md)）。
 - 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-015](methodology/15-archive-and-context-budget.md)；决策记录见 [adr/README.md](adr/README.md)。
 

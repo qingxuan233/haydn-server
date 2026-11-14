@@ -238,4 +238,4 @@ agent_hint: 任何涉及 token/证书/口令/备份/公网入口/日志的改动
 - Root 风险：[PIT-023 ARB 硬砖](../pitfalls/PIT-023-oneplus-arb-hard-brick.md)、[PIT-024 工具供应链](../pitfalls/PIT-024-flash-tool-supply-chain.md)、[PIT-025 Root 模块回归](../pitfalls/PIT-025-root-module-regression.md)。
 - 工具与后续：[toolkit 索引](../toolkit/README.md)、[backlog.json](../backlog.json)（`BL-010` 安全基线自动检查）。
 
-> 安全契约变更（认证方式、pin 算法、凭据位置、轮换周期）必须同步：桥/服务端实现 + 测试 + 部署说明 + 本文件 + 验收用例 + 案例记录。传播规则见 [MTH-009](08-agent-handoff.md)。
+> 安全契约变更（认证方式、pin 算法、凭据位置、轮换周期）必须同步：桥/服务端实现 + 测试 + 部署说明 + 本文件 + 验收用例 + 案例记录。传播规则见 [MTH-017](17-expansion-and-cli-contract.md) §2。

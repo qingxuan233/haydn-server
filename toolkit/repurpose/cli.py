@@ -550,7 +550,8 @@ def _tail_summary(output: str, *, lines: int = 3, limit: int = 200) -> str:
 
 def _validate_step_summary(report: dict[str, Any]) -> str:
     summary = (
-        f"errors={report['error_count']} warnings={report['warning_count']} strict={report['strict']}"
+        f"errors={report['error_count']} warnings={report['warning_count']} "
+        f"advisories={report.get('advisory_count', 0)} strict={report['strict']}"
     )
     if report["issues"]:
         first = report["issues"][0]

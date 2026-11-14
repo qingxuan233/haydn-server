@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: toolkit, cli, schema, templates, termux, index, validate, governance, preflight, offline-fixture
 depends: MTH-000, MTH-002
-updated: 2026-11-13
+updated: 2026-11-14
 agent_hint: 改工具前先读本页契约与 [AGENTS](../AGENTS.md) §7；任何子命令/字段/schema 变更必须同步 tests + schema + 本 README，并重跑 preflight（index→validate --strict→unittest→check-links，退出码 0/3/4）
 ---
 
@@ -285,6 +285,8 @@ python -m toolkit.repurpose validate --mtime-check  # 本地排查才用：按 m
    - `changelog/*.md`≤256KB；CHANGELOG **当前窗口数据行**（`| 2026-11-11 | vX.Y | … |` 形式）≤8；
      `changelog/` 归档默认不读、只读，仅追溯时读单个文件（见 [MTH-015](../methodology/15-archive-and-context-budget.md)）；
    - `AGENTS.md`/`README.md` 的"状态段落"≤8 行（只留结论与链接）；
+   - **余量预警**：行数未超上限但距上限不足 `line_limit_margin.warning_within`（当前 15）行时报
+     `DOC_LINES_MARGIN`，级别为 `advisory`：照常打印但**不计入 error/warning**，`--strict` 与 `preflight` 不因此失败；
    - 策略文件缺失/损坏时回退内置默认策略并记 `POLICY_MISSING`/`POLICY_INVALID` warning。
 6. **manifest 根/分片一致性**：根 ≤160 行/≤16KB 且不含完整 content；四层 `shards` 映射完整；
    分片 ≤300 行/≤32KB/≤40 条；counts 与分片/当前内容一致；分片 entry 的 ID 全局唯一、path 存在且相对、
@@ -292,7 +294,7 @@ python -m toolkit.repurpose validate --mtime-check  # 本地排查才用：按 m
 7. **敏感值启发式**（私钥/令牌片段）只记 warning，不打印内容。
 
 内容层错误与机器契约违反固定 error；policy/manifest 预算类违规在 `--strict` 下 exit 4、非 strict 下仅 warning；
-`MANIFEST_STALE` 仅 `--mtime-check` 开启时报告。若违规来自 Lead/维护者负责的文档，validate 只报告，不自动改那些文件。
+`DOC_LINES_MARGIN` 为 `advisory` 级（只提示、不参与失败判定）；`MANIFEST_STALE` 仅 `--mtime-check` 开启时报告。若违规来自 Lead/维护者负责的文档，validate 只报告，不自动改那些文件。
 
 
 ## 8. 模板与 schema（新增内容先复制模板）
@@ -340,29 +342,11 @@ Schema 均为**自描述 JSON Schema（draft-07）**，校验器不依赖 `jsons
 ## 10. 测试与质量门
 
 ```powershell
-python -m unittest discover -s toolkit/tests -t . -v   # 当前 282 项，全绿
+python -m unittest discover -s toolkit/tests -t . -v   # 当前 293 项，全绿
 python -m toolkit.repurpose preflight                   # 一次跑完四道门（0/3/4 三态）
 ```
 
-覆盖：front matter（BOM/CRLF/列表/引号/错误分支）、profile 结构校验与模板/schema 一致性、
-assess 四条路线与门禁/软门禁/未知降置信度、plan 的 P0–P6 与 A/B 差异、index（根摘要 ≤160 行/≤16KB、
-四层分片字段与限额、counts 一致、旧分片清理、缺失目录/front matter 半成品容错、`index --check` 一致/篡改分片/篡改根摘要/generated_at 无关、两次重建仅 generated_at 不同（AR-06 幂等））、
-validate（重复 ID/断链/anchor/绝对路径/JSON/manifest 一致性与 legacy content、doc-policy 行数/CHANGELOG 窗口≤8/归档字节/状态段落、
-`--mtime-check` 默认关闭语义、policy 缺失回退、strict 升级）、
-governance（协议缺章节/缺哨兵/版本行非法/320 硬上限与 201~320 不算失败、命名大写/中文/状态词/前缀/README 豁免、
-PIT 跳号/缺段/超 40、ADR 文件名/ID/状态/缺段/superseded 回链/索引孤儿、CHANGELOG 归档条数/文件缺失/版本范围/未登记、
-backlog 缺字段/非法枚举/done 缺 result/ID 跳号/depends 断链/outputs 绝对路径、AR-02/AR-03，
-以及 **AR-04 反例自证**：构造 6 类违规后 validate 报 error 且 CLI exit 4）、
-preflight（全绿 0 / `--skip-*` 出 SKIPPED=3 / validate 失败=4 / unittest 失败=4 / check-links 失败=4 / 脚本缺失降级 SKIPPED、
-步骤表与 `--json` 字段）、
-CLI（`--help`/退出码、fixture 离线 detect/probe/assess/plan/rootcheck/rescue-kit/new-profile/index/validate/preflight、
-Cp936 管道 JSON 合法 UTF-8）、rootcheck（三态/人工项/AVB 矛盾/verity/SELinux/多管理器/GKI/KALLSYMS/分区/ARB）、
-rescue-kit（清单/相对路径/自排除/修改/缺失/新增/空目录/CLI 0/4/2）。
-测试全部离线（fixture：[adb-haydn.json](tests/fixtures/adb-haydn.json)、
-[profile-haydn-locked.json](tests/fixtures/profile-haydn-locked.json)、
-[profile-root-lab-ready.json](tests/fixtures/profile-root-lab-ready.json)、
-[repo_builder.py](tests/fixtures/repo_builder.py)），不依赖真机与网络；`repo_builder` 生成
-含 AGENTS/backlog/CHANGELOG/adr 的完整最小仓库，另有 helper 构造违规样本与 preflight stub。
+覆盖范围（front matter/profile/assess/plan/index/validate/governance/preflight/CLI/rootcheck/rescue-kit）与 fixture 说明见 [tests/README.md](tests/README.md)；测试全部离线，不依赖真机与网络。
 
 ## 11. 扩展子命令/SOP（改契约必须同步）
 
@@ -374,7 +358,7 @@ rescue-kit（清单/相对路径/自排除/修改/缺失/新增/空目录/CLI 0/
 6. 运行 `python -m toolkit.repurpose preflight`（index + validate --strict + 全量测试 + check-links，退出码 0 才算完成）；
    `agent-manifest.json` + `agent-manifest.d/` 与内容一致（`index --check` exit 0；根摘要 ≤160 行、分片 ≤300 行/≤40 条、doc-policy 全部在限内）；
 7. 对外契约变化在 CHANGELOG.md 当前窗口记录（Lead/维护者提交；窗口将超 8 条时先按 MTH-015 归档），并按
-   [MTH-009](../methodology/08-agent-handoff.md) 做影响传播（MTH/PIT/GRD/CASE 交叉链接）。
+   [MTH-017](../methodology/17-expansion-and-cli-contract.md) §2 做影响传播（MTH/PIT/GRD/CASE 交叉链接）。
    > "一条命令跑所有 CI 门"即 TOOL-013 `preflight`；CI 调 `index --check` + **完整** `preflight`（不要用 `--no-index`，会因 SKIPPED 退 3）。
 
 ## 12. 与 AGENTS / MTH / PIT / GRD / CASE 的接口约定
@@ -383,7 +367,8 @@ rescue-kit（清单/相对路径/自排除/修改/缺失/新增/空目录/CLI 0/
 |---|---|
 | [AGENTS.md](../AGENTS.md) | 工具是唯一机器索引/校验入口；`index` 生成根摘要 + 四层分片（生成物不手改）；DoD 命令必须全绿 |
 | [MTH-000](../methodology/README.md) / [MTH-002](../methodology/01-assessment.md) | profile/assessment 字段与门禁 ID（G-A/G-B0/G-B1/G-B2/G-C/G-D）以本工具 schema 为准；文档不得另造字段 |
-| [MTH-009](../methodology/08-agent-handoff.md) | 改契约的传播流程：工具 + schema + 模板 + 测试 + 文档 + manifest 同步 |
+| [MTH-017](../methodology/17-expansion-and-cli-contract.md) | 改契约的传播流程：工具 + schema + 模板 + 测试 + 文档 + manifest 同步；统一 CLI 契约 |
+| [MTH-018](../methodology/18-assessment-execution.md) | 评估执行清单（detect/probe/assess/plan）与失败处理；字段/门禁口径回指 MTH-002 |
 | [MTH-011](../methodology/10-document-lifecycle.md) | 文档归属、命名、索引、ADR 与变更联动规则 |
 | [MTH-015](../methodology/15-archive-and-context-budget.md) | 文档窗口/归档/上下文预算/机检上限规则；doc-policy.json 是它的机器可执行投影 |
 | [pitfalls/README.md](../pitfalls/README.md) | manifest 条目必须带 `severity`/`domain`，供 Agent 过滤；PIT 复现优先用工具只读命令 |

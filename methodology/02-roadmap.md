@@ -235,7 +235,7 @@ planned ──开始──▶ in_progress ──交付──▶ gate_review
 | 控制面/受控运维（P3/P5） | [MTH-006](05-control-plane.md) |
 | 安全与密钥（P5） | [MTH-007](06-security.md) |
 | 验收/soak/故障注入（P6） | [MTH-008](07-validation.md) |
-| Agent 交接与变更协议 | [MTH-009](08-agent-handoff.md) |
+| Agent 交接/变更传播 | [MTH-009](08-agent-handoff.md) · [MTH-017](17-expansion-and-cli-contract.md) |
 | 红线与真实踩坑 | [guardrails/README.md](../guardrails/README.md) · [pitfalls/README.md](../pitfalls/README.md) |
 | Root 实验设备（专用/已授权） | [MTH-012](11-root-lab.md) · [GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [CASE-003](../cases/ace-pro-pgp110/README.md) |
 | 已验证案例（阶段证据） | [cases/haydn-k40pro/README.md](../cases/haydn-k40pro/README.md) |

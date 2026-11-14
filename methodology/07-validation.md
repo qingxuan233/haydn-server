@@ -244,4 +244,4 @@ agent_hint: 没有证据就没有完成；先定证据类型与门禁，再跑 5
 - 相关方法论：[MTH-005 遥测桥](04-telemetry-bridge.md)、[MTH-006 控制面](05-control-plane.md)、[MTH-007 安全](06-security.md)、[MTH-009 交接](08-agent-handoff.md)；任务队列：[backlog.json](../backlog.json)（`BL-008` soak 自动化）。
 - 案例：[haydn K40 Pro 案例](../cases/haydn-k40pro/README.md)。
 
-> 验收契约变更（门禁定义/统计口径/证据格式）必须同步：采集工具 + 汇总逻辑 + 模板 + 本文件 + 案例记录。传播规则见 [MTH-009](08-agent-handoff.md)。
+> 验收契约变更（门禁定义/统计口径/证据格式）必须同步：采集工具 + 汇总逻辑 + 模板 + 本文件 + 案例记录。传播规则见 [MTH-017](17-expansion-and-cli-contract.md) §2。

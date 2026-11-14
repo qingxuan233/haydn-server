@@ -153,65 +153,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 
 ### 6.3 P1 配置要点（可复现，不含任何密钥）
 
-> 设备侧 shell 脚本必须**以 LF 文本经 `adb push` 部署**，部署后跑 `sh -n` 校验并核对进程存活/下一采集周期；本批曾因脚本转写问题导致遥测循环静默退出（见 §6.2）。以下为 2026-11-14 实测配置摘要；完整运行期脚本/日志在 gitignored `inventory/`，改动前快照见 `inventory/device-snapshot-20261114/`。所有改动可按本节末尾命令回滚。
-
-**KernelSU 模块 `service.sh`（开机持久化）**：
-```sh
-# P1: keep CPU awake + disable Wi-Fi power save（可回滚）
-echo haydn-server > /sys/power/wake_lock
-i=0
-while [ "$i" -lt 10 ]; do
-  iw dev wlan0 set power_save off >/dev/null 2>&1 && break
-  i=$((i + 1)); sleep 3
-done
-```
-
-**sshd（仅 loopback、密钥登录）** `/data/server/rootfs/etc/ssh/sshd_config.d/99-haydn.conf`：
-```text
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PubkeyAuthentication yes
-PermitRootLogin prohibit-password
-ListenAddress 127.0.0.1
-X11Forwarding no
-PermitEmptyPasswords no
-```
-
-**supervisord 程序**（追加到 `/etc/supervisor/conf.d/haydn.conf`）：
-```text
-haydn-sshd            command=/usr/sbin/sshd -D
-haydn-node-exporter   command=/usr/bin/prometheus-node-exporter --web.listen-address=127.0.0.1:9100
-haydn-cron            command=/usr/sbin/cron -f
-haydn-tailscaled      command=/usr/local/bin/tailscaled --tun=userspace-networking --socks5-server=127.0.0.1:1055 --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock
-```
-
-**健康检查与告警**：cron `*/5 * * * * root /usr/local/bin/haydn-healthcheck.sh`（检查 supervisor/http/node_exporter/sshd/disk，OK/FAIL 写 `/var/log/haydn/health.log`）；telemetry-loop 每 5 分钟调用 `alert-watch.sh`，FAIL 时发 Android 通知并写 `/data/server/logs/alerts.log`（同一 FAIL 行去重，恢复后自动清状态）。
-
-**Tailscale（登录与 tailnet SSH 入口，密钥不入库）**：
-```sh
-# 登录：auth key 用 file: 方式传递，避免出现在命令行/日志
-# （先把 key 放在 chroot 内临时文件 /tmp/.tskey，用完立即删除）
-/data/server/bin/chroot-enter.sh /usr/local/bin/tailscale up \
-  --auth-key=file:/tmp/.tskey --hostname=haydn-pgp110 --accept-dns=false
-
-# tailnet 内 TCP 转发 :22 -> 本机 loopback sshd（tailnet-only）
-/data/server/bin/chroot-enter.sh /usr/local/bin/tailscale serve --bg --tcp 22 tcp://127.0.0.1:22
-/data/server/bin/chroot-enter.sh /usr/local/bin/tailscale serve status
-```
-
-**验收/回滚命令**：
-```sh
-# 验收（只读）
-iw dev wlan0 get power_save                       # 期望 Power save: off
-/data/server/bin/chroot-enter.sh sh -c 'ss -ltn'  # 期望仅 127.0.0.1:22/9100/1055/18080
-/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/supervisor/supervisord.conf status  # 6 服务 RUNNING
-iptables -S INPUT | head                          # 期望 -P INPUT DROP + haydnlab 白名单
-
-# 回滚
-echo haydn-server > /sys/power/wake_unlock
-iw dev wlan0 set power_save on
-# 停用单个服务：supervisorctl -c /etc/supervisor/supervisord.conf stop haydn-tailscaled
-```
+配置摘要、部署前提（LF 文本 `adb push` + `sh -n` 校验）与回滚命令**原样下沉到附录** [p1-config.md](p1-config.md)（CASE-005，2026-11-14 快照；用户授权结构拆分，事实/结论/未完成项未改写）；本节不重复，避免两处漂移。
 
 ---
 
@@ -252,6 +194,7 @@ iw dev wlan0 set power_save on
 - 验收：5/5 重启、24h soak、3 轮救援演练、chroot 基准、网络暴露扫描、su 审计、备份恢复演练（[MTH-008](../../methodology/07-validation.md)）。
 - 回滚：原厂 boot 恢复 → 切槽（若支持）→ 官方全量包 → EDL（最后手段）；割接前 haydn 保持生产。
 - **未实测项一律不写通过**；本页任何"通过"必须附日期、命令与证据路径。
+- 2026-11-14 结构拆分（用户授权）：§6.3 P1 配置要点下沉为附录 [p1-config.md](p1-config.md)（CASE-005）；案例事实/结论/未完成项未改写。
 
 ---
 
@@ -262,6 +205,6 @@ iw dev wlan0 set power_save on
 | [MTH-012 Root 实验方法论](../../methodology/11-root-lab.md) | 门禁/选型/特权/OTA/救援/验收 |
 | [GRD-015 Root 实验受控](../../guardrails/GRD-015-root-lab-controlled.md) · [GRD-001](../../guardrails/GRD-001-no-root-no-unlock-default.md) · [GRD-014](../../guardrails/GRD-014-firmware-freeze-ota.md) | 授权与红线 |
 | [PIT-022](../../pitfalls/PIT-022-oem-unlock-quota.md) · [PIT-023](../../pitfalls/PIT-023-oneplus-arb-hard-brick.md) · [PIT-024](../../pitfalls/PIT-024-flash-tool-supply-chain.md) · [PIT-025](../../pitfalls/PIT-025-root-module-regression.md) | 风险证据 |
-| [OEM profile](oem-profile.md) · [profile.json](profile.json) | ColorOS/一加人工适配清单；机器档案 |
+| [OEM profile](oem-profile.md) · [profile.json](profile.json) · [P1 配置附录](p1-config.md) | ColorOS/一加人工适配清单；机器档案；P1 配置快照 |
 | [haydn K40 Pro 案例](../haydn-k40pro/README.md) | 生产基线/迁移源 |
 | [MTH-004 服务器栈](../../methodology/03-server-stack.md) · [MTH-007 安全](../../methodology/06-security.md) | chroot/网络/安全通用规则 |

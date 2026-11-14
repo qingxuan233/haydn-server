@@ -5,7 +5,7 @@ type: pitfall
 status: current
 audience: human, agent
 tags: arb, anti-rollback, e-fuse, coloros, oneplus, hard-brick, edl, downgrade
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 解锁/root 设备一律冻结固件；任何降级、刷旧第三方 ROM、刷旧全量包的念头先停：先查 ARB 与版本后缀。
 severity: S1
 domain: boot
@@ -26,13 +26,7 @@ oem: oneplus
 影响范围：设备永久不可恢复 + 全部数据/服务损失。
 ```
 
-## 2. 触发场景
-
-| 项 | 内容 |
-|---|---|
-| 设备/ROM | 已报道：一加 13/13T（16.0.3.501）、一加 15（16.0.3.503）、一加 Ace 5/Ace 5 Pro（16.0.3.500）；Find X8、一加 11/12 有后续风险；Ace Pro 是否/何时引入**待验证** |
-| 触发动作 | 安装含 ARB 的构建；随后刷入更旧官方固件/旧第三方 ROM/旧全量包 |
-| 频率 | 触发后降级必现硬砖 |
+**触发场景**：设备/ROM — 已报道一加 13/13T（16.0.3.501）、一加 15（16.0.3.503）、一加 Ace 5/Ace 5 Pro（16.0.3.500），Find X8、一加 11/12 有后续风险，Ace Pro 是否/何时引入**待验证**；触发动作 — 安装含 ARB 的构建后刷入更旧官方固件/旧第三方 ROM/旧全量包；频率 — 触发后降级必现硬砖。
 
 ## 3. 根因
 
@@ -67,15 +61,10 @@ adb shell getprop ro.boot.flash.locked
 
 ## 6. 关联
 
-- 护栏：[GRD-014 固件冻结](../guardrails/GRD-014-firmware-freeze-ota.md) · [GRD-015](../guardrails/GRD-015-root-lab-controlled.md)
-- 方法论：[MTH-012 §7/§8](../methodology/11-root-lab.md)
-- 案例：[一加 Ace Pro 预研](../cases/ace-pro-pgp110/README.md)
-- 同类：[PIT-017 只有快照没有回滚](PIT-017-snapshot-without-rollback.md)
+- 护栏：[GRD-014 固件冻结](../guardrails/GRD-014-firmware-freeze-ota.md) · [GRD-015](../guardrails/GRD-015-root-lab-controlled.md)；方法论：[MTH-012 §7/§8](../methodology/11-root-lab.md)；案例：[一加 Ace Pro 预研](../cases/ace-pro-pgp110/README.md)；同类：[PIT-017 只有快照没有回滚](PIT-017-snapshot-without-rollback.md)
 
 ## 7. 证据
 
-| 证据 | 位置 | 备注 |
-|---|---|---|
-| Android Authority 2026-01-19 报道（ARB 机型与版本） | 外部公开报道（未入库） | 13/13T/15/Ace 5 系列；EDL 失效 |
-| 安兔兔 2026-01-20 报道（e-fuse/计数器/救砖失效） | 外部公开报道（未入库） | 中文细节；官方降级包撤回 |
-| 社区 OTA/熔断分析（公开仓库文章） | 外部公开资料（未入库） | 9008 免授权被熔断的机制分析；未实测 |
+- Android Authority 2026-01-19 报道（ARB 机型与版本；外部资料未入库）：13/13T/15/Ace 5 系列；EDL 失效。
+- 安兔兔 2026-01-20 报道（e-fuse/计数器/救砖失效；外部资料未入库）：中文细节；官方降级包撤回。
+- 社区 OTA/熔断分析（公开仓库文章；外部资料未入库）：9008 免授权被熔断的机制分析；未实测。

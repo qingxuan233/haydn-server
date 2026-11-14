@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: adr, index, decisions
 depends: MTH-011, MTH-015
-updated: 2026-11-13
+updated: 2026-11-14
 agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR 变更时先查本索引；够不上 ADR 的轻量决策记入 §5 台账（D-NN），不要为小事造 ADR。
 ---
 
@@ -17,7 +17,7 @@ agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR �
 ## 1. 用途
 
 - 让"为什么"与"是什么"一起入库：后来者无需重推论证，只读结论与备选；决策可追溯、可被推翻——推翻旧决策必须新建 ADR，旧 ADR 标 superseded。
-- 机器可检索：文件名 `NNNN-slug.md`、flat front matter、状态枚举、索引链接均由 `validate --strict` 机检（见 §7）。
+- 机器可检索：文件名 `NNNN-slug.md`、flat front matter、状态枚举、索引链接均由 `validate --strict` 机检（见 §6）。
 
 ## 2. 何时写 ADR
 
@@ -50,6 +50,8 @@ agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR �
 | ADR-0003 | AGENTS 容量分流：细节下沉 MTH，保留红线/边界/索引（协议 v1.3，197 行） | accepted | 2026-11-14 | [ADR-0003](0003-agents-capacity-split.md) |
 | ADR-0004 | MTH-011 拆分：生命周期归 MTH-011，归档/预算/机检归 MTH-015 | accepted | 2026-11-14 | [ADR-0004](0004-mth-011-split.md) |
 | ADR-0005 | MTH-013 拆分：治理流程留 MTH-013，发布/兼容/数据/许可归 MTH-016 | accepted | 2026-11-14 | [ADR-0005](0005-mth-013-split.md) |
+| ADR-0006 | MTH-009/MTH-002 拆分：扩展契约归 MTH-017，评估执行归 MTH-018 | accepted | 2026-11-14 | [ADR-0006](0006-mth-009-mth-002-split.md) |
+| ADR-0007 | 行数余量预警采用 advisory 级，不改变 strict/preflight 失败语义 | accepted | 2026-11-14 | [ADR-0007](0007-line-margin-advisory.md) |
 
 新增 ADR 必须同步本表；索引与文件双向无遗漏（validate 的 ADR_INDEX 检查）。
 
@@ -62,21 +64,10 @@ agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR �
 
 台账只增行、不改旧行；某条升格为 ADR 时在行末标注"升级为 ADR-NNNN"。
 
-## 6. 新增流程
+## 6. 新增与维护（见 MTH-011 §2.4）
+触发条件、`NNNN-kebab-slug.md` 命名、五段格式、`status` 枚举、"被取代不删除 + 回链"、轻量台账与禁止项**只维护在** [MTH-011 §2.4](../methodology/10-document-lifecycle.md)，索引/指针/协议版本联动按 [§2.5](../methodology/10-document-lifecycle.md) 与 [MTH-014 §7](../methodology/13-agent-sop.md) 执行；本页不重复，避免两处漂移。
 
-1. 查本索引、台账与相关 MTH/PIT/GRD，确认没有重复或冲突决策。
-2. 取号：下一个四位连续整数，文件名 `NNNN-kebab-slug.md`（全 ASCII）；ID 与文件名一致。
-3. 按 [ADR 模板](../toolkit/templates/adr.md) 写 front matter 与正文五段：状态/背景/决策/后果；重大决策加备选方案对比。
-4. 更新 §4 索引；在相关 MTH/PIT/GRD/AGENTS 加指针；协议变更同步协议版本（见 [ADR-0002](0002-protocol-versioning-and-regression.md)）；跑 `python -m toolkit.repurpose validate --strict` 与 `python scripts/dev/check-links.py --strict-anchors`（生成物由 Lead 统一重建）。
-
-## 7. 维护规则
-
-- 编号只增不复用；编号连续、文件名与 id 一致由 validate 机检（ADR_FILENAME/ADR_ID）。
-- 决策变化：新建 ADR + 旧 ADR 标 superseded 并加 `superseded_by`；不得删除旧文件或改写旧结论。
-- 季度/里程碑复核：核对待办决策与状态，确认索引与文件双向无遗漏（无孤儿 ADR）。
-- **不得**把 ADR 当规范正文：机制条款写 MTH、红线写 GRD、证据写 PIT；ADR 只记录选择与理由。
-
-## 8. 与其他层的关系
+## 7. 与其他层的关系
 
 - **methodology/**：规范正文（"应当怎么做"）；ADR 记录"这次为什么选这个方案"，被采纳的机制最终固化为 MTH 条款。
 - **guardrails/**：不可协商红线；红线永远压过 ADR，冲突时以 GRD 为准并报告 Lead 裁决。

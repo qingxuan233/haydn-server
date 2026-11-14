@@ -5,7 +5,7 @@ type: pitfall
 status: current
 audience: human, agent
 tags: supply-chain, flashing-tool, closed-source, edl, malware, provenance, oneplus
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: Root/解锁/救砖工具优先官方开源发布物并校验哈希；闭源一键工具只能作备用且不得成为唯一路径。
 severity: S2
 domain: security
@@ -26,13 +26,7 @@ oem: oneplus
 影响范围：主机安全、设备安全、解锁/Root 结果不可审计。
 ```
 
-## 2. 触发场景
-
-| 项 | 内容 |
-|---|---|
-| 设备/ROM | 一加/OPPO/真我（Oplus）高通机型 |
-| 触发动作 | 使用闭源一键工具箱解锁/刷 Root/进 9008；使用远程代刷服务 |
-| 频率 | 工具更新/服务器变更后行为不可预期 |
+**触发场景**：设备/ROM — 一加/OPPO/真我（Oplus）高通机型；触发动作 — 使用闭源一键工具箱解锁/刷 Root/进 9008，或使用远程代刷服务；频率 — 工具更新/服务器变更后行为不可预期。
 
 ## 3. 根因
 
@@ -70,14 +64,10 @@ adb shell getprop ro.boot.flash.locked
 
 ## 6. 关联
 
-- 护栏：[GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [GRD-006 密钥卫生](../guardrails/GRD-006-secret-hygiene.md) · [GRD-010 许可合规](../guardrails/GRD-010-license-compliance.md)
-- 方法论：[MTH-012 §3/§4](../methodology/11-root-lab.md) · [MTH-007 安全](../methodology/06-security.md)
-- 同类：[PIT-013 ADB 脆弱性](PIT-013-adb-fragility.md) · [PIT-016 签名密钥复现](PIT-016-generated-signing-keys-repro.md)
+- 护栏：[GRD-015](../guardrails/GRD-015-root-lab-controlled.md) · [GRD-006 密钥卫生](../guardrails/GRD-006-secret-hygiene.md) · [GRD-010 许可合规](../guardrails/GRD-010-license-compliance.md)；方法论：[MTH-012 §3/§4](../methodology/11-root-lab.md) · [MTH-007 安全](../methodology/06-security.md)；同类：[PIT-013 ADB 脆弱性](PIT-013-adb-fragility.md) · [PIT-016 签名密钥复现](PIT-016-generated-signing-keys-repro.md)
 
 ## 7. 证据
 
-| 证据 | 位置 | 备注 |
-|---|---|---|
-| 一加全能工具箱说明页（作者声明报毒原因/服务端下发 Root 方案） | 外部公开资料（未入库） | 社区工具；未实测 |
-| 9008 免授权深刷教程（公开仓库） | 外部公开资料（未入库） | 需泄露 loader/授权绕过；供应链高风险 |
-| 官方即将熔断 9008 免授权的公开分析 | 外部公开资料（未入库） | 工具时效性与硬砖风险 |
+- 一加全能工具箱说明页（作者声明报毒原因/服务端下发 Root 方案；外部资料未入库）：社区工具；未实测。
+- 9008 免授权深刷教程（公开仓库；外部资料未入库）：需泄露 loader/授权绕过；供应链高风险。
+- 官方即将熔断 9008 免授权的公开分析（外部资料未入库）：工具时效性与硬砖风险。
