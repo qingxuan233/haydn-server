@@ -7,12 +7,12 @@ audience: human, agent
 tags: oneplus, ace-pro, pgp110, ovaltine, root, kernelsu, apatch, coloros, arb, chroot
 depends: MTH-012, MTH-002, MTH-008, GRD-015, PIT-022, PIT-023, PIT-024, PIT-025
 updated: 2026-11-13
-agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮救援演练，但 24h soak/chroot 基准/服务迁移未完成；不得标记生产可用，未实测项仍按 unknown 处理。
+agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮救援演练，但 24h soak/chroot 基准/服务迁移未完成；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电上限、无用应用禁用、Quark 加密备份一次跑通）；不得标记生产可用，未实测项仍按 unknown 处理。
 ---
 
 # CASE-003 · 一加 Ace Pro（PGP110 / ovaltine）Root 实验平台预研
 
-> **状态：draft（部分实测）**。2026-11-13 已完成真机官方解锁与 KernelSU Root，并完成 3 轮救援演练；24h soak、chroot 基准、服务迁移与割接验收未完成。本页同时保留采购/规划结论与实测证据，未完成项不得表述为"已验证"。
+> **状态：draft（部分实测）**。2026-11-13 已完成真机官方解锁与 KernelSU Root，并完成 3 轮救援演练；2026-11-14 P1 管理面部分落地（Tailscale 登录/SSH、充电上限 80%、无用应用禁用、Quark 加密备份一次跑通）；24h soak run #2、chroot 基准、服务迁移与割接验收未完成。本页同时保留采购/规划结论与实测证据，未完成项不得表述为"已验证"。
 > 定位：生产机 [haydn K40 Pro](../haydn-k40pro/README.md) 继续无 Root 运行；本设备是**专用实验/候选服务器**。
 > 用户决策（2026-11-11）：下一部手机选一加 Ace Pro 16+256GB 作为 Root 平台；接受解锁清数据、失保、硬砖与数据丢失风险；生产机不 Root。
 
@@ -29,7 +29,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | 已知后续系统 | ColorOS 15.0 正式版（2025-01 开放尝鲜，公开报道）；ColorOS 16 是否推送**待验证** |
 | 硬件要点 | 6.7" 2412×1080 120Hz；双电芯 4800mAh / 150W；USB 2.0；无 microSD；Wi-Fi 6；NFC |
 | 改造路线 | **B（已解锁 + Root + chroot）**；C/D 仅作后续研究，不默认 |
-| 改造状态 | 部分实测（2026-11-13：官方解锁 + KernelSU Root + 3 轮救援演练）；24h soak/chroot/割接未完成 |
+| 改造状态 | 部分实测（2026-11-13：官方解锁 + KernelSU Root + 3 轮救援演练）；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电、应用禁用、Quark 加密备份一次跑通）；24h soak run #2/chroot/割接未完成 |
 | 权威状态源 | 本页 + [profile.json](profile.json)（documented）；实测后另建运行期记录 |
 
 ---

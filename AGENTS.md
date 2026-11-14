@@ -268,14 +268,14 @@ forbidden:
 
 ---
 
-## 9. 当前阶段与已知缺口（2026-11-13）
+## 9. 当前阶段与已知缺口（2026-11-14）
 
 > 本节只写**结论与链接**（≤8 行），不复制数字；当前窗口变更见 [CHANGELOG.md](CHANGELOG.md)，历史变更见 [changelog/](changelog/README.md)（默认不读）。
 
 - 方法论：MTH-001..014 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-014 Agent SOP 多为"已立规范、未全实测"）；工具链零依赖 CLI + fixture 单测，**尚未真机回归**。
 - 交付治理与阶段门 G0–G7 已成文（[MTH-013](methodology/12-delivery-governance.md)），但**尚未在真实割接中演练**；首个真实 Go/No-Go 见 [backlog.json](backlog.json)。
 - 案例是**部分验证**（24h soak、配对/轮换、mTLS、限流等未完成，详见 [cases/haydn-k40pro/README.md](cases/haydn-k40pro/README.md)）；不得表述为"全验收通过"。
-- Root 轨：Ace Pro 已完成解锁/Root 与救援演练（[CASE-003](cases/ace-pro-pgp110/README.md)），生产 haydn 保持无 Root。
+- Root 轨：Ace Pro 已完成解锁/Root 与 3 轮救援演练（[CASE-003](cases/ace-pro-pgp110/README.md)），并部分落地 P1 管理面（Tailscale 登录/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通一次；24h soak run #2 未满、tailnet 端到端与备份定时化未完成）；生产 haydn 保持无 Root。
 - 本协议处于容量警示档（>200 行），分流为知识债（BL-029）；P0 仍是真机验证与基线绿化。
 
 ---

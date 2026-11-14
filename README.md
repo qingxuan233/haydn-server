@@ -47,9 +47,9 @@ methodology/                  规范层：可迁移的方法论正文（MTH-001.
 pitfalls/                     证据层：踩过的坑（PIT-001..025），每条含根因/规避/验证/证据
 guardrails/                   约束层：红线与注意事项（GRD-001..016），每条含检查方式
 toolkit/                      工具层：零依赖 Python CLI + schema + 模板 + Termux 脚本 + 测试
-cases/                        案例层：真实设备落地记录（haydn K40 Pro 部分验收；Ace Pro 实验机，已解锁/Root）
+cases/                        案例层：真实设备落地记录（haydn K40 Pro 部分验收；Ace Pro 实验机，已解锁/Root，P1 管理面部分落地）
 docs/ scripts/ android-bridge/  旧项目冻结证据（案例原始文档、脚本、Bridge 源码）
-CHANGELOG.md                  当前变更窗口（≤8 条，含 2026-11-11 改造摘要）
+CHANGELOG.md                  当前变更窗口（≤8 条；最新 v1.56）
 changelog/                    历史变更归档（按月，默认不读；规则见 MTH-011）
 ```
 
@@ -191,7 +191,7 @@ python scripts/dev/check-links.py --strict-anchors
 > 本节只写摘要（≤8 行）；详细状态见 [CHANGELOG.md](CHANGELOG.md) 当前窗口、[backlog.json](backlog.json) 与 [cases/README.md](cases/README.md)；历史见 [changelog/](changelog/README.md)（默认不读）。
 
 - 方法论：MTH-001..014 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-014 Agent SOP 多为"已立规范、未全实测"）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.2 与 ADR 决策层已落地。
-- 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/救援演练（见 [CASE-003](cases/ace-pro-pgp110/README.md)），仍属实验轨。
+- 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/3 轮救援，并部分落地 P1 管理面（Tailscale 登录与 SSH 密钥、原生充电上限 80%、无用应用禁用、Quark 加密备份跑通一次；24h soak run #2 未满、tailnet 端到端与备份定时化未完成），仍属实验轨（见 [CASE-003](cases/ace-pro-pgp110/README.md)）。
 - 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-011](methodology/10-document-lifecycle.md)；决策记录见 [adr/README.md](adr/README.md)。
 
 ---
