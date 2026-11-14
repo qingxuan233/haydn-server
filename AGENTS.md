@@ -2,8 +2,8 @@
 
 | 项目 | 内容 |
 |---|---|
-| 版本 | v1.3（2026-11-14 容量分流：细节下沉 MTH，本文件保留红线与索引；ADR-0003） |
-| 协议版本 | v1.3 |
+| 版本 | v1.4（2026-11-14 新增 `APP` 附录前缀；容量分流见 ADR-0003） |
+| 协议版本 | v1.4 |
 | 适用 | 在任意 clone/分支上工作的 AI Agent、subagent、新会话（不记录本机绝对路径） |
 | 上位 | 用户直接指令 > 本文件 > 子目录 `AGENTS.md` > `guardrails/` 红线 > `methodology/` 规范 > 其他 |
 | 机器索引 | [agent-manifest.json](agent-manifest.json)（摘要）+ `agent-manifest.d/`（分片）· 待办 [backlog.json](backlog.json) · 决策 [adr/README.md](adr/README.md) |
@@ -82,7 +82,7 @@
 
 ### 2.2 协议容量、分层加载与截断自检
 
-- **容量分级**（目标值）：≤200 行健康；201~320 行警示（需评审并登记知识债）；>320 行债务（当日分流）。本文件 v1.3 已分流至健康档。
+- **容量分级**（目标值）：≤200 行健康；201~320 行警示（需评审并登记知识债）；>320 行债务（当日分流）。本文件 v1.4 已分流至健康档。
 - **三层加载**：L0=本文件；L1=`README.md`/agent-manifest/agent_hint；L2=单篇正文。禁止一次性加载全量分片或整仓文档；末行哨兵缺失即协议被截断，体积复核以 `validate` 的 doc-policy 为准。
 
 ---
@@ -108,7 +108,7 @@
 ### 4.1 命名、ID 与 front matter
 
 - 目录/文件名**全 ASCII 小写 kebab-case**；入口 `README.md`/`AGENTS.md`/`CHANGELOG.md` 豁免；禁止空格/下划线/中文/emoji/状态词（`final`/`latest`/`new`/`v2`/`copy`/`副本`/`最终版`）；正文中文。规则与机检见 [MTH-011](methodology/10-document-lifecycle.md) §2.3。
-- 稳定 ID 前缀：`MTH`/`PIT`/`GRD`/`ADR`/`REQ`/`TOOL`/`CASE`/`BL`/`ACP`/`RUN`/`TASK`；**编号只增不复用**，模板示例 ID 只是占位。front matter 为**头部 flat YAML**，必需键 `id,title,type,status,audience,tags,updated,agent_hint`（`depends` 可选），见 [MTH-009](methodology/08-agent-handoff.md) §4；改完运行 `python -m toolkit.repurpose index`。
+- 稳定 ID 前缀：`MTH`/`PIT`/`GRD`/`ADR`/`REQ`/`TOOL`/`CASE`/`APP`/`BL`/`ACP`/`RUN`/`TASK`；**编号只增不复用**，模板示例 ID 只是占位。`APP` 只用于随主文档/案例存放的结构性附录，不占 `CASE` 等其他主编号。front matter 为**头部 flat YAML**，必需键 `id,title,type,status,audience,tags,updated,agent_hint`（`depends` 可选），见 [MTH-009](methodology/08-agent-handoff.md) §4；改完运行 `python -m toolkit.repurpose index`。
 
 ### 4.2 链接、决策、联动与生成物
 

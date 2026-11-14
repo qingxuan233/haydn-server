@@ -505,12 +505,12 @@
       "depends": [
         "BL-035"
       ],
-      "notes": "2026-11-14 完成：10 条 advisory 全部清零，处理后余量 PIT-022 21/PIT-023 20/PIT-024 17/PIT-025 16、GRD-015 16、adr README 16、toolkit README 27、runbook 17、cases 70/40 行；案例仅做结构下沉（CASE-005/006 附录），事实/结论/未完成项未改写。",
+      "notes": "2026-11-14 完成：10 条 advisory 全部清零，处理后余量 PIT-022 21/PIT-023 20/PIT-024 17/PIT-025 16、GRD-015 16、adr README 16、toolkit README 27、runbook 17、cases 70/40 行；案例仅做结构下沉（附录 APP-001/002，不占 CASE 编号），事实/结论/未完成项未改写。",
       "agent_hint": "余量预警处置优先合并同级列表/下沉附录；案例调整必须先取得用户授权并记录方式。",
       "requires": "",
       "owner": "protocol",
       "updated": "2026-11-14",
-      "result": "PIT-022/023/024/025 合并触发场景与关联/证据列表（69/70/73/74 行）；GRD-015 合并关联引用（74）；adr/README 新增与维护流程改指 MTH-011 §2.4/§2.5 与 MTH-014 §7（74）；toolkit/README 测试覆盖清单下沉 toolkit/tests/README.md（413）；runbook 关联段合并（113）；用户授权下将 ACE §6.3 下沉 CASE-005、haydn §8 下沉 CASE-006 并回链，两篇 README 记录授权与处理方式（210/240 行）；cases/README 登记附录；validate --strict advisories=0。",
+      "result": "PIT-022/023/024/025 合并触发场景与关联/证据列表（69/70/73/74 行）；GRD-015 合并关联引用（74）；adr/README 新增与维护流程改指 MTH-011 §2.4/§2.5 与 MTH-014 §7（74）；toolkit/README 测试覆盖清单下沉 toolkit/tests/README.md（413）；runbook 关联段合并（113）；用户授权下将 ACE §6.3 下沉 APP-001、haydn §8 下沉 APP-002 并回链，两篇 README 记录授权与处理方式（210/240 行）；cases/README 登记附录；validate --strict advisories=0。",
       "risk": "M"
     }
   ]

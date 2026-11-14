@@ -56,7 +56,7 @@ cases/
     ├── README.md                  # CASE-00N，type: case-study（案例正文）
     ├── profile.json               # repurpose.device-profile.v1（机器可读档案）
     ├── oem-profile.md             # CASE-00N，type: oem-profile（OEM 人工适配清单）
-    └── <appendix>.md              # CASE-00N，type: case-study（正文下沉的结构性附录，不是新设备）
+    └── <appendix>.md              # APP-00N，type: case-study（正文下沉的结构性附录，不占 CASE 编号）
 ```
 
 | 文件 | 必填 | 作用 | 约束 |

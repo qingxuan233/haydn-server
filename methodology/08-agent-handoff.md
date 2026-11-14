@@ -95,6 +95,7 @@ agent_hint: 一句话说明何时读、先做什么
 | `ADR` | 决策记录 | `adr/NNNN-slug.md` 四位序号从 `0001` 起连续；`superseded` 不删除并回链新 ADR（规则见 [MTH-011](10-document-lifecycle.md) §2.4） |
 | `REQ` | 需求基线卡（可选） | M/H 任务的需求基线卡 ID（模板 [request-card](../toolkit/templates/request-card.md)）；只用于交付物，不进入内容索引 |
 | `TOOL` / `CASE` | 工具能力 / 案例 | 子命令级稳定 ID / 一个案例目录一个主 ID |
+| `APP` | 结构性附录 | 随主文档/案例同目录存放；只增不复用，不占 `CASE` 等主编号；正文标注归属与冻结声明 |
 | `ACP` / `RUN` / `TASK` | 验收清单 / Runbook / Agent 任务单 | 交付物模板编号；模板示例号不占正式编号 |
 | `BL` | 待办 | 在 [backlog.json](../backlog.json) 中分配 |
 

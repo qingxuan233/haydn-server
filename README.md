@@ -37,7 +37,7 @@
 ## 3. 仓库地图（四层知识 + 决策层 + 一案例）
 
 ```text
-AGENTS.md                     Agent 工作协议（协议 v1.3；红线/边界/索引，细节见 MTH）
+AGENTS.md                     Agent 工作协议（协议 v1.4；红线/边界/索引，细节见 MTH）
 agent-manifest.json           机器可读索引根摘要（≤160 行，由 toolkit index 生成）
 agent-manifest.d/             按层分片（methodology/pitfalls/guardrails/case-studies，按需只读一个）
 backlog.json                  结构化待办（Agent 领取任务用；schema 见 toolkit/schema/backlog.schema.json）
@@ -194,7 +194,7 @@ python scripts/dev/check-links.py --strict-anchors
 
 > 本节只写摘要（≤8 行）；详细状态见 [CHANGELOG.md](CHANGELOG.md) 当前窗口、[backlog.json](backlog.json) 与 [cases/README.md](cases/README.md)；历史见 [changelog/](changelog/README.md)（默认不读）。
 
-- 方法论：MTH-001..018 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-016 发布/兼容/数据、MTH-014 Agent SOP 多为"已立规范、未全实测"；MTH-017/MTH-018 由 MTH-009/MTH-002 按容量规则拆出）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.3（AGENTS 容量分流，细节下沉 MTH）与 ADR 决策层已落地。
+- 方法论：MTH-001..018 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-016 发布/兼容/数据、MTH-014 Agent SOP 多为"已立规范、未全实测"；MTH-017/MTH-018 由 MTH-009/MTH-002 按容量规则拆出）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.4（AGENTS 容量分流与 `APP` 附录前缀，细节下沉 MTH）与 ADR 决策层已落地。
 - 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/3 轮救援，并部分落地 P1 管理面（Tailscale 登录与 SSH 密钥、原生充电上限 80%、无用应用禁用、Quark 加密备份跑通（含自动化脚本二次执行）；24h soak run #2 未满、tailnet 端到端与备份计划任务（未注册）未完成），仍属实验轨（见 [CASE-003](cases/ace-pro-pgp110/README.md)）。
 - 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-015](methodology/15-archive-and-context-budget.md)；决策记录见 [adr/README.md](adr/README.md)。
 

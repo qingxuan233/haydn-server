@@ -211,7 +211,7 @@ assess 结论：route=A，confidence=0.73（documented 档案的启发式置信�
 
 ## 8. 复用指南（换机时）
 
-"保留 / 必须重做 / 换机步骤"三张清单**原样下沉到附录** [reuse-guide.md](reuse-guide.md)（CASE-006，2026-11-14 快照；用户授权结构拆分，事实/结论/未完成项未改写）；本节不重复，避免两处漂移。
+"保留 / 必须重做 / 换机步骤"三张清单**原样下沉到附录** [reuse-guide.md](reuse-guide.md)（附录 APP-002，2026-11-14 快照；用户授权结构拆分，事实/结论/未完成项未改写）；本节不重复，避免两处漂移。
 
 ---
 
@@ -223,7 +223,7 @@ assess 结论：route=A，confidence=0.73（documented 档案的启发式置信�
 - 脱敏：本案例不记录设备序列号、网络地址、凭据等敏感值；[profile.json](profile.json) 中 `identity.serial=null`、`serial_redacted=true`，需要真实值请在本地 `inventory/`（gitignored）查看，勿写入仓库。
 - 新进展的落点：规范修订 → [methodology/README.md](../../methodology/README.md)；新踩坑 → [pitfalls/README.md](../../pitfalls/README.md)；新红线 → [guardrails/README.md](../../guardrails/README.md)；工具/校验 → [toolkit/README.md](../../toolkit/README.md)。
 - 任何事实修正须同步 [profile.json](profile.json) 与 [oem-profile.md](oem-profile.md)，并在提交说明中写明"案例事实纠错"。
-- 2026-11-14 结构拆分（用户授权）：§8 复用指南原样下沉为附录 [reuse-guide.md](reuse-guide.md)（CASE-006）；案例事实/结论/未完成项未改写。
+- 2026-11-14 结构拆分（用户授权）：§8 复用指南原样下沉为附录 [reuse-guide.md](reuse-guide.md)（APP-002）；案例事实/结论/未完成项未改写。
 
 ---
 
