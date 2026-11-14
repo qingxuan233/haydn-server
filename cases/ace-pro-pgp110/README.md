@@ -7,12 +7,12 @@ audience: human, agent
 tags: oneplus, ace-pro, pgp110, ovaltine, root, kernelsu, apatch, coloros, arb, chroot
 depends: MTH-012, MTH-002, MTH-008, GRD-015, PIT-022, PIT-023, PIT-024, PIT-025
 updated: 2026-11-14
-agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮救援演练，但 24h soak/chroot 基准/服务迁移未完成；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电上限、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；2026-11-14 晚追加：讯飞输入法安装并最小权限化（唯一 IME）、24 个第三方包真正卸载（保留清单固定）、设备侧 03:30 定时加密备份上线、boot_b 备份已导出并异地校验，回刷演练与重启验证通过；2026-11-14 soak run #2 用户决定提前中止（6.88h，非满期）、SOTA 14 包安装并 14/14 版本核对；slot A 仍不可启动；2026-11-14 下午修复 backup-loop 判活（pid+boot_id）并手动备份跑通、OTA autoinstall.time 恢复 3:41、包基线 387 个入库；不得标记生产可用，未实测项仍按 unknown 处理。
+agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮救援演练，但 24h soak/chroot 基准/服务迁移未完成；2026-11-14 P1 管理面部分落地（Tailscale/SSH、80% 充电上限、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；2026-11-14 晚追加：讯飞输入法安装并最小权限化（唯一 IME）、24 个第三方包真正卸载（保留清单固定）、设备侧 03:30 定时加密备份上线、boot_b 备份已导出并异地校验，回刷演练与重启验证通过；2026-11-14 soak run #2 用户决定提前中止（6.88h，非满期）、SOTA 14 包安装并 14/14 版本核对；2026-11-14 下午修复 backup-loop 判活（pid+boot_id）并手动备份跑通、OTA autoinstall.time 恢复 3:41、包基线 387 个入库；2026-11-14 晚 A 槽整套对齐成功（A 槽首次可启动、8 服务 RUNNING、15/15 分区尺寸一致，boot_a 未动保 KSU 补丁），soak run #3 以 09:43Z 为新起点；不得标记生产可用，未实测项仍按 unknown 处理。
 ---
 
 # CASE-003 · 一加 Ace Pro（PGP110 / ovaltine）Root 实验平台预研
 
-> **状态：draft（部分实测）**。2026-11-13 已完成真机官方解锁与 KernelSU Root，并完成 3 轮救援演练；2026-11-14 P1 管理面部分落地（Tailscale 登录/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；2026-11-14 soak run #2 按用户决定提前中止（6.88h，**非满期通过**）、`boot_b` 回刷演练与重启验证通过、SOTA 14 包安装并核对通过；chroot 基准、服务迁移与割接验收仍未完成。本页同时保留采购/规划结论与实测证据，未完成项不得表述为"已验证"。
+> **状态：draft（部分实测）**。2026-11-13 已完成真机官方解锁与 KernelSU Root，并完成 3 轮救援演练；2026-11-14 P1 管理面部分落地（Tailscale 登录/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通（自动化脚本二次执行））；2026-11-14 soak run #2 按用户决定提前中止（6.88h，**非满期通过**）、`boot_b` 回刷演练与重启验证通过、SOTA 14 包安装并核对通过；2026-11-14 晚 A 槽整套对齐成功、A 槽首次可启动（详见 §6.6）；chroot 基准、服务迁移与割接验收仍未完成。本页同时保留采购/规划结论与实测证据，未完成项不得表述为"已验证"。
 > 定位：生产机 [haydn K40 Pro](../haydn-k40pro/README.md) 继续无 Root 运行；本设备是**专用实验/候选服务器**。
 > 用户决策（2026-11-11）：下一部手机选一加 Ace Pro 16+256GB 作为 Root 平台；接受解锁清数据、失保、硬砖与数据丢失风险；生产机不 Root。
 
@@ -189,6 +189,21 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 | OTA 设置 | `oplus.ota.autoinstall.time` 已恢复为 `3:41`（回读一致）；`can_update_at_night` 仍为 `0` |
 | 包基线 | 全量 387 个（system 373 + third-party 14，disabled 13）落 `inventory/package-baseline-20261114.txt`（包名/versionName/versionCode/启停/类型），供下次升级比对 |
 
+### 6.6 A 槽整套对齐与 A 槽首次可启动（2026-11-14 晚，实测）
+
+> 用户授权；只动 A 槽（`boot_a` 除外，保 KSU 补丁），B 槽/`vbmeta_b`/userdata 全程未写。完整哈希、命令输出与账本在 gitignored `inventory/slot-a-align-case003-draft.md`、`payload_extract_a.log`、`flash-logical-a.log`、`lpdump-post-align.txt`。§6.4「slot A 仍不可启动」为当日 06:14 状态，已被本小节更新。
+
+| 项 | 结果 |
+|---|---|
+| 固件匹配依据 | 官方全量包 `PGP110_15.0.0.1901_CN01_H.25_full_ota.zip`（7,223,765,587 B，SHA-256 `db588d43…a699`）；`metadata.txt` 的 ota-id/post-build=`PGP110_11.H.25_3250_202606302344`、patch 2026-07-01、ota-type=AB、pre-device=OP5551L1 与设备逐项一致；payload **无 `super` 整体镜像** → 只能逐分区刷 |
+| 预检账本 | super=11,274,289,152 B/22,020,096 扇区，对齐前空闲仅 2,048 扇区=1.0 MiB；A 槽残留 cow system 678.2/vendor 133.3/odm 75.6/product 0.4 MiB；目标净增长 ≈+72.5 MiB；fastbootd 只暴露当前激活槽，必须先 `--set-active=a` |
+| 空间释放 | 删 `system_a-cow` 释放 678.2 MiB（其余 A 槽 cow 与 B 槽 cow 未碰）；resize 后空闲 1,244,488 扇区=607.66 MiB（与 678.2−72.5 自洽） |
+| 物理分区组 | 写前快照 5 分区 + 2 份 lpdump 原文到 `/data/server/backups/slot-a-pre-align-20261114/`（sha256.txt 齐全）；`vendor_boot_a`/`dtbo_a`/`vbmeta_a`/`vbmeta_system_a`/`vbmeta_vendor_a` 刷写全部 OKAY |
+| 逻辑分区组 | 15 个 `_a` 分区 resize+flash 全部 OKAY（my_stock 16 个 sparse 分片 102s，整组约 4 min）；`partition-size` 按十六进制回读 **15/15** 与 payload 一致；`snapshot-update-status: none` |
+| A 启动验证 | `slot=_a`、current=0/active=0、`boot_completed=1`、`verifiedbootstate=orange`；内核 `5.10.236-android12-9-o-g55571f3ffcfa`；ksud 3.3.1(uapi 5)、`su` uid=0 `u:r:ksu:s0`、Enforcing；supervisor **8/8 RUNNING**（cron/frpc/heartbeat/local-http/node-exporter/sshd/tailscaled/tls）；22/1055/9100/18080 仅 loopback、HTTP 200；INPUT DROP+DHCP 白名单、appops ignore 43、IME 仅讯飞；chroot/日志/遥测正常；backup-loop pid 7637 且 boot_id 匹配；`boot_a`=`boot_b`=`2cdcc6f5…a047` |
+| 经验教训 | ①仅刷 `boot_a` 会 bootloop 且 USB 不枚举，只能物理键进 fastboot（本次 `--set-active=b` 回滚已实测可用）；②virtual A/B 的 super 余量可能 ≈0，整槽对齐前必须 `lpdump` 算账；③fastbootd 逻辑分区名须带 `_a`；④`fastboot partition-size` 返回十六进制 |
+| 待验证（不写通过） | `my_preload_a`(1206 MiB)/`my_company_a` 按决定保留未对齐；引导链/基带未刷，与 B 槽底层是否一致**未知**；`boot_a` 仍为 B 版 KSU 内核（与已更新的 vendor_boot/dtbo 混搭），是否对齐待决策；B 槽未回确实测（`bootctl` 报两槽 bootable 属推断）；`rollback-index` **未知**；首次自动备份触发与 24h 满期 soak 未完成（run #3 新起点 2026-11-14T09:43:00Z） |
+
 ---
 
 ## 7. 风险登记
@@ -232,6 +247,7 @@ agent_hint: 2026-11-13 真机已完成官方解锁 + KernelSU LKM Root + 3 轮�
 - 2026-11-14 boot 备份（用户授权）：当前槽 `boot_b` 已导出 `boot_b-20261114.img`（192 MiB，文件 SHA-256 与分区直读一致）+ PC 副本；**回刷演练已完成**（2026-11-14用户决定提前中止 soak 后执行：fastboot 37.0.3、三方哈希一致、原样刷回 `boot_b`、重启验证通过；见 §6.4）。
 - 2026-11-14 SOTA（用户授权）：`com.oplus.ota` 安装 14 个模块 APK（619.4 MiB）成功，安装后自动重启一次；14/14 versionCode 核对一致，被删应用未回归；slot A 仍不可启动（未修复）。
 - 2026-11-14 下午备份修复（用户授权，未重启）：`backup-loop` 判活改为 `pid+boot_id`+cmdline 校验并重启，手动全链路备份跑通（快照/加密/解密自检/上传/DONE）；`oplus.ota.autoinstall.time` 恢复 3:41；包基线 387 个落 `inventory/package-baseline-20261114.txt`（见 §6.5）。
+- 2026-11-14 晚 A 槽整套对齐（用户授权）：A 槽 5 个物理分区 + 15 个逻辑分区对齐到 B 版 build、删 `system_a-cow` 释放 678.2 MiB、`boot_a` 未动；A 槽首次启动成功（8 服务 RUNNING、15/15 尺寸一致、super 空闲 607.66 MiB）；回滚路径不变，详见 §6.6。
 
 ---
 
