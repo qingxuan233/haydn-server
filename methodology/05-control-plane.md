@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: control-plane, agent, ops, tiering, audit, watchdog, blue-green
 depends: MTH-004, MTH-005
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 控制面是解释层与受控运维层而非运行时必需；先落地 Tier1 只读与审计，再谈 Tier2；Tier3 永不对 Agent 开放
 ---
 

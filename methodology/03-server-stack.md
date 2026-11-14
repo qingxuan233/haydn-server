@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: server, termux, proot, supervisord, backup, network
 depends: MTH-001, MTH-002, MTH-003
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 实现 Track A 前先读"为什么 proot"与启动链；服务集按最小核心起步，网络先局域网，备份先于服务。
 ---
 

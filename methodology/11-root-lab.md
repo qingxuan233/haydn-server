@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: root, bootloader, kernelsu, apatch, magisk, lab-device, arb, ota, recovery, privilege
 depends: MTH-002, MTH-003, MTH-007, MTH-008, GRD-001, GRD-004, GRD-005, GRD-014, GRD-015
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 只有"专用实验设备 + 用户书面授权"才可按本页推进；先过采购准入与救援演练，再解锁；生产/主力设备仍按 GRD-001 默认拒绝。
 ---
 

@@ -102,7 +102,7 @@ agent-manifest.d/          # <layer>.json；单层 >40 条时拆为 <layer>-p01.
 | `rescue-kit` | `--dir`（必填）、`--init`/`--verify`（二选一）、`--notes`、`--force`、`--json` | 人类摘要 | 对救援包目录生成/校验 `rescue-manifest.json`（相对路径+sha256）；已有清单默认拒绝覆盖（`--force` 需先核对来源/版本）；`--verify` 缺失/清单外新增/哈希不一致时 exit 4；只读写本地目录 |
 | `new-profile` | `--codename`（必填）、`--out` | 打印 profile JSON | 从模板生成可编辑骨架（含 unknowns 提示），后续人工补证 |
 | `index` | `--root`、`--out`、`--check`、`--json` | 人类摘要 | 扫描四层 front matter，生成根摘要 + `agent-manifest.d/` 分片；单层 >40 条按层内顺序自动拆为 `<layer>-p01.json`…（每片 ≤40 条）；目录缺失跳过不失败；旧分片自动清理。`--check` 只读重建并与磁盘生成物比较（规范化 generated_at；一致 exit 0 / 不一致 exit 4，不写盘） |
-| `validate` | `--root`、`--strict`、`--mtime-check`、`--json` | 人类摘要 | 检查 front matter/ID/相对链接/JSON、AGENTS.md 协议（章节/版本/哨兵/320 行硬上限）、新层命名、PIT/ADR/CHANGELOG 归档/backlog schema、manifest 一致性；`--strict` 下 warning 也失败；索引一致性以内容机检为准，`--mtime-check` 才按文件 mtime 判过期（默认关闭，CI 安全） |
+| `validate` | `--root`、`--strict`、`--mtime-check`、`--json` | 人类摘要 | 检查 front matter/ID/相对链接/JSON、AGENTS.md 协议（章节/版本/哨兵/320 行硬上限）、新层命名、PIT/ADR/CHANGELOG 归档/backlog schema、manifest 一致性、TOOL 登记表↔CLI↔manifest 一致性、`updated` 新鲜度（advisory）；`--strict` 下 warning 也失败；索引一致性以内容机检为准，`--mtime-check` 才按文件 mtime 判过期（默认关闭，CI 安全） |
 | `preflight` | `--root`、`--no-index`、`--skip-tests`、`--skip-links`、`--json` | 步骤表 | 串联 index → validate --strict → unittest → check-links；输出步骤 name/status/耗时/摘要；`--json` 为 `repurpose.preflight.v1`（ok/steps/skipped/failed）；退出码 **0 全绿 / 3 有 SKIPPED / 4 任一步 FAILED**；index 步幂等（内容未变保留原 `generated_at`，不产生时间戳变更） |
 
 **退出码**（与 `--help` epilog 一致）：
@@ -128,7 +128,7 @@ agent-manifest.d/          # <layer>.json；单层 >40 条时拆为 <layer>-p01.
 | TOOL-004 | P0–P6 阶段计划 | `python -m toolkit.repurpose plan` | 离线 |
 | TOOL-005 | 新设备档案脚手架 | `python -m toolkit.repurpose new-profile` | 离线 |
 | TOOL-006 | Agent 机器索引生成（根摘要 `agent-manifest.json` + `agent-manifest.d/` 四层分片） | `python -m toolkit.repurpose index` | 离线（仓库内） |
-| TOOL-007 | 内容与治理契约校验（front matter/ID/断链/JSON/协议/命名/PIT/ADR/backlog/归档/doc-policy/分片） | `python -m toolkit.repurpose validate` | 离线（仓库内） |
+| TOOL-007 | 内容与治理契约校验（front matter/ID/断链/JSON/协议/命名/PIT/ADR/backlog/归档/doc-policy/分片/TOOL 登记表/updated 新鲜度） | `python -m toolkit.repurpose validate` | 离线（仓库内） |
 | TOOL-008 | 服务器只读健康检查 | [termux/healthcheck.sh](termux/healthcheck.sh) | proot 服务器内 |
 | TOOL-009 | 24h soak 观测记录（可中断） | [termux/soak.sh](termux/soak.sh) | proot 服务器内 |
 | TOOL-010 | Termux:Boot 自启引导（幂等/dry-run） | [termux/boot-starter.sh](termux/boot-starter.sh) | Termux 内 |
@@ -289,10 +289,17 @@ python -m toolkit.repurpose validate --mtime-check  # 本地排查才用：按 m
 6. **manifest 根/分片一致性**：根 ≤160 行/≤16KB 且不含完整 content；四层 `shards` 映射完整；
    分片 ≤300 行/≤32KB/≤40 条；counts 与分片/当前内容一致；分片 entry 的 ID 全局唯一、path 存在且相对、
    与内容 front matter 字段同步；旧格式/孤儿分片/过期索引都会提示重跑 index。
-7. **敏感值启发式**（私钥/令牌片段）只记 warning，不打印内容。
+7. **TOOL 登记表一致性**（`validate_tool_registry`）：`toolkit/README.md` §3.1 登记表 ↔
+   `cli.build_parser()` 实际子命令 ↔ 根 manifest `tools`/`commands` 三方比对——编号断号/重复、
+   脚本链接缺失、CLI↔登记表双向不一致报 `TOOL_REGISTRY`/`TOOL_COMMAND`，manifest 漂移报
+   `TOOL_MANIFEST`（strict 下均 error）；缺 `toolkit/README.md` 的 fixture 仓库静默跳过。
+8. **`updated` 新鲜度**（`validate_updated_freshness`）：以 `git log --format=%cs` 取每文件最近
+   提交日期，`updated < 提交日期` 报 `DOC_UPDATED_STALE`（**advisory，不使 strict 失败**）；只覆盖
+   methodology/pitfalls/guardrails，无 `.git`/未跟踪/浅克隆/无 git 时跳过，不用文件 mtime。
+9. **敏感值启发式**（私钥/令牌片段）只记 warning，不打印内容。
 
 内容层错误与机器契约违反固定 error；policy/manifest 预算类违规在 `--strict` 下 exit 4、非 strict 下仅 warning；
-`DOC_LINES_MARGIN` 为 `advisory` 级（只提示、不参与失败判定）；`MANIFEST_STALE` 仅 `--mtime-check` 开启时报告。若违规来自 Lead/维护者负责的文档，validate 只报告，不自动改那些文件。
+`DOC_LINES_MARGIN`、`DOC_UPDATED_STALE` 为 `advisory` 级（只提示、不参与失败判定）；`MANIFEST_STALE` 仅 `--mtime-check` 开启时报告。若违规来自 Lead/维护者负责的文档，validate 只报告，不自动改那些文件。
 
 
 ## 8. 模板与 schema（新增内容先复制模板）

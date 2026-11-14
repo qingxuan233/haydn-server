@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: validation, acceptance, soak, fault-injection, recovery, evidence
 depends: MTH-001, MTH-005, MTH-006
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 没有证据就没有完成；先定证据类型与门禁，再跑 5 次重启/24h soak/故障注入；soak 期间禁止变更，结果不得伪造
 ---
 

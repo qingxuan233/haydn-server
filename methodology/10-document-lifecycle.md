@@ -59,6 +59,7 @@ agent_hint: 新增/移动文档、判断事实归属、命名、写 ADR 或同�
 - **目录前缀**：methodology=`<两位>-slug`；pitfalls=`PIT-<3位>-slug`；guardrails=`GRD-<3位>-slug`；adr=`<4位>-slug`；cases 用 ascii 子目录；templates 用 ascii slug。
 - **禁状态词**：`final`、`latest`、`new`、`v2`、`copy`、`副本`、`最终版`；版本用 Git 历史、front matter `status` 或 ADR/CHANGELOG 表达，被取代的稳定文档保留 ID 并标 `superseded`，不另造 `-v2` 文件。
 - **日期快照**：仅时点快照/调研/审计用 `YYYY-MM-DD-<topic>.md`；长期有效的规范/指南/模板**不带日期**。
+- **`updated` 语义**：front matter `updated` 表示**内容**最后一次实质修订日期，不是排版/重排日期；改了正文、规则或链接目标就应当同步为提交当日。`validate` 以 git 提交日期为参照机检"内容改了但日期没改"（`DOC_UPDATED_STALE`，advisory，不阻断门禁）；判定口径、适用边界（只覆盖 methodology/pitfalls/guardrails）与误报边界见 [MTH-015](15-archive-and-context-budget.md) §5.3。
 - **一个文件一个主题**：禁止 `notes.md`/`misc.md`/`document.md`/`temp.md` 等无区分力名称；目录表达类别，文件名表达主题，禁止重复编码（如 `docs/agent/agent-guide.md`）。
 - **重命名纪律** ⛔：文件名是仓库接口——原子化同步全部 Markdown 引用、索引、README、脚本/配置路径，搜索旧文件名；`check-links --strict-anchors` 全绿前不算完成；被外部引用/多仓引用的文件先登记影响与过渡期。
 - **机检**：`validate` 的 `DOC_NAMING` 检查（规则见 [MTH-015](15-archive-and-context-budget.md) §5）；人工核对仅作兜底。

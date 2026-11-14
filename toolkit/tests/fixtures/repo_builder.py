@@ -575,13 +575,32 @@ def build_sample_repo(
         write_adr(root, 1, "demo")
         write_adr_index(root)
     if with_toolkit_readme:
+        # §3.1 工具登记表与 cli.build_parser() 的 10 个子命令一致，
+        # 脚本链接指向下方 stub，保证 TOOL 登记表一致性机检在 fixture 中全绿。
+        registry = ["# 工具链\n\n零第三方依赖。\n", "## 3.1 工具登记表（fixture）\n",
+                    "| ID | 能力 | 入口 | 设备/环境 |", "|---|---|---|---|"]
+        cli_commands = (
+            "detect", "probe", "assess", "plan", "rootcheck",
+            "rescue-kit", "new-profile", "index", "validate", "preflight",
+        )
+        for index, command in enumerate(cli_commands, start=1):
+            registry.append(
+                f"| TOOL-{index:03d} | {command} | `python -m toolkit.repurpose {command}` | 离线 |"
+            )
+        scripts = (
+            ("healthcheck.sh", "termux/healthcheck.sh"),
+            ("soak.sh", "termux/soak.sh"),
+            ("boot-starter.sh", "termux/boot-starter.sh"),
+        )
+        for index, (name, relative) in enumerate(scripts, start=len(cli_commands) + 1):
+            registry.append(f"| TOOL-{index:03d} | {name} | [{relative}]({relative}) | 离线 |")
         write_doc(
             root,
             "toolkit/README.md",
             entry_id="TOOL-000",
             title="工具链",
             doc_type="index",
-            body="# 工具链\n\n零第三方依赖。\n",
+            body="\n".join(registry) + "\n",
         )
         # 让 manifest.tools 能找到包装/脚本（内容为空不影响 index；validate 不检查 .ps1/.sh）。
         stubs = {

@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: index, pitfalls, severity, evidence
 depends: MTH-001, GRD-013
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 先按严重度与域检索，再读对应 PIT；新增条目必须带可复现证据与验证步骤
 severity: S4
 domain: docs

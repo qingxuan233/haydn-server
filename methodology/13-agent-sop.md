@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: agent, sop, workflow, review, testing, reporting, branch, regression, prompts
 depends: MTH-009, MTH-011, MTH-015, MTH-017
-updated: 2026-11-13
+updated: 2026-11-14
 agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/提示词/校验器前必读 §12–§13 与 §16 自检清单。
 ---
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import tempfile
 import time
 import unittest
@@ -558,6 +560,172 @@ class DocPolicyTests(unittest.TestCase):
         self.assertNotIn("DOC_LINES_MARGIN", _codes(report))
         self.assertEqual(report["advisory_count"], 0)
         self.assertTrue(report["ok"])
+
+
+def _rewrite(root: Path, relative: str, old: str, new: str) -> None:
+    path = root / relative
+    text = path.read_text(encoding="utf-8")
+    assert old in text, f"{relative} 中找不到待替换内容：{old!r}"
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def _git(root: Path, *args: str, date: str = "2026-11-11T10:00:00") -> None:
+    env = dict(os.environ)
+    env.update(
+        {
+            "GIT_AUTHOR_NAME": "fixture",
+            "GIT_AUTHOR_EMAIL": "fixture@example.com",
+            "GIT_COMMITTER_NAME": "fixture",
+            "GIT_COMMITTER_EMAIL": "fixture@example.com",
+            "GIT_AUTHOR_DATE": date,
+            "GIT_COMMITTER_DATE": date,
+        }
+    )
+    subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+class ToolRegistryTests(unittest.TestCase):
+    """TOOL 登记表 ↔ cli.build_parser() ↔ 根 manifest tools 三方一致性。"""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name) / "repo"
+        build_sample_repo(self.root)
+        write_bundle(self.root)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_registry_consistent_with_cli_and_manifest(self) -> None:
+        report = validate_repo(self.root, strict=True)
+        self.assertTrue(report["ok"], _codes(report))
+        self.assertEqual(report["checked"]["tool_registry"], 13)
+        self.assertEqual(report["checked"]["tool_cli_commands"], 10)
+        for code in ("TOOL_REGISTRY", "TOOL_COMMAND", "TOOL_MANIFEST"):
+            self.assertNotIn(code, _codes(report))
+
+    def test_cli_command_missing_from_registry(self) -> None:
+        # 删除 plan 行：CLI 有 plan 而登记表没有（同时制造编号断号）
+        path = self.root / "toolkit" / "README.md"
+        lines = [
+            line
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if "| TOOL-004 |" not in line
+        ]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        report = validate_repo(self.root, strict=True)
+        self.assertIn("TOOL_COMMAND", _codes(report))
+        self.assertIn("TOOL_REGISTRY", _codes(report))
+        self.assertFalse(report["ok"])
+
+    def test_registered_command_not_in_cli(self) -> None:
+        _rewrite(
+            self.root,
+            "toolkit/README.md",
+            "| TOOL-004 | plan | `python -m toolkit.repurpose plan` | 离线 |",
+            "| TOOL-004 | plan | `python -m toolkit.repurpose ghost` | 离线 |",
+        )
+        report = validate_repo(self.root, strict=True)
+        self.assertIn("TOOL_COMMAND", _codes(report))
+        self.assertIn("ghost", " ".join(issue["message"] for issue in report["issues"]))
+        self.assertFalse(report["ok"])
+
+    def test_registry_id_not_continuous(self) -> None:
+        _rewrite(self.root, "toolkit/README.md", "| TOOL-002 |", "| TOOL-020 |")
+        report = validate_repo(self.root, strict=True)
+        self.assertIn("TOOL_REGISTRY", _codes(report))
+        self.assertFalse(report["ok"])
+
+    def test_manifest_cli_commands_drift(self) -> None:
+        manifest_path = self.root / "agent-manifest.json"
+        manifest = _read_json(manifest_path)
+        cli_tool = next(tool for tool in manifest["tools"] if tool.get("kind") == "cli")
+        cli_tool["commands"].remove("plan")
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        report = validate_repo(self.root, strict=True)
+        self.assertIn("TOOL_MANIFEST", _codes(report))
+        self.assertFalse(report["ok"])
+
+    def test_registry_skipped_without_toolkit_readme(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo"
+            build_sample_repo(root, with_toolkit_readme=False)
+            write_bundle(root)
+            report = validate_repo(root, strict=True)
+            self.assertTrue(report["ok"], _codes(report))
+            self.assertNotIn("TOOL_REGISTRY", _codes(report))
+            self.assertEqual(report["checked"]["tool_registry"], 0)
+
+
+class UpdatedFreshnessTests(unittest.TestCase):
+    """front matter updated 早于最近提交日期时只报 advisory，不使 strict 失败。"""
+
+    def setUp(self) -> None:
+        if not shutil.which("git"):
+            self.skipTest("git 不可用")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name) / "repo"
+        build_sample_repo(self.root)
+        write_bundle(self.root)
+        _git(self.root, "init")
+        _git(self.root, "add", "-A")
+        _git(self.root, "commit", "-m", "fixture baseline")
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_fresh_documents_produce_no_advisory(self) -> None:
+        report = validate_repo(self.root, strict=True)
+        self.assertTrue(report["ok"], _codes(report))
+        self.assertNotIn("DOC_UPDATED_STALE", _codes(report))
+        self.assertEqual(report["checked"]["updated_checked"], 6)
+
+    def test_stale_document_is_advisory_not_failure(self) -> None:
+        write_doc(
+            self.root,
+            "methodology/00-foundations.md",
+            entry_id="MTH-001",
+            title="基础",
+            doc_type="methodology",
+            tags="foundations, test",
+            depends="MTH-000",
+            updated="2020-01-01",
+            body="# 基础\n\n返回 [索引](README.md)。\n",
+        )
+        _git(self.root, "add", "-A")
+        _git(self.root, "commit", "-m", "touch foundations", date="2026-11-14T10:00:00")
+        report = validate_repo(self.root, strict=True)
+        stale = [item for item in report["issues"] if item["code"] == "DOC_UPDATED_STALE"]
+        self.assertEqual(len(stale), 1)
+        self.assertEqual(stale[0]["path"], "methodology/00-foundations.md")
+        self.assertEqual(stale[0]["level"], "advisory")
+        self.assertTrue(report["ok"], _codes(report))
+        self.assertEqual(report["warning_count"], 0)
+
+    def test_untracked_document_skipped(self) -> None:
+        write_doc(
+            self.root,
+            "methodology/10-extra.md",
+            entry_id="MTH-010",
+            title="未提交",
+            doc_type="methodology",
+            updated="2000-01-01",
+            body="# 未提交\n\n正文。\n",
+        )
+        report = validate_repo(self.root, strict=True)
+        stale_paths = [
+            item["path"] for item in report["issues"] if item["code"] == "DOC_UPDATED_STALE"
+        ]
+        self.assertNotIn("methodology/10-extra.md", stale_paths)
+        self.assertEqual(report["checked"]["updated_checked"], 6)
 
 
 if __name__ == "__main__":

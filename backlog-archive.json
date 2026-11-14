@@ -38,12 +38,12 @@
       "depends": [
         "BL-003"
       ],
-      "notes": "2026-11-13 完成 schema + 语义检查（ID 连续/枚举/in_progress 与 done 必填字段/depends 引用）。TOOL 登记表一致性尚未机检，遗留为后续项。",
+      "notes": "2026-11-13 完成 schema + 语义检查；2026-11-14 补齐 TOOL 登记表一致性机检（§3.1 登记表 ↔ cli.build_parser() ↔ 根 manifest tools/commands，TOOL_REGISTRY/TOOL_COMMAND/TOOL_MANIFEST，strict 下 error）。",
       "agent_hint": "改 backlog 字段时先改 schema 再改 validate 与测试。",
       "requires": "",
       "owner": "toolkit",
-      "updated": "2026-11-13",
-      "result": "已实现：toolkit/schema/backlog.schema.json + governance 检查（必填键、priority/status/risk 枚举、ID 唯一且连续、in_progress/done 必须有 owner/updated/result、depends 指向存在 ID）；单测覆盖。"
+      "updated": "2026-11-14",
+      "result": "已实现：toolkit/schema/backlog.schema.json + governance 检查（必填键、priority/status/risk 枚举、ID 唯一且连续、in_progress/done 必须有 owner/updated/result、depends 指向存在 ID）；TOOL 登记表一致性由 validate_tool_registry 机检（编号连续/命令行不重复/脚本存在/CLI 与登记表双向差异/manifest tools 路径与 cli commands 漂移），接 validate 与 preflight，单测覆盖一致与不一致两态。"
     },
     {
       "id": "BL-016",

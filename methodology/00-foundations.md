@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: methodology, foundations, scope, principles, architecture
 depends: MTH-000
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 任何改造任务开工前先读本页；确认适用前提与三轨边界，再按 MTH-002 评估设备。
 ---
 

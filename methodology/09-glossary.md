@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: glossary, terminology, conventions
 depends: ""
-updated: 2026-11-13
+updated: 2026-11-14
 agent_hint: 遇到不确定术语先查本表；新增术语必须一句定义+为何重要，并回链唯一出处文档。
 ---
 

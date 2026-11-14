@@ -20,8 +20,10 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
+import subprocess
 from math import ceil
 from pathlib import Path
 from typing import Any
@@ -955,6 +957,274 @@ def validate_manifest_bundle(
 
 
 # ---------------------------------------------------------------------------
+# TOOL 登记表一致性 / updated 新鲜度
+# ---------------------------------------------------------------------------
+
+TOOL_REGISTRY_HEADING = re.compile(r"^##\s+3\.1\s+工具登记表", re.MULTILINE)
+TOOL_ROW = re.compile(r"^\|\s*(TOOL-\d{3})\s*\|")
+TOOL_CLI_CMD = re.compile(r"python -m toolkit\.repurpose\s+([a-z][a-z0-9-]*)")
+REGISTRY_LINK = re.compile(r"\[[^\]]*\]\((?!https?:)([^)\s]+)\)")
+DATE_VALUE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+FRESHNESS_PREFIXES = ("methodology/", "pitfalls/", "guardrails/")
+
+
+def _cli_subcommands() -> set[str]:
+    """从 cli.py 的实际 argparse 子命令读取 CLI 契约（不在文档里抄写命令表）。"""
+    from .cli import build_parser
+
+    parser = build_parser()
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return set(action.choices)
+    return set()
+
+
+def _registry_rows(text: str) -> list[tuple[str, str]]:
+    """解析 toolkit/README §3.1 登记表，返回 ``[(TOOL-ID, 命令列)]``。"""
+    heading = TOOL_REGISTRY_HEADING.search(text)
+    if not heading:
+        return []
+    section = text[heading.end() :]
+    end = re.search(r"^##\s", section, re.MULTILINE)
+    if end:
+        section = section[: end.start()]
+    rows: list[tuple[str, str]] = []
+    for line in section.splitlines():
+        if not TOOL_ROW.match(line):
+            continue
+        columns = [part.strip() for part in line.strip().strip("|").split("|")]
+        if len(columns) >= 3:
+            rows.append((columns[0], columns[2]))
+    return rows
+
+
+def validate_tool_registry(
+    root: Path, strict: bool
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """校验登记表 ↔ 实际 CLI 子命令 ↔ 根 manifest tools 的一致性。
+
+    数据源唯一：CLI 从 ``cli.build_parser()`` 读取，登记表从 ``toolkit/README`` §3.1
+    读取，tools 从根 manifest 读取；三者不一致即报错（strict 下为 error）。
+    缺 ``toolkit/README.md``（如最小 fixture 仓库）时跳过，不产生噪音。
+    """
+    issues: list[dict[str, Any]] = []
+    readme = root / "toolkit/README.md"
+    checked: dict[str, Any] = {"tool_registry": 0, "tool_cli_commands": 0}
+    if not readme.is_file():
+        return issues, checked
+    text = readme.read_text(encoding="utf-8-sig", errors="replace")
+    rows = _registry_rows(text)
+    checked["tool_registry"] = len(rows)
+    if not rows:
+        issues.append(
+            _policy_issue(strict, "TOOL_REGISTRY", "toolkit/README.md", "缺少 §3.1 工具登记表或表格为空")
+        )
+        return issues, checked
+    ids = [tool_id for tool_id, _command in rows]
+    expected_ids = [f"TOOL-{index:03d}" for index in range(1, len(rows) + 1)]
+    if ids != expected_ids:
+        issues.append(
+            _policy_issue(
+                strict,
+                "TOOL_REGISTRY",
+                "toolkit/README.md",
+                f"TOOL 编号应从 TOOL-001 连续编号（当前：{', '.join(ids)}）",
+            )
+        )
+    registered: dict[str, str] = {}
+    script_targets: set[str] = set()
+    for tool_id, command_column in rows:
+        for sub in TOOL_CLI_CMD.findall(command_column):
+            if sub in registered:
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "TOOL_REGISTRY",
+                        "toolkit/README.md",
+                        f"CLI 子命令 {sub} 重复登记（{registered[sub]} 与 {tool_id}）",
+                    )
+                )
+                continue
+            registered[sub] = tool_id
+        for target in REGISTRY_LINK.findall(command_column):
+            if target.startswith("#") or "://" in target:
+                continue
+            script_targets.add(target)
+            if not (root / "toolkit" / target).exists():
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "TOOL_REGISTRY",
+                        "toolkit/README.md",
+                        f"{tool_id} 指向的脚本不存在：toolkit/{target}",
+                    )
+                )
+    actual = _cli_subcommands()
+    checked["tool_cli_commands"] = len(actual)
+    missing = sorted(actual - set(registered))
+    if missing:
+        issues.append(
+            _policy_issue(
+                strict,
+                "TOOL_COMMAND",
+                "toolkit/README.md",
+                f"CLI 子命令未在登记表登记：{', '.join(missing)}",
+            )
+        )
+    unknown = sorted(set(registered) - actual)
+    if unknown:
+        issues.append(
+            _policy_issue(
+                strict,
+                "TOOL_COMMAND",
+                "toolkit/README.md",
+                f"登记表的 CLI 子命令不存在于 cli.py：{', '.join(unknown)}",
+            )
+        )
+    manifest_path = root / "agent-manifest.json"
+    if not manifest_path.is_file():
+        return issues, checked
+    manifest = _read_manifest_json(manifest_path)
+    if manifest is None:
+        return issues, checked
+    tools = manifest.get("tools")
+    if not isinstance(tools, list) or not tools:
+        issues.append(
+            _policy_issue(strict, "TOOL_MANIFEST", "agent-manifest.json", "manifest 缺少非空 tools 数组")
+        )
+        return issues, checked
+    tool_paths = {tool.get("path") for tool in tools if isinstance(tool, dict)}
+    for tool in tools:
+        if not isinstance(tool, dict):
+            continue
+        path = tool.get("path")
+        if isinstance(path, str) and not (root / path).exists():
+            issues.append(
+                _policy_issue(
+                    strict, "TOOL_MANIFEST", "agent-manifest.json", f"tools 条目路径不存在：{path}"
+                )
+            )
+    for target in sorted(script_targets):
+        if f"toolkit/{target}" not in tool_paths:
+            issues.append(
+                _policy_issue(
+                    strict,
+                    "TOOL_MANIFEST",
+                    "agent-manifest.json",
+                    f"登记表脚本 toolkit/{target} 未出现在 manifest tools 中",
+                )
+            )
+    cli_tools = [tool for tool in tools if isinstance(tool, dict) and tool.get("kind") == "cli"]
+    if len(cli_tools) != 1:
+        issues.append(
+            _policy_issue(
+                strict,
+                "TOOL_MANIFEST",
+                "agent-manifest.json",
+                f"manifest tools 应有且仅有一个 kind=cli 条目（当前 {len(cli_tools)} 个）",
+            )
+        )
+    else:
+        commands = cli_tools[0].get("commands")
+        command_set = set(commands) if isinstance(commands, list) else set()
+        if command_set != actual:
+            issues.append(
+                _policy_issue(
+                    strict,
+                    "TOOL_MANIFEST",
+                    "agent-manifest.json",
+                    "manifest tools[cli].commands 与 CLI 子命令不一致："
+                    + ", ".join(sorted(command_set ^ actual)),
+                )
+            )
+    for item in manifest.get("commands") or []:
+        command = item.get("cmd") if isinstance(item, dict) else None
+        if not isinstance(command, str):
+            continue
+        for sub in TOOL_CLI_CMD.findall(command):
+            if sub not in actual:
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "TOOL_COMMAND",
+                        "agent-manifest.json",
+                        f"manifest commands 引用了不存在的 CLI 子命令：{sub}",
+                    )
+                )
+    return issues, checked
+
+
+def validate_updated_freshness(root: Path, paths: list[Path]) -> tuple[list[dict[str, Any]], int]:
+    """advisory：front matter ``updated`` 早于该文件最近一次提交日期时提示补日期。
+
+    规则：以 git 提交日期（``%cs``，仓库时区无关的 YYYY-MM-DD）为"最后一次改动"，
+    ``updated < 提交日期`` 即报告 ``DOC_UPDATED_STALE``。误报控制：
+    - 只读 git 历史，不用文件 mtime（checkout/CI 不可信）；
+    - 无 ``.git``、非 git 仓库、git 不可用、未跟踪文件、浅克隆缺历史时静默跳过；
+    - 永远是 advisory（不计入 error/warning，不使 strict/preflight 失败）；
+    - 只覆盖已提交改动：工作区里"改了内容但没提交"的情况无法判定，由提交前自检负责；
+    - 适用边界：只检查活跃规范层（methodology/pitfalls/guardrails）；cases/ 为冻结证据、
+      adr/ 为历史决策，均不检查，避免为链接/结构维护改写其元数据。
+    """
+    if not (root / ".git").exists() or not paths:
+        return [], 0
+    scoped = [path for path in paths if rel_posix(path, root).startswith(FRESHNESS_PREFIXES)]
+    if not scoped:
+        return [], 0
+    relatives = sorted(rel_posix(path, root) for path in scoped)
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "log", "--format=@@%cs", "--name-only", "--no-renames", "--", *relatives],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return [], 0
+    if result.returncode != 0:
+        return [], 0
+    latest: dict[str, str] = {}
+    current = ""
+    for line in result.stdout.splitlines():
+        if line.startswith("@@"):
+            current = line[2:].strip()
+            continue
+        path = line.strip()
+        if path and current and path not in latest:
+            latest[path] = current
+    issues: list[dict[str, Any]] = []
+    checked = 0
+    for path in scoped:
+        relative = rel_posix(path, root)
+        commit_date = latest.get(relative)
+        if not commit_date:
+            continue
+        try:
+            document = path.read_text(encoding="utf-8-sig", errors="replace")
+        except OSError:
+            continue
+        data, _errors, _body = parse_document(document)
+        if not data:
+            continue
+        updated = data.get("updated")
+        if not isinstance(updated, str) or not DATE_VALUE.fullmatch(updated):
+            continue
+        checked += 1
+        if updated < commit_date:
+            issues.append(
+                _issue(
+                    "advisory",
+                    "DOC_UPDATED_STALE",
+                    relative,
+                    f"updated={updated} 早于最近改动提交 {commit_date}：若本次变更改动了内容，请同步 updated",
+                )
+            )
+    return issues, checked
+
+
+# ---------------------------------------------------------------------------
 # 顶层入口
 # ---------------------------------------------------------------------------
 
@@ -990,6 +1260,8 @@ def validate_repo(
     manifest_issues, manifest_found, shard_count = validate_manifest_bundle(
         repo_root, content_paths, policy, strict, mtime_check=mtime_check
     )
+    tool_issues, tool_checked = validate_tool_registry(repo_root, strict)
+    updated_issues, updated_checked = validate_updated_freshness(repo_root, content_paths)
 
     issues = (
         fm_issues
@@ -999,6 +1271,8 @@ def validate_repo(
         + doc_issues
         + governance_issues
         + manifest_issues
+        + tool_issues
+        + updated_issues
     )
     errors = [item for item in issues if item["level"] == "error"]
     warnings = [item for item in issues if item["level"] == "warning"]
@@ -1012,8 +1286,10 @@ def validate_repo(
         "manifest": manifest_found,
         "shards": shard_count,
         "policy_files": policy_files,
+        "updated_checked": updated_checked,
     }
     checked.update(governance_checked)
+    checked.update(tool_checked)
     return {
         "schema": SCHEMA_VALIDATION,
         "generated_at": iso_now(),
@@ -1040,7 +1316,10 @@ def format_validation_human(report: dict[str, Any]) -> str:
         ),
         "- 治理：协议 {protocol_lines} 行（{protocol_tier}）/ 命名 {naming_files} 个 / "
         "PIT {pitfall_files} 条 / ADR {adr_files} 篇 / backlog {backlog_items} 条 / "
-        "归档 {changelog_archive_rows} 条 / 回归 {agent_regression_checks} 项".format(**checked),
+        "归档 {changelog_archive_rows} 条 / 回归 {agent_regression_checks} 项 / "
+        "TOOL 登记 {tool_registry} 条（CLI {tool_cli_commands}）/ updated 新鲜度 {updated_checked} 篇".format(
+            **checked
+        ),
         f"- 错误：{report['error_count']}；警告：{report['warning_count']}；"
         f"预警：{report.get('advisory_count', 0)}（不阻断）；strict={report['strict']}",
     ]

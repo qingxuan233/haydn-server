@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: guardrails, index, checklist, governance
 depends: MTH-001, MTH-007
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 每次变更前后按本索引逐条自检；命中 blocker 红线立即停止，改用「允许的替代」或走授权评审，不得以效率为由破例。
 severity: warning
 scope: repo

@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: methodology, portal, index, navigation
 depends: ""
-updated: 2026-11-13
+updated: 2026-11-14
 agent_hint: 先读本页确认定位、索引四表与阅读路径；Agent 的完整启动顺序以根 AGENTS.md 为准，本页不是工作协议。
 ---
 

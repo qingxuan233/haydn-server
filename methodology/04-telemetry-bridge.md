@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: telemetry, bridge, android, fgs, data-contract, no-root
 depends: MTH-001, MTH-004
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 先判定是否真的需要桥，再按数据契约与安全最低要求实现；无实测证据不得标验收通过；Android 14/15 FGS 规则以本文件约束表为准
 ---
 

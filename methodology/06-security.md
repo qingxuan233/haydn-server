@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: security, secrets, tls, pinning, least-exposure, audit
 depends: MTH-001, MTH-005
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 任何涉及 token/证书/口令/备份/公网入口/日志的改动先读本文件；敏感值绝不入库；泄露处置顺序是止损→轮换→排查→记录
 ---
 

@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: roadmap, phases, gates, change-management, rollback
 depends: MTH-001, MTH-002
-updated: 2026-11-11
+updated: 2026-11-14
 agent_hint: 开工前先按本页定位当前阶段；门禁未通过不得进入下一阶段，一次只推进一个变更。
 ---
 

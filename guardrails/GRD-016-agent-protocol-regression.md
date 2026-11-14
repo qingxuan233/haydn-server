@@ -6,7 +6,7 @@ status: current
 audience: human, agent
 tags: protocol, regression, validator-integrity, preflight, launch-blocker
 depends: GRD-012, GRD-013
-updated: 2026-11-13
+updated: 2026-11-14
 agent_hint: 改 AGENTS/提示词/模板/校验器前先读本条；发现校验器误报先记录证据并报告 Lead，禁止改检查让自己变绿；完成协议变更必跑 preflight 与回归 AR-01..AR-10。
 severity: blocker
 scope: agent

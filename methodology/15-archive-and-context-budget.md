@@ -130,7 +130,7 @@ python scripts/dev/check-links.py --strict-anchors
 python -m unittest discover -s toolkit/tests -t . -v
 ```
 
-`validate --strict` 下任何 error 或 warning 均视为失败；不得用"先提交后修"绕过，也不得以删除条目/降低上限来"通过校验"。唯一例外是 **advisory 级**提示（如 `DOC_LINES_MARGIN` 行数余量预警）：会打印但**不计入失败**，必须在 backlog 登记拆篇/精简计划。`preflight` 退出码：`0`=全绿、`3`=有跳过、`4`=任一步失败（三态语义见 [MTH-014](13-agent-sop.md) §7）。
+`validate --strict` 下任何 error 或 warning 均视为失败；不得用"先提交后修"绕过，也不得以删除条目/降低上限来"通过校验"。唯一例外是 **advisory 级**提示（如 `DOC_LINES_MARGIN` 行数余量、`DOC_UPDATED_STALE` 日期滞后）：会打印但**不计入失败**，必须在 backlog 登记拆篇/精简计划或同步 `updated`。`preflight` 退出码：`0`=全绿、`3`=有跳过、`4`=任一步失败（三态语义见 [MTH-014](13-agent-sop.md) §7）。
 
 ### 5.3 机检清单
 
@@ -143,10 +143,14 @@ python -m unittest discover -s toolkit/tests -t . -v
 | backlog | `BACKLOG_SCHEMA`、`BACKLOG_SEMANTIC`、`BACKLOG_DONE_WINDOW`、`BACKLOG_ARCHIVE` | 字段缺失、ID 跳号、done 缺 result、active done >5、归档非法 |
 | CHANGELOG 归档 | `CHANGELOG_ARCHIVE` | 窗口超 8、索引与归档不一致 |
 | 分片拆分 | `SHARD_SPLIT`、`SHARD_NAMING` | 片数不符、命名非 `<layer>-pNN`、非末片未满片、各片合计与计数不一致 |
+| TOOL 登记表 | `TOOL_REGISTRY`、`TOOL_COMMAND`、`TOOL_MANIFEST` | 编号断号/重复、脚本缺失、CLI↔登记表双向不一致、manifest `tools` 漂移 |
+| updated 新鲜度 | `DOC_UPDATED_STALE`（advisory） | `updated` 早于该文件最近一次提交日期；提示同步日期，不阻断 |
 | 行数余量 | `DOC_LINES_MARGIN`（advisory） | 未超上限但距上限不足阈值；提示拆篇/精简，不阻断 |
 | Agent 回归 | `AGENT_REGRESSION`（AR-01..10） | 协议/红线/回归契约退化 |
 | 统一入口 | `preflight`（`repurpose.preflight.v1`） | 任一步失败或有跳过未申报 |
 
+> `DOC_UPDATED_STALE` 口径与边界：以 `git log --format=%cs` 取该文件最近一次提交日期，`updated < 提交日期` 即提示；**只覆盖 `methodology/`、`pitfalls/`、`guardrails/`**（`cases/` 为冻结证据、`adr/` 为历史决策，均不检查）。误报控制：只看 git 提交历史、不用文件 mtime；无 `.git`、git 不可用、文件未跟踪、浅克隆缺历史时静默跳过；"改了但未提交"无法判定，由提交前自检负责；`updated` 与提交日相同视为新鲜，跨时区以 git 记录的提交日期为准。`TOOL_REGISTRY`/`TOOL_COMMAND`/`TOOL_MANIFEST` 在 `--strict` 下为 error：`toolkit/README.md` §3.1 登记表、`cli.build_parser()` 实际子命令与根 manifest `tools` 三方任一不一致即失败。
+>
 > 以上检查码由 `validate`/`preflight` 机检实现；在工具尚未包含某检查前，按人工核对并如实标注"未机检"，不得写成已通过。实现细节与当前状态以 [toolkit/README.md](../toolkit/README.md) 为准。
 
 ### 5.4 失败处理
@@ -157,6 +161,7 @@ python -m unittest discover -s toolkit/tests -t . -v
 | 状态段落超 8 行 | 删除本地细节，改为链接；细节先落唯一源 |
 | 单篇文档超行数上限 | 拆篇（取新 ID，走 [MTH-009](08-agent-handoff.md)）或删重复/移证据；禁止删证据 |
 | 行数进入余量预警（未超限） | 登记拆篇/精简计划（进 backlog）；本轮不阻断，但不得新增内容使其触限 |
+| updated 落后于最近提交 | 内容确有变更 → 同步为提交当日；仅格式化/重排 → 可保留日期并在 commit message 说明（advisory 不阻断） |
 | 根摘要或分片超限 | 精简根摘要/按层再拆分片；仍不够则改 doc-policy（同步校验器与本文） |
 | 归档索引不一致 | 以归档文件实际条目核对条数与版本范围，修索引后重跑 |
 | 断链/ID 冲突/命名违规 | 修正链接或改用未占用 ID/合规文件名；不得跳过或静默忽略 |
