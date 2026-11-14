@@ -608,6 +608,25 @@
       "updated": "",
       "result": "",
       "risk": "L"
+    },
+    {
+      "id": "BL-032",
+      "title": "固件升级可行性评估（保留 Root；禁止 ARB 批次）",
+      "priority": "P1",
+      "area": "firmware",
+      "status": "pending",
+      "acceptance": "评估用户目标 OTA 版本：是否命中 ARB 禁用清单（.500/.501/.503 批次）；是否有匹配官方 OFP/全量包与哈希；原厂 boot 与 KernelSU LKM 补丁 boot 的提取/回刷路径；A/B 槽与回滚阶梯是否可用；维护窗口与 soak 重置方案。评估结论（升/不升）写入 result 或 ADR；**用户明确授权前不执行任何 OTA/刷写**。",
+      "outputs": [
+        "cases/ace-pro-pgp110/README.md"
+      ],
+      "depends": [],
+      "notes": "2026-11-14 用户询问「能否保留 Root 升级系统」。当前 ColorOS 15.0.0.1901(CN01)、安全补丁 2026-07-01、活动槽 _b（A/B）、verifiedbootstate=orange、KernelSU LKM 3.3.1；/data/ota_package/OTA 无已下载载荷；但 can_update_at_night=1、oplus.ota.autoinstall.time=3:41 存在，自动更新状态待核实。仓库策略：GRD-014 冻结固件、PIT-023 ARB 硬砖、MTH-012 §7 OTA 后重 Root 前提。",
+      "agent_hint": "先只读核对目标版本/ARB/官方包/回滚路径并产出决策卡；确认自动更新开关状态，必要时建议用户关闭；不先动设备。",
+      "requires": "用户目标版本 + 维护窗口 + 升级授权",
+      "owner": "",
+      "updated": "",
+      "result": "",
+      "risk": "H"
     }
   ]
 }
