@@ -14,7 +14,7 @@
 
 | 内容 | 唯一位置 |
 |---|---|
-| 当前方法/规范/边界 | `methodology/`（MTH-001..015） |
+| 当前方法/规范/边界 | `methodology/`（MTH-001..016） |
 | 红线与必须检查项 | `guardrails/`（GRD-001..016） |
 | 踩坑证据与修复 | `pitfalls/`（PIT-001..025） |
 | 当前任务/未完成/需要授权 | [backlog.json](backlog.json) |
@@ -35,6 +35,7 @@
 
 | 日期 | 版本 | 变更 |
 |---|---|---|
+| 2026-11-14 | v1.60 | **MTH-013 拆分（BL-034 / ADR-0005）**：`methodology/12-delivery-governance.md` 290→187 行，拆出 [MTH-016 发布就绪、兼容与数据治理](methodology/16-release-compatibility-data.md)（150 行）承接原 §7–§10（部署/观测/runbook/Go-No-Go、兼容矩阵与弃用、数据地图与六问、依赖许可/SBOM/制品来源）；G0–G7 门禁仍归 MTH-013，MTH-016 只给 G5/G6 检查项；不删规则、两篇互链不抄写；同步 AGENTS/README/methodology/README/MTH-008/009/010/011/014/015 与 backlog pending 引用；新增 [ADR-0005](adr/0005-mth-013-split.md) 并登记台账；backlog BL-034 done、BL-024 移入 [backlog-archive.json](backlog-archive.json)；v1.52 归档至 `changelog/2026-11.md`（窗口 8 条）；验证：preflight 全绿；未完成：历史 ADR 与已归档条目中指向旧节的引用不改写。 |
 | 2026-11-14 | v1.59 | **MTH-011 拆分（BL-033 / ADR-0004）**：`methodology/10-document-lifecycle.md` 299→158 行，拆出 [MTH-015 归档、上下文预算与机器校验](methodology/15-archive-and-context-budget.md)（190 行）承接 CHANGELOG 窗口/归档、状态段上限、阅读预算与分层加载、截断检测、机检上限；MTH-011 保留归属/记录边界/命名/ADR/联动矩阵；不删规则、两篇互链不抄写；同步 AGENTS/README/methodology/README/MTH-009（08）/MTH-013（12）/MTH-014（13）/pitfalls/toolkit/README/doc-policy 描述/changelog 索引与 [adr 台账](adr/README.md)（ADR-0004）；backlog BL-033 done、BL-023 移入 [backlog-archive.json](backlog-archive.json)（active done ≤5）；v1.51 归档至 `changelog/2026-11.md`（窗口 8 条）；验证：preflight 全绿（validate --strict 0/0、单测、check-links、index 一致）；未完成：历史 ADR-0001/0002 中指向旧篇的引用不改写（ADR 不改写历史，文件仍存在）。 |
 | 2026-11-14 | v1.58 | **AGENTS 容量分流至健康档（BL-029 / ADR-0003）**：AGENTS.md 291→197 行（validate `protocol_tier=healthy`）——§0 阅读预算/停止条件、§4 文档约定、§5 任务协议、§6 扩展 SOP 去重并改为指向 MTH-009/011/014 的摘要，删除重复的 §8.1 YAML（改指 agent-manifest 的 `entrypoints`/`exit_codes`）；协议版本 v1.2→v1.3（MINOR，ADR-0003），未删红线、未改权威顺序、未弱化校验；backlog.json 上限 640→600 行（超限先压缩/归档，与 done ≤5 窗口共同机检）；同步 README 协议版本、MTH-011 §2.2 归属表；验证：preflight 全绿（validate --strict 0/0、292 单测、check-links、index 一致）。 |
 | 2026-11-14 | v1.57 | **backlog 完成项归档与容量治理**：新增 [backlog-archive.json](backlog-archive.json)（schema `repurpose.backlog-archive.v1`，归档 6 条早期 done：BL-003/015/016/018/020/021，active 仅保留最近 5 条 done）；`validate` 新增 `BACKLOG_DONE_WINDOW`（active done >5）与 `BACKLOG_ARCHIVE`（归档非 done/缺 result/与 active 重复），ID 连续性与 depends 改为 active+归档并集解析；新增 [backlog-archive.schema.json](toolkit/schema/backlog-archive.schema.json)、doc-policy 归档上限与 7 项单测；CHANGELOG v1.49 归档至 `changelog/2026-11.md`（窗口 8 条）；验证：preflight 全绿（validate --strict 0/0、292 单测、check-links、index 一致）；未完成：manifest 单层 >40 条自动拆分（BL-017 剩余部分）。 |
@@ -42,10 +43,9 @@
 | 2026-11-13 | v1.55 | **对齐 Agent-Harness v1.3（定向采纳）**：AGENTS 协议 v1.2（容量分级/哨兵/机器可读摘要/停止条件 7 条）、新增 [ADR 决策层](adr/README.md)（ADR-0001/0002 与 [GRD-016](guardrails/GRD-016-agent-protocol-regression.md) 回归红线）、[MTH-013 交付治理](methodology/12-delivery-governance.md)、[MTH-014 Agent SOP](methodology/13-agent-sop.md)、模板扩充与 backlog schema；toolkit 新增 `preflight`、`index --check` 与协议/命名/PIT/ADR/backlog/归档回归机检（validate --strict 覆盖）；同步 README/backlog/manifest/CI workflow；验证：preflight 全绿（index 重建无 warnings（内容未变时*不重写*、保留原 generated_at）、validate --strict 0 error/0 warning、282 项单测 OK、check-links 0 missing）、index --check 一致、CI 首跑 success（GitHub Actions run #43465049307）；未完成：真实割接 Go/No-Go 演练（BL-027）与 secret scan（BL-010）。 |
 | 2026-11-11 | v1.54 | **Root 工具配套**：新增 `rootcheck` 子命令（`repurpose.rootcheck.v1`：9 项技术检查+7 项人工确认，`--strict` 非 tech-ready 退 4）与 `rescue-kit`（救援包相对路径+SHA-256 清单 `--init/--verify`，不一致退 4）；均离线、不连接设备；新增 ready/预研/边界 fixture 与测试，更新 [toolkit/README.md](toolkit/README.md)、[MTH-012](methodology/11-root-lab.md)、[MTH-008](methodology/07-validation.md)；[BL-021](backlog.json) 完成（验证：198 项单测、validate --strict、check-links、index 全绿） |
 | 2026-11-11 | v1.53 | **Root 实验轨预研与规范**：用户确认下一部一加 Ace Pro 作为可解锁/Root 平台（接受清数据/失保/硬砖风险，生产 haydn 保持无 Root）；新增 [MTH-012 Root 实验设备方法论](methodology/11-root-lab.md)（采购准入、G-L0..G-L6、KernelSU LKM/APatch 选型、特权能力目录、OTA/ARB、救援、验收、割接）、[GRD-015 受控操作边界](guardrails/GRD-015-root-lab-controlled.md)、[PIT-022](pitfalls/PIT-022-oem-unlock-quota.md)/[PIT-023](pitfalls/PIT-023-oneplus-arb-hard-brick.md)/[PIT-024](pitfalls/PIT-024-flash-tool-supply-chain.md)/[PIT-025](pitfalls/PIT-025-root-module-regression.md)、[CASE-003/004 预研案例](cases/ace-pro-pgp110/README.md)（**draft/未实测**）；同步 AGENTS 红线例外、MTH-002/003/004/007/008/009/010、README 索引、toolkit manifest invariants 文案（验证：validate --strict 0 error、check-links 0 missing、164 项单测通过、index 无 warnings） |
-| 2026-11-11 | v1.52 | **网络方案改为动态地址/多 Wi-Fi**：删除"必须固定 IP/DHCP 租约"假设，改为动态地址 + 发现兜底（页面/扫码/mDNS/广播发现，受控隧道需授权）；新增 [PIT-021](pitfalls/PIT-021-dhcp-lease-assumption.md)、[GRD-007](guardrails/GRD-007-network-least-exposure.md) R7；[MTH-002](methodology/01-assessment.md) §5.3.1 / [MTH-004](methodology/03-server-stack.md) §4.1 / [MTH-008](methodology/07-validation.md) F13 补网络决策与验收；toolkit 网络建模列入 [BL-019](backlog.json)（验证：validate --strict、check-links、163 项单测） |
 
 ## 4. 归档索引
 
 | 月份 | 条目 | 文件 |
 |---|---|---|
-| 2026-11 | 52 条（v1.0–v1.51，记录日期 2026-11-10/11） | [changelog/2026-11.md](changelog/2026-11.md) |
+| 2026-11 | 53 条（v1.0–v1.52，记录日期 2026-11-10/11） | [changelog/2026-11.md](changelog/2026-11.md) |

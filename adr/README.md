@@ -49,6 +49,7 @@ agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR �
 | ADR-0002 | AGENTS 协议语义化版本 + 协议/提示词变更必须回归、校验器中立 | accepted | 2026-11-13 | [ADR-0002](0002-protocol-versioning-and-regression.md) |
 | ADR-0003 | AGENTS 容量分流：细节下沉 MTH，保留红线/边界/索引（协议 v1.3，197 行） | accepted | 2026-11-14 | [ADR-0003](0003-agents-capacity-split.md) |
 | ADR-0004 | MTH-011 拆分：生命周期归 MTH-011，归档/预算/机检归 MTH-015 | accepted | 2026-11-14 | [ADR-0004](0004-mth-011-split.md) |
+| ADR-0005 | MTH-013 拆分：治理流程留 MTH-013，发布/兼容/数据/许可归 MTH-016 | accepted | 2026-11-14 | [ADR-0005](0005-mth-013-split.md) |
 
 新增 ADR 必须同步本表；索引与文件双向无遗漏（validate 的 ADR_INDEX 检查）。
 

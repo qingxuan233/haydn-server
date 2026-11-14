@@ -185,6 +185,7 @@ python -m unittest discover -s toolkit/tests -t . -v
 | [backlog.json](../backlog.json) | 当前任务/未完成/需授权 | 窗口外的历史进 `backlog-archive.json`；状态详情不写进入口 |
 | [toolkit/README.md](../toolkit/README.md) | CLI 契约与质量门 | 本文 §5 命令语义以它为准 |
 | [toolkit/schema/doc-policy.json](../toolkit/schema/doc-policy.json) | 数值上限唯一来源 | 本文只写语义，不抄数字 |
-| [MTH-013](12-delivery-governance.md) | 交付治理/阶段门/兼容/隐私 | 交付流程产生的决策/证据按 MTH-011 归档 |
+| [MTH-013](12-delivery-governance.md) | 交付治理/阶段门/用户验收 | 交付流程产生的决策/证据按 MTH-011 归档 |
+| [MTH-016](16-release-compatibility-data.md) | 发布就绪/兼容弃用/数据隐私/依赖许可 | 交付流程产生的决策/证据按 MTH-011 归档 |
 
 **权威顺序**（冲突时高层优先并修正低层）：用户指令 > AGENTS.md > `guardrails/` > `methodology/`（本文）> `pitfalls/` > `toolkit/` > `cases/` 与旧证据。本文**只管窗口、阅读预算、分层加载与机器校验**，不改变读序（读序权威在 AGENTS §0），也不重新定义红线。

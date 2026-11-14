@@ -1,8 +1,8 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "methodology",
-  "generated_at": "2026-11-14T03:22:54Z",
-  "count": 16,
+  "generated_at": "2026-11-14T03:29:57Z",
+  "count": 17,
   "entries": [
     {"id":"MTH-000","title":"方法论门户：定位、路径与文档地图","path":"methodology/README.md","type":"index","status":"current","tags":["methodology","portal","index","navigation"],"agent_hint":"先读本页确认定位、索引四表与阅读路径；Agent 的完整启动顺序以根 AGENTS.md 为准，本页不是工作协议。"},
     {"id":"MTH-001","title":"方法论边界与原则","path":"methodology/00-foundations.md","type":"methodology","status":"current","tags":["methodology","foundations","scope","principles","architecture"],"agent_hint":"任何改造任务开工前先读本页；确认适用前提与三轨边界，再按 MTH-002 评估设备。"},
@@ -17,8 +17,9 @@
     {"id":"MTH-010","title":"术语表（统一口径）","path":"methodology/09-glossary.md","type":"methodology","status":"current","tags":["glossary","terminology","conventions"],"agent_hint":"遇到不确定术语先查本表；新增术语必须一句定义+为何重要，并回链唯一出处文档。"},
     {"id":"MTH-011","title":"文档生命周期、归属、命名与变更联动","path":"methodology/10-document-lifecycle.md","type":"methodology","status":"current","tags":["documentation","naming","adr","index","linkage","manifest","agent","knowledge-debt"],"agent_hint":"新增/移动文档、判断事实归属、命名、写 ADR 或同步变更时读本文；归档窗口、阅读预算与机器校验读 MTH-015；归档默认不读。"},
     {"id":"MTH-012","title":"Root 实验设备方法论：受控解锁与特权应用","path":"methodology/11-root-lab.md","type":"methodology","status":"current","tags":["root","bootloader","kernelsu","apatch","magisk","lab-device","arb","ota","recovery","privilege"],"agent_hint":"只有\"专用实验设备 + 用户书面授权\"才可按本页推进；先过采购准入与救援演练，再解锁；生产/主力设备仍按 GRD-001 默认拒绝。"},
-    {"id":"MTH-013","title":"项目推进与交付治理","path":"methodology/12-delivery-governance.md","type":"methodology","status":"current","tags":["delivery","governance","risk","gates","acceptance","release","compatibility","privacy"],"agent_hint":"领取 M/H 级任务、准备发布/割接或做换机迁移前先读；先按 §2 定风险档，再按 §5 过交付门。"},
+    {"id":"MTH-013","title":"项目推进与交付治理","path":"methodology/12-delivery-governance.md","type":"methodology","status":"current","tags":["delivery","governance","risk","gates","acceptance","release","compatibility","privacy"],"agent_hint":"领取 M/H 级任务、准备发布/割接或做换机迁移前先读；先按 §2 定风险档，再按 §5 过交付门；发布/兼容/数据/许可检查项见 MTH-016。"},
     {"id":"MTH-014","title":"Agent 工作 SOP 与协作治理","path":"methodology/13-agent-sop.md","type":"methodology","status":"current","tags":["agent","sop","workflow","review","testing","reporting","branch","regression","prompts"],"agent_hint":"每次领取任务后先读 §3–§10 的 SOP 增补；改协议/提示词/校验器前必读 §12–§13 与 §16 自检清单。"},
-    {"id":"MTH-015","title":"归档、上下文预算与机器校验","path":"methodology/15-archive-and-context-budget.md","type":"methodology","status":"current","tags":["documentation","archival","context-budget","changelog","manifest","agent","machine-check"],"agent_hint":"归档 CHANGELOG、限制状态段、控制阅读预算或核对数值上限时读本文；文档归属/命名/ADR/联动读 MTH-011；归档默认不读。"}
+    {"id":"MTH-015","title":"归档、上下文预算与机器校验","path":"methodology/15-archive-and-context-budget.md","type":"methodology","status":"current","tags":["documentation","archival","context-budget","changelog","manifest","agent","machine-check"],"agent_hint":"归档 CHANGELOG、限制状态段、控制阅读预算或核对数值上限时读本文；文档归属/命名/ADR/联动读 MTH-011；归档默认不读。"},
+    {"id":"MTH-016","title":"发布就绪、兼容与数据治理","path":"methodology/16-release-compatibility-data.md","type":"methodology","status":"current","tags":["delivery","release","compatibility","deprecation","privacy","data-governance","license","sbom","provenance"],"agent_hint":"准备发布/割接、做兼容或弃用决策、处理数据隐私与依赖许可前先读；风险分级与阶段门 G0–G7 读 MTH-013，证据口径读 MTH-008。"}
   ]
 }

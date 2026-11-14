@@ -203,7 +203,7 @@ agent_hint: 一句话说明何时读、先做什么
 
 1. 取号：`REQ-<下一个号>`（可选 ID；需求卡是交付物，不进入内容索引）；模板 [request-card](../toolkit/templates/request-card.md)。
 2. 必填：ID/状态/DRI/验收人/目标版本、背景与问题、目标、非目标、场景、验收条件（含失败/空数据/权限不足/错误恢复）、依赖与约束、风险与备选、影响面。
-3. 流程：M/H 任务先过 G0/G1/G2（[MTH-013](12-delivery-governance.md) §5），验收条件批准后为基线，变更走变更单；发布/割接卡与 Go/No-Go 见 MTH-013 §7。
+3. 流程：M/H 任务先过 G0/G1/G2（[MTH-013](12-delivery-governance.md) §5），验收条件批准后为基线，变更走变更单；发布/割接卡与 Go/No-Go 见 [MTH-016](16-release-compatibility-data.md) §2。
 4. 验收：需求卡与 [acceptance 模板](../toolkit/templates/acceptance.md) 的判据一致；完成态以用户/验收人实际走通为准，Agent 自测不替代用户验收。
 
 ## 8. 变更传播

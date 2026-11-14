@@ -20,7 +20,7 @@
 > 本清单是仓库**唯一权威读序**；README、MTH-000、MTH-009 中的读序都是它的简化/引用。若发现不一致，以本节为准并修文档。
 
 1. 读本文件（尤其 §3 红线、§7 DoD）；读根 [agent-manifest.json](agent-manifest.json) 摘要（≤160 行；不存在/过期则先 `python -m toolkit.repurpose index`）。
-2. 按任务**只选 1 篇**主题文档深入（MTH-001/002/003/004/005/006/007/008 之一）；Root 实验设备读 [MTH-012](methodology/11-root-lab.md)；扩展/交接读 [MTH-009](methodology/08-agent-handoff.md)；归档/上下文读 [MTH-015](methodology/15-archive-and-context-budget.md)；项目推进/阶段门读 [MTH-013](methodology/12-delivery-governance.md)；SOP/评审/分支/回归读 [MTH-014](methodology/13-agent-sop.md)。
+2. 按任务**只选 1 篇**主题文档深入（MTH-001/002/003/004/005/006/007/008 之一）；Root 实验设备读 [MTH-012](methodology/11-root-lab.md)；扩展/交接读 [MTH-009](methodology/08-agent-handoff.md)；归档/上下文读 [MTH-015](methodology/15-archive-and-context-budget.md)；项目推进/阶段门读 [MTH-013](methodology/12-delivery-governance.md)；发布/兼容/数据读 [MTH-016](methodology/16-release-compatibility-data.md)；SOP/评审/分支/回归读 [MTH-014](methodology/13-agent-sop.md)。
 3. 读 [README.md](README.md) 的"仓库地图/阅读路径"段落即可；从 [backlog.json](backlog.json) 选一项（优先 P0/P1）或接受用户新任务，M/H 风险任务先写需求基线卡（[request-card](toolkit/templates/request-card.md)）。
 4. 动手前跑 §7 质量门；基线必须是绿的；若基线本身失败，先修基线再改功能。**只读优先**：先看状态/证据再改文件，禁止在不了解影响面时批量重写。
 
@@ -58,7 +58,7 @@
 | 路径 | 用途 | 可改性 |
 |---|---|---|
 | `AGENTS.md` / `README.md` / `backlog.json` / `CHANGELOG.md` | 协议、人类入口、任务队列、变更窗口 | Lead/维护者；必须保持机器索引同步 |
-| `methodology/`（MTH-001..015） | 设备无关方法论 | 按 MTH-009/MTH-014 流程新增/修订 |
+| `methodology/`（MTH-001..016） | 设备无关方法论 | 按 MTH-009/MTH-014 流程新增/修订 |
 | `guardrails/`（GRD-001..016） | 不可协商红线 | 新增须给出可执行检查方式 |
 | `pitfalls/`（PIT-001..025） | 踩坑证据库 | 新增条目须有证据与验证 |
 | `adr/`（ADR-0001..） | 决策记录（Nygard 五段） | 追加新决策；历史决策不改写，只标 superseded |
@@ -180,7 +180,7 @@
 
 > 本节只写**结论与链接**（≤8 行），不复制数字；当前窗口变更见 [CHANGELOG.md](CHANGELOG.md)，历史变更见 [changelog/](changelog/README.md)（默认不读）。
 
-- 方法论：MTH-001..015 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-014 Agent SOP 多为"已立规范、未全实测"）；工具链零依赖 CLI + fixture 单测，**尚未真机回归**。
+- 方法论：MTH-001..016 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-014 Agent SOP 多为"已立规范、未全实测"，MTH-016 发布/兼容/数据为 MTH-013 的展开）；工具链零依赖 CLI + fixture 单测，**尚未真机回归**。
 - 交付治理与阶段门 G0–G7 已成文（[MTH-013](methodology/12-delivery-governance.md)），但**尚未在真实割接中演练**；首个真实 Go/No-Go 见 [backlog.json](backlog.json)。
 - 案例是**部分验证**（24h soak、配对/轮换、mTLS、限流等未完成，详见 [cases/haydn-k40pro/README.md](cases/haydn-k40pro/README.md)）；不得表述为"全验收通过"。
 - Root 轨：Ace Pro 已完成解锁/Root 与 3 轮救援演练（[CASE-003](cases/ace-pro-pgp110/README.md)），并部分落地 P1 管理面（Tailscale 登录/SSH、充电上限 80%、无用应用禁用、Quark 加密备份跑通（含自动化脚本二次执行）；24h soak run #2 未满、tailnet 端到端与备份计划任务（未注册）未完成）；生产 haydn 保持无 Root。P0 仍是真机验证与基线绿化。

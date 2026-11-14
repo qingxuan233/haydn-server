@@ -155,7 +155,8 @@ agent_hint: 遇到不确定术语先查本表；新增术语必须一句定义+�
 | 边界、适用前提、三轨架构 | [MTH-001 边界与原则](00-foundations.md) |
 | 设备评估与路线决策 | [MTH-002 评估与可行性决策](01-assessment.md) |
 | 阶段推进与变更管理 | [MTH-003 通用路线图](02-roadmap.md) |
-| 项目推进、阶段门 G0–G7、用户验收、发布/割接 | [MTH-013](12-delivery-governance.md) |
+| 项目推进、阶段门 G0–G7、用户验收 | [MTH-013](12-delivery-governance.md) |
+| 发布就绪、兼容/弃用、数据隐私、依赖许可 | [MTH-016](16-release-compatibility-data.md) |
 | Agent SOP、评审/测试、汇报、多 Agent、分支/回归 | [MTH-014](13-agent-sop.md) |
 | 决策记录与轻量台账 | [adr/README.md](../adr/README.md) |
 | 服务器栈与服务分层 | [MTH-004 服务器栈](03-server-stack.md) |

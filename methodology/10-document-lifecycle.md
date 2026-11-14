@@ -77,7 +77,7 @@ agent_hint: 新增/移动文档、判断事实归属、命名、写 ADR 或同�
 |---|---|---|
 | 新增/移动/归档文档 | 索引四表（§2.1）+ 全仓旧路径替换 + 交叉链接 | `check-links`、`validate`、`index` |
 | 改命令/脚本契约（参数/输出/退出码） | [toolkit/README.md](../toolkit/README.md) + schema + 测试 + 调用方脚本 | 单测 + `--help` |
-| 改 API/遥测字段（改名/删除/语义） | 兼容矩阵 + 消费者（控制面/仪表盘/审计）+ CHANGELOG + 兼容/弃用流程（[MTH-013](12-delivery-governance.md) §8） | 契约测试 + 兼容证据 |
+| 改 API/遥测字段（改名/删除/语义） | 兼容矩阵 + 消费者（控制面/仪表盘/审计）+ CHANGELOG + 兼容/弃用流程（[MTH-016](16-release-compatibility-data.md) §3） | 契约测试 + 兼容证据 |
 | 改 profile schema | [device-profile.schema.json](../toolkit/schema/device-profile.schema.json) + assess/plan + 案例 profile + 模板 | schema 校验 + 案例回归 |
 | 新增 PIT 条目 | 索引登记 + 评估能否机制化为检查（lint/validate/测试） | `validate` PIT 检查 |
 | 改 AGENTS/规范正文 | 协议版本（MAJOR/MINOR/PATCH）+ 回归（AR-01..10）+ CHANGELOG + ADR（MAJOR 时） | `preflight` 回归 |
@@ -86,7 +86,7 @@ agent_hint: 新增/移动文档、判断事实归属、命名、写 ADR 或同�
 | 改红线/目录结构/ID 前缀/权威顺序 | 破坏性变更流程：ADR + 迁移说明 + README/manifest/模板/校验器同步 | 全量质量门 |
 
 - **判定**：联动失败即视为本单元未完成；同步不了的，在汇报中列为未完成项并进 backlog（[MTH-014](13-agent-sop.md) §9）。
-- **未实测声明**：矩阵中遥测字段契约、profile schema 兼容回归与模板一致性测试**尚未形成自动化证据**（待落地，对齐 [MTH-013](12-delivery-governance.md) §12）。
+- **未实测声明**：矩阵中遥测字段契约、profile schema 兼容回归与模板一致性测试**尚未形成自动化证据**（待落地，对齐 [MTH-013](12-delivery-governance.md) §8）。
 
 ### 2.6 一次性产物与会话任务区
 
@@ -142,7 +142,8 @@ agent_hint: 新增/移动文档、判断事实归属、命名、写 ADR 或同�
 | [toolkit/schema/doc-policy.json](../toolkit/schema/doc-policy.json) | 数值上限唯一来源 | 本文只写语义，不抄数字 |
 | [MTH-009](08-agent-handoff.md) | 扩展/交接/变更传播/DoD | 新增文档与 caps 变更走它 |
 | [MTH-014](13-agent-sop.md) | Agent SOP/评审/汇报/回归 | 执行细节以它为准，本文不重复 |
-| [MTH-013](12-delivery-governance.md) | 交付治理/阶段门/兼容/隐私 | 交付流程产生的决策/证据按本文归档 |
+| [MTH-013](12-delivery-governance.md) | 交付治理/阶段门/用户验收 | 交付流程产生的决策/证据按本文归档 |
+| [MTH-016](16-release-compatibility-data.md) | 发布就绪/兼容弃用/数据隐私/依赖许可 | 交付流程产生的决策/证据按本文归档 |
 | [MTH-003](02-roadmap.md)、[MTH-010](09-glossary.md) | 阶段口径与术语 | 状态摘要引用不复制；术语冲突以 MTH-010 为准 |
 
 **权威顺序**（冲突时高层优先并修正低层）：用户指令 > AGENTS.md > `guardrails/` > `methodology/`（本文）> `pitfalls/` > `toolkit/` > `cases/` 与旧证据。本文**只管归属、索引、命名、ADR 与变更联动**，不改变读序（读序权威在 AGENTS §0），也不重新定义红线。

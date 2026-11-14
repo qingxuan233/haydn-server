@@ -161,6 +161,30 @@
       "updated": "2026-11-13",
       "result": "已落地并验证：协议 v1.2、ADR-0001/0002、GRD-016、MTH-013/014、模板新增 2 个（adr、request-card）/更新 4 个（acceptance、agent-task、pitfall、runbook）、backlog schema、validate 新检查、preflight/index --check、CI workflow；验收证据：preflight exit 0（index 重建无 warnings；validate --strict 0 error/0 warning；282 项单测 OK；check-links 0 missing）、index --check exit 0；提交 6c3bf74；CI 首跑 success（run #43465049307）。后续改进（2026-11-14）：index 幂等——内容未变时不重写、保留原 generated_at；单测 282→285。",
       "risk": "H"
+    },
+    {
+      "id": "BL-024",
+      "title": "ADR 决策记录层落地（adr/ + 模板 + 机检）",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "新增 adr/ 层与索引；ADR-0001/0002 记录本批关键决策；模板 toolkit/templates/adr.md；validate 校验文件名/ID/status/五段式/superseded 链/索引无孤儿。",
+      "outputs": [
+        "adr/README.md",
+        "adr/0001-adopt-agent-harness-v1-3.md",
+        "adr/0002-protocol-versioning-and-regression.md",
+        "toolkit/templates/adr.md"
+      ],
+      "depends": [
+        "BL-023"
+      ],
+      "notes": "状态枚举 proposed/accepted/superseded；被取代不删除、回链新 ADR。",
+      "agent_hint": "新决策写入前先读 adr/README.md 的状态与流程。",
+      "requires": "",
+      "owner": "lead",
+      "updated": "2026-11-13",
+      "result": "已落地：adr/README.md + ADR-0001（采纳清单/备选/后果）+ ADR-0002（协议版本与回归）+ 模板；validate ADR 机检覆盖，索引无孤儿。",
+      "risk": "M"
     }
   ]
 }

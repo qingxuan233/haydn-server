@@ -34,7 +34,8 @@ agent_hint: 每次领取任务后先读 §3–§10 的 SOP 增补；改协议/�
 | 交接与恢复、ID/front matter、五类扩展 SOP、CLI 契约、backlog 指针 | [MTH-009](08-agent-handoff.md) |
 | 索引四表、命名、ADR、变更联动矩阵 | [MTH-011](10-document-lifecycle.md) |
 | 阅读预算、归档窗口、状态段上限、机检上限 | [MTH-015](15-archive-and-context-budget.md) |
-| 风险分级、需求基线、交付门 G0–G7、用户验收、发布/割接、数据/许可 | [MTH-013](12-delivery-governance.md) |
+| 风险分级、需求基线、交付门 G0–G7、用户验收 | [MTH-013](12-delivery-governance.md) |
+| 发布就绪、兼容/弃用、数据隐私、依赖许可 | [MTH-016](16-release-compatibility-data.md) |
 
 ## 3. 任务生命周期（单 Agent）
 

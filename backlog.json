@@ -285,30 +285,6 @@
       "owner": "lead", "updated": "2026-11-14", "result": "已完成（截至 2026-11-13）：KernelSU LKM Root、5/5 重启 Root 存活、3/3 救援演练；服务器化准备（Ubuntu 24.04.5 arm64 chroot、supervisord 心跳+loopback HTTP、root 特权遥测、iptables 入站 DROP、KernelSU 开机模块、5/5 重启自启）。P1 管理面（2026-11-14，部分完成）：wake_lock 与 Wi‑Fi 省电关闭并持久化；openssh-server 仅 loopback 密钥登录，临时密钥验证后已生成长期管理员 ed25519 密钥并端到端验证（后由用户自有密钥替换）；prometheus-node-exporter 仅 loopback；cron 每 5 分钟健康检查（跨重启 OK）；本地告警升级：health FAIL 时设备 Android 通知 + alerts.log 去重记录，受控验证通过；restic/rclone 已安装，restic 本机加密备份/恢复演练通过（19 文件、check 无错误、restore SHA-256 MATCH，临时仓库已删除；非持久备份）；Tailscale 1.104.7 官方 static（SHA-256 校验）已安装，**已用 auth key 登录成功（BackendState=Running，节点 haydn-pgp110）**，配置 tailnet TCP 转发 :22→127.0.0.1:22（tailnet-only，tailscaled 重启后保持），auth key 以 file: 方式传参、临时文件已删除（建议用户在 Tailscale 管理台 revoke）；P1 后 5/5 重启矩阵通过；30 分钟 7 线程满载热测试 180 采样：温区峰值 79.0°C、电池峰值 35.9°C。soak：run #1 于 2026-11-13T18:00:03Z 起、4.91h 后因遥测循环脚本语法错误（22:54–23:08Z 缺口）中止（设备未重启）；已改用 LF 文本 + setsid 重启遥测循环并核对采集周期，**soak run #2 于 2026-11-13T23:08:20Z 重新计时**。追加（2026-11-14）：开启 ColorOS 原生「充电上限保护」（电量维持 80%，状态键=1；100% 时已停充；80% 长时维持待观测）；第三方应用按 GRD-002 仅 disable-user 清理（41 目标/新禁用 28/累计 45，保留核心与 KernelSU）。用户自有 ed25519 公钥（轮换、取消口令）已安装并自动化端到端验证通过（uid=0；旧公钥与管理员回退密钥均已从 authorized_keys 移除，旧管理员密钥登录被拒绝）。夸克备份链路已跑通一次（设备 tar.gz 快照 286 文件/37.4MB → PC AES-256-GCM 加密 → Quark CLI 上传至 haydn-server-backup 文件夹；远端回下载 SHA-256 与本地一致；设备恢复演练 286/286 清单 OK；加密口令本地保管；自动化脚本二次执行成功（code 0/2 文件/37,421,705 B 至同一目录）；计划任务未注册）。未完成：tailnet 端到端 SSH 验证（需用户第二 tailnet 节点；本机自连超时属 userspace 限制）、夸克备份计划任务注册（自动化脚本已二次执行成功）/口令异地保管/定期恢复演练、24h soak run #2 满期核对、proot vs chroot 基准、资源/电源调优（含充电上限语义）、Uptime Kuma/外部告警、服务迁移、7 天双跑、生产割接。"
     },
     {
-      "id": "BL-024",
-      "title": "ADR 决策记录层落地（adr/ + 模板 + 机检）",
-      "priority": "P2",
-      "area": "repo",
-      "status": "done",
-      "acceptance": "新增 adr/ 层与索引；ADR-0001/0002 记录本批关键决策；模板 toolkit/templates/adr.md；validate 校验文件名/ID/status/五段式/superseded 链/索引无孤儿。",
-      "outputs": [
-        "adr/README.md",
-        "adr/0001-adopt-agent-harness-v1-3.md",
-        "adr/0002-protocol-versioning-and-regression.md",
-        "toolkit/templates/adr.md"
-      ],
-      "depends": [
-        "BL-023"
-      ],
-      "notes": "状态枚举 proposed/accepted/superseded；被取代不删除、回链新 ADR。",
-      "agent_hint": "新决策写入前先读 adr/README.md 的状态与流程。",
-      "requires": "",
-      "owner": "lead",
-      "updated": "2026-11-13",
-      "result": "已落地：adr/README.md + ADR-0001（采纳清单/备选/后果）+ ADR-0002（协议版本与回归）+ 模板；validate ADR 机检覆盖，索引无孤儿。",
-      "risk": "M"
-    },
-    {
       "id": "BL-025",
       "title": "MTH-013 项目推进与交付治理（阶段门/用户验收/发布就绪）",
       "priority": "P1",
@@ -324,7 +300,7 @@
         "BL-023"
       ],
       "notes": "G0–G7 与 MTH-003 的 P0–P6/路线门禁关系已写明（交付治理门不替代路线门）；尚未在真实割接中演练（见 BL-027）。",
-      "agent_hint": "交付/发布任务先读 §5 阶段门与 §7 Go/No-Go。",
+      "agent_hint": "交付/发布任务先读 §5 阶段门与 MTH-016 §2 Go/No-Go。",
       "requires": "",
       "owner": "lead",
       "updated": "2026-11-13",
@@ -381,7 +357,7 @@
       "priority": "P2",
       "area": "bridge",
       "status": "pending",
-      "acceptance": "Android Bridge 发布制品可回答：源提交、构建工具/依赖版本、依赖许可证清单、制品 hash；无法生成时写明原因、替代控制、风险 Owner 与复查日期（MTH-013 §10）。",
+      "acceptance": "Android Bridge 发布制品可回答：源提交、构建工具/依赖版本、依赖许可证清单、制品 hash；无法生成时写明原因、替代控制、风险 Owner 与复查日期（MTH-016 §5）。",
       "outputs": [
         "android-bridge/",
         "cases/haydn-k40pro/"
@@ -423,9 +399,9 @@
       "priority": "P2",
       "area": "security",
       "status": "pending",
-      "acceptance": "按 MTH-013 §9 登记数据与来源/目的与依据/最小化与访问/保留与删除/事件处置；对 profiles、inventory、backup、soak 日志给出保留期与删除验证方法；不采集/打印真实秘密。",
+      "acceptance": "按 MTH-016 §4 登记数据与来源/目的与依据/最小化与访问/保留与删除/事件处置；对 profiles、inventory、backup、soak 日志给出保留期与删除验证方法；不采集/打印真实秘密。",
       "outputs": [
-        "methodology/12-delivery-governance.md",
+        "methodology/16-release-compatibility-data.md",
         "guardrails/GRD-011-privacy-inventory.md"
       ],
       "depends": [],
@@ -498,6 +474,29 @@
       "owner": "protocol",
       "updated": "2026-11-14",
       "result": "MTH-011 158 行、MTH-015 190 行（均 ≤200）；新增 ADR-0004 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-009/013/014/pitfalls/toolkit/README/doc-policy 描述/changelog 索引；preflight 全绿。",
+      "risk": "L"
+    },
+    {
+      "id": "BL-034",
+      "title": "MTH-013 拆分：发布/兼容/数据治理独立为 MTH-016",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "methodology/12-delivery-governance.md 从 290/300 行降至健康档：按单一事实源把 §7–§10（发布就绪、兼容/弃用、数据隐私、依赖许可/制品来源）迁入 MTH-016，不删规则、不重复抄写；同步全仓引用、manifest、ADR 与 CHANGELOG；preflight 全绿且未弱化检查。",
+      "outputs": [
+        "methodology/12-delivery-governance.md",
+        "methodology/16-release-compatibility-data.md",
+        "adr/0005-mth-013-split.md",
+        "methodology/README.md",
+        "README.md"
+      ],
+      "depends": [],
+      "notes": "2026-11-14 完成：MTH-013 187 行、MTH-016 150 行；G0–G7 门禁仍归 MTH-013，MTH-016 只给 G5/G6 检查项；done 窗口保持 ≤5（BL-024 移入 backlog-archive.json）。",
+      "agent_hint": "改风险分级/需求基线/阶段门/用户验收读 MTH-013；改发布/兼容/数据/许可读 MTH-016。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "MTH-013 187 行、MTH-016 150 行（均 ≤200）；新增 ADR-0005 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-008/009/010/011/014/015 与 backlog pending 任务引用；preflight 全绿。",
       "risk": "L"
     }
   ]
