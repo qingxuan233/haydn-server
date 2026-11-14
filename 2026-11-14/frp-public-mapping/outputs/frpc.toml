@@ -1,0 +1,128 @@
+# =============================================================================
+# frpc.toml — Haydn (CASE-003 / PGP110, aarch64 chroot) → 88frp 公网映射
+# 约束：公网仅 HTTPS（不经 80/HTTP，不做 80→443 跳转）；设备侧不新增入站监听
+# 状态：占位符模板 → 2026-11-14 已按节点「成都BGP-v1」实施，实施结果见规划文档 §11。
+#       真实 token / user 标识不入本文件、不入仓库、不入日志。
+#
+# 取证事实（2026-11-14 实测）：
+#   - 节点 8.137.162.154:1210 出站可达（旧节点 47.97.70.99:7000 不可达，不可照抄默认值）
+#   - 该节点 type=https 为 SNI 透传：TLS 在设备侧终结（stunnel 127.0.0.1:18443）
+#   - type=http 在本节点不可用：80/8080 返回 403 Server: Beaver（ICP 未备案拦截）
+#   - qingxuan.bbs0.cc A → 8.137.162.154；无泛解析，新子域需在面板加记录
+# =============================================================================
+
+# ---- 服务端连接（按面板「节点信息」填写）----
+serverAddr = "8.137.162.154"
+serverPort = 1210
+user = "REPLACE_WITH_PANEL_USER"    # 面板账号标识，不写真实值
+
+# ---- 认证：token 只从环境变量注入 ----
+# 启动方式见规划文档 §8.2：/bin/sh -c 'set -a; . /etc/frp/frpc.env; exec frpc -c ...'
+# /etc/frp/frpc.env 内容：FRP_TOKEN=<真实 token>，权限 600
+auth.method = "token"
+auth.token = "{{ .Envs.FRP_TOKEN }}"    # 若 frpc 版本不支持 Envs 模板，改为占位符后手动填充并 chmod 600
+
+# ---- 传输层（C8 待核对：服务端是否强制/支持）----
+# 该层加密的是「88frp 边缘 ↔ 本机 frpc」这一段，避免仅靠 token 裸奔
+transport.tls.enable = true
+# transport.tls.serverName = "qingxuan.bbs0.cc"   # 仅在证书主机名不匹配时才需要
+
+# ---- 日志 ----
+log.to = "/var/log/haydn/frpc.log"
+log.level = "info"
+log.maxDays = 7
+
+# ---- 保活 ----
+loginFailExit = false      # 首连失败不退出，交由 supervisor 重启策略兜底
+transport.heartbeatInterval = 10   # 与面板生成值保持一致（面板默认 10/60）
+transport.heartbeatTimeout = 60
+
+# =============================================================================
+# M1【启用】静态自检页：https://qingxuan.bbs0.cc/
+#   TLS 终结点：设备侧 stunnel（127.0.0.1:18443 → 127.0.0.1:18080），证书走
+#              /etc/ssl/certs/qingxuan.bbs0.cc.fullchain.pem + 对应 600 私钥
+#   明文段：仅 frpc → 127.0.0.1:18443（loopback）与 stunnel → 18080（loopback）
+#   鉴权：无（只读静态页，不含敏感数据）；需要时启用下面 httpUser/httpPassword
+# =============================================================================
+[[proxies]]
+name = "haydn-web"        # 面板生成的是固定随机名（本部署为 43RHEU5l28eb），不可自行改名
+type = "https"
+localIP = "127.0.0.1"
+localPort = 18443
+customDomains = ["qingxuan.bbs0.cc"]
+# httpUser = "REPLACE_ME"          # 需要访问控制时启用
+# httpPassword = "REPLACE_ME"
+
+# =============================================================================
+# R1【预留·默认不启用】指标：https://qingxuan.bbs0.cc/metrics
+#   启用前提：①面板支持同域 locations 分流（C4）；②已配置 BasicAuth；
+#             ③确认指标里没有敏感信息
+#   注意：BasicAuth 用户名/密码同样用占位符，不写真实值
+# =============================================================================
+# [[proxies]]
+# name = "haydn-metrics"
+# type = "http"
+# localIP = "127.0.0.1"
+# localPort = 9100
+# customDomains = ["qingxuan.bbs0.cc"]
+# locations = ["/metrics"]
+# httpUser = "REPLACE_ME"
+# httpPassword = "REPLACE_ME"
+
+# =============================================================================
+# R2【预留·默认不启用】未来 API：https://qingxuan.bbs0.cc/api
+#   启用前提：①本地 18081 服务上线且自带鉴权；②C4 支持同域分流；③有速率限制
+# =============================================================================
+# [[proxies]]
+# name = "haydn-api"
+# type = "http"
+# localIP = "127.0.0.1"
+# localPort = 18081
+# customDomains = ["qingxuan.bbs0.cc"]
+# locations = ["/api"]
+
+# =============================================================================
+# R3【预留·默认不启用】WebDAV：https://qingxuan.bbs0.cc/dav
+#   启用前提：①WebDAV 服务已部署并强制认证；②只读或路径白名单；③C4 支持同域分流
+#   备注：chroot 内已有 rclone，可用 `rclone serve webdav` 起步
+# =============================================================================
+# [[proxies]]
+# name = "haydn-dav"
+# type = "http"
+# localIP = "127.0.0.1"
+# localPort = 18082
+# customDomains = ["qingxuan.bbs0.cc"]
+# locations = ["/dav"]
+# httpUser = "REPLACE_ME"
+# httpPassword = "REPLACE_ME"
+
+# =============================================================================
+# R4【预留·默认不启用】TLS 透传：仅当模型 A（服务商边缘终结）被证伪
+#   启用前提：①C2 支持 type=https；②设备侧证书已就绪（ACME 或人工续期）；
+#             ③已评估 DNS-01 需要阿里云 AK 的风险（不建议把 AK 放在设备上）
+#   需要独立子域名 + 新增解析记录（无泛解析）；本地需有 TLS 服务监听 18443
+# =============================================================================
+# [[proxies]]
+# name = "haydn-tls-passthrough"
+# type = "https"
+# localIP = "127.0.0.1"
+# localPort = 18443
+# customDomains = ["tls.qingxuan.bbs0.cc"]   # 占位：需在面板/解析管理新增记录
+
+# =============================================================================
+# R5【默认永不启用】SSH 兜底 TCP（仅 tailnet 完全不可用时临时开）
+#   启用前提：①先停用密码登录、限制 AllowUsers、加失败封锁；
+#             ②远程端口由面板分配（C6）；③用完立即删除隧道与本地 program
+#   安全基线：SSH 正常路径是 tailnet，不是公网
+# =============================================================================
+# [[proxies]]
+# name = "tcp-ssh-fallback"
+# type = "tcp"
+# localIP = "127.0.0.1"
+# localPort = 22
+# remotePort = 0            # 占位：按面板分配的远程端口填写
+
+# =============================================================================
+# 明确不规划：80/HTTP 映射、HTTP→HTTPS 跳转、UDP 映射、
+#             tailscaled SOCKS5(1055)、node-exporter 裸端口、任何 OEM 端口
+# =============================================================================
