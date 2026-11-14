@@ -105,9 +105,15 @@ class IndexBundleTests(unittest.TestCase):
         self.assertEqual(counts["tools"], 5)
         self.assertEqual(counts["total_entry_docs"], 8)
         for layer in CONTENT_GROUPS:
-            shard = bundle["shards"][layer]["data"]
-            self.assertEqual(counts[layer], len(shard["entries"]))
-            self.assertEqual(manifest["shards"][layer]["count"], len(shard["entries"]))
+            parts = bundle["shards"][layer]["parts"]
+            entries = [entry for part in parts for entry in part["data"]["entries"]]
+            self.assertEqual(counts[layer], len(entries))
+            self.assertEqual(manifest["shards"][layer]["count"], len(entries))
+            self.assertEqual(len(manifest["shards"][layer]["parts"]), len(parts))
+            self.assertEqual(
+                sum(part["data"]["count"] for part in parts),
+                counts[layer],
+            )
 
     def test_entrypoints_and_reading_order_groups(self) -> None:
         manifest = build_manifest(self.root)
@@ -132,39 +138,46 @@ class IndexBundleTests(unittest.TestCase):
     def test_shards_four_layers_and_fields(self) -> None:
         bundle = build_bundle(self.root)
         limits = manifest_limits(load_policy()[0])
-        expected_files = {
-            layer: shard_relative_path(layer) for layer in CONTENT_GROUPS
-        }
         self.assertEqual(set(bundle["shards"]), set(CONTENT_GROUPS))
         for layer, shard_info in bundle["shards"].items():
-            shard = shard_info["data"]
-            self.assertEqual(shard["schema"], SCHEMA_SHARD)
-            self.assertEqual(shard["layer"], layer)
-            self.assertIsNotNone(parse_iso(shard["generated_at"]))
-            self.assertEqual(shard["count"], len(shard["entries"]))
-            self.assertLessEqual(len(shard_info["text"].splitlines()), limits["shard_max_lines"])
-            self.assertLessEqual(shard_info["bytes"], limits["shard_max_bytes"])
-            self.assertLessEqual(len(shard["entries"]), limits["shard_max_entries"])
-            self.assertEqual(shard_info["path"], expected_files[layer])
-            self.assertTrue(shard_info["path"].startswith("agent-manifest.d/"))
-            for entry in shard["entries"]:
-                for key in ("id", "title", "path", "type", "status", "tags", "agent_hint"):
-                    self.assertIn(key, entry)
-                self.assertFalse(entry["path"].startswith("/"))
-            json.loads(shard_info["text"])  # 合法 JSON
+            self.assertEqual(
+                shard_info["count"],
+                sum(part["data"]["count"] for part in shard_info["parts"]),
+            )
+            self.assertEqual(
+                [part["path"] for part in shard_info["parts"]],
+                [shard_relative_path(layer)],
+            )
+            for part in shard_info["parts"]:
+                shard = part["data"]
+                self.assertEqual(shard["schema"], SCHEMA_SHARD)
+                self.assertEqual(shard["layer"], layer)
+                self.assertIsNotNone(parse_iso(shard["generated_at"]))
+                self.assertEqual(shard["count"], len(shard["entries"]))
+                self.assertLessEqual(len(part["text"].splitlines()), limits["shard_max_lines"])
+                self.assertLessEqual(part["bytes"], limits["shard_max_bytes"])
+                self.assertLessEqual(len(shard["entries"]), limits["shard_max_entries"])
+                self.assertTrue(part["path"].startswith("agent-manifest.d/"))
+                for entry in shard["entries"]:
+                    for key in ("id", "title", "path", "type", "status", "tags", "agent_hint"):
+                        self.assertIn(key, entry)
+                    self.assertFalse(entry["path"].startswith("/"))
+                json.loads(part["text"])  # 合法 JSON
 
     def test_shards_carry_severity_domain_scope(self) -> None:
         bundle = build_bundle(self.root)
         pitfall = next(
             entry
-            for entry in bundle["shards"]["pitfalls"]["data"]["entries"]
+            for part in bundle["shards"]["pitfalls"]["parts"]
+            for entry in part["data"]["entries"]
             if entry["id"] == "PIT-001"
         )
         self.assertEqual(pitfall["severity"], "S2")
         self.assertEqual(pitfall["domain"], "server")
         guardrail = next(
             entry
-            for entry in bundle["shards"]["guardrails"]["data"]["entries"]
+            for part in bundle["shards"]["guardrails"]["parts"]
+            for entry in part["data"]["entries"]
             if entry["id"] == "GRD-001"
         )
         self.assertEqual(guardrail["severity"], "blocker")
@@ -231,13 +244,57 @@ class IndexBundleTests(unittest.TestCase):
         self.assertIn("agent-manifest.d/guardrails_old.json", info["removed_shards"])
         self.assertTrue(any("foreign.json" in warning for warning in info["warnings"]))
 
-    def test_shard_over_limit_reports_error(self) -> None:
-        _add_many_pitfalls(self.root, 45)
+    def test_shard_split_boundary_40_no_split(self) -> None:
+        _add_many_pitfalls(self.root, 38)  # 2 + 38 = 40
         bundle = build_bundle(self.root)
-        self.assertEqual(len(bundle["shards"]["pitfalls"]["data"]["entries"]), 47)
-        joined = "\n".join(bundle["root"]["errors"])
-        self.assertIn("分片超限", joined)
-        self.assertIn("pitfalls", joined)
+        info = bundle["shards"]["pitfalls"]
+        self.assertEqual(info["count"], 40)
+        self.assertEqual([part["path"] for part in info["parts"]], ["agent-manifest.d/pitfalls.json"])
+        self.assertEqual(len(info["parts"][0]["data"]["entries"]), 40)
+        mapping = bundle["root"]["shards"]["pitfalls"]
+        self.assertEqual(mapping["count"], 40)
+        self.assertEqual([part["path"] for part in mapping["parts"]], ["agent-manifest.d/pitfalls.json"])
+        self.assertFalse(any("条目数" in error for error in bundle["root"]["errors"]))
+
+    def test_shard_split_at_41_and_entry_integrity(self) -> None:
+        _add_many_pitfalls(self.root, 39)  # 2 + 39 = 41
+        bundle = build_bundle(self.root)
+        info = bundle["shards"]["pitfalls"]
+        expected_paths = [
+            "agent-manifest.d/pitfalls-p01.json",
+            "agent-manifest.d/pitfalls-p02.json",
+        ]
+        self.assertEqual([part["path"] for part in info["parts"]], expected_paths)
+        self.assertEqual([part["data"]["count"] for part in info["parts"]], [40, 1])
+        entries = [entry for part in info["parts"] for entry in part["data"]["entries"]]
+        expected_entries, _warnings, _errors = scan_group(self.root, "pitfalls")
+        self.assertEqual([entry["id"] for entry in entries], [entry["id"] for entry in expected_entries])
+        self.assertEqual(len({entry["id"] for entry in entries}), 41)
+        mapping = bundle["root"]["shards"]["pitfalls"]
+        self.assertEqual(mapping["count"], 41)
+        self.assertEqual([part["path"] for part in mapping["parts"]], expected_paths)
+        self.assertEqual([part["count"] for part in mapping["parts"]], [40, 1])
+        self.assertFalse(any("条目数" in error for error in bundle["root"]["errors"]))
+
+    def test_write_bundle_replaces_single_shard_with_parts(self) -> None:
+        write_bundle(self.root)
+        shard_dir = default_shard_dir(self.root)
+        self.assertTrue((shard_dir / "pitfalls.json").is_file())
+        _add_many_pitfalls(self.root, 39)
+        info = write_bundle(self.root)
+        self.assertFalse((shard_dir / "pitfalls.json").exists())
+        self.assertTrue((shard_dir / "pitfalls-p01.json").is_file())
+        self.assertTrue((shard_dir / "pitfalls-p02.json").is_file())
+        self.assertEqual(
+            [part["path"] for part in info["shards"]["pitfalls"]["parts"]],
+            ["agent-manifest.d/pitfalls-p01.json", "agent-manifest.d/pitfalls-p02.json"],
+        )
+        for path in (self.root / "pitfalls").glob("PIT-9*.md"):
+            path.unlink()
+        write_bundle(self.root)
+        self.assertTrue((shard_dir / "pitfalls.json").is_file())
+        self.assertFalse((shard_dir / "pitfalls-p01.json").exists())
+        self.assertFalse((shard_dir / "pitfalls-p02.json").exists())
 
     def test_policy_limits_follow_doc_policy_file(self) -> None:
         policy, warnings = load_policy()

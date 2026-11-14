@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://haydn-server.local/toolkit/schema/agent-manifest.schema.json",
   "title": "repurpose.agent-manifest.v1（根摘要）",
-  "description": "仓库根 agent-manifest.json：机器索引**根摘要**，≤160 行 / ≤16KB。只含 entrypoints/reading_order/counts/shards/tools/invariants/commands 等摘要；完整条目在 agent-manifest.d/ 四层分片（repurpose.manifest-shard.v1）。Agent 先读本摘要，需要某层时只读一个分片。生成物不要手改，用 python -m toolkit.repurpose index 重建。本文件是自描述 JSON Schema（draft-07），校验器不依赖 jsonschema 库。",
+  "description": "仓库根 agent-manifest.json：机器索引**根摘要**，≤160 行 / ≤16KB。只含 entrypoints/reading_order/counts/shards/tools/invariants/commands 等摘要；完整条目在 agent-manifest.d/ 四层分片（repurpose.manifest-shard.v1），单层 >40 条时按 <layer>-pNN.json 自动拆分。Agent 先读本摘要，需要某层时只读一个分片。生成物不要手改，用 python -m toolkit.repurpose index 重建。本文件是自描述 JSON Schema（draft-07），校验器不依赖 jsonschema 库。",
   "type": "object",
   "required": [
     "schema",
@@ -70,7 +70,7 @@
     },
     "shards": {
       "type": "object",
-      "description": "层 → 分片映射；四层必须齐全，path 相对仓库根且对应文件存在",
+      "description": "层 → 分片映射；四层必须齐全。每层 1..N 片：≤40 条为单文件 <layer>.json；>40 条按层内顺序拆为 <layer>-p01.json…<layer>-pNN.json（每片 ≤40 条，非末片满片）",
       "required": ["methodology", "pitfalls", "guardrails", "case_studies"],
       "properties": {
         "methodology": {"$ref": "#/definitions/shardMapping"},
@@ -142,10 +142,24 @@
     },
     "shardMapping": {
       "type": "object",
+      "required": ["count", "parts"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0, "description": "该层条目总数（等于各片 count 之和）"},
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/shardPart"},
+          "description": "分片列表（按层内顺序）；单片沿用 <layer>.json，多片为 <layer>-pNN.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "shardPart": {
+      "type": "object",
       "required": ["path", "count"],
       "properties": {
         "path": {"type": "string", "description": "仓库相对 POSIX 路径；禁止绝对路径"},
-        "count": {"type": "integer", "minimum": 0},
+        "count": {"type": "integer", "minimum": 0, "maximum": 40},
         "lines": {"type": "integer", "minimum": 0},
         "bytes": {"type": "integer", "minimum": 0}
       },

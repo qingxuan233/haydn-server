@@ -8,7 +8,9 @@
    PIT 编号与五段、ADR 文件名/状态/正文/回链/索引、CHANGELOG §4 归档索引双向一致、
    backlog schema/语义、Agent 回归 AR-02/AR-03；
 4. 根 manifest（≤160 行/≤16KB、无完整 content、含 shards）与四层分片
-   （≤300 行/≤32KB/≤40 条、ID 全局唯一、路径存在且相对、与 front matter 同步）。
+   （≤300 行/≤32KB/≤40 条、ID 全局唯一、路径存在且相对、与 front matter 同步）；
+   单层 >40 条时按层内顺序拆分为 ``<layer>-p01.json``…（单片为 ``<layer>.json``），
+   并校验片数、命名与各片条目合计。
 
 严重度：内容层错误与机器契约违反固定 error；policy/manifest 预算类违规
 ``--strict`` 下 error（exit 4）、非 strict 下 warning。索引一致性以内容机检
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 import json
 import re
+from math import ceil
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +36,7 @@ from .indexgen import (
     SHARD_REQUIRED_KEYS,
     default_shard_dir,
     scan_group,
+    shard_relative_path,
 )
 from .util import (
     SCHEMA_VALIDATION,
@@ -516,14 +520,13 @@ def _normalize_sync_value(value: Any) -> Any:
 
 def _shard_entries_issues(
     root: Path,
-    layer: str,
+    shard_path: str,
     entries: list[Any],
     actual_by_id: dict[str, dict[str, Any]],
     all_ids: dict[str, str],
     strict: bool,
 ) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
-    shard_path = f"{SHARD_DIR}/{layer}"
     for entry in entries:
         if not isinstance(entry, dict):
             issues.append(_policy_issue(strict, "SHARD_ENTRY", shard_path, "分片 entries 元素必须是 object"))
@@ -546,7 +549,7 @@ def _shard_entries_issues(
                 )
             )
         else:
-            all_ids[entry_id] = f"{SHARD_DIR}/{layer}"
+            all_ids[entry_id] = shard_path
         relative = entry.get("path")
         if not isinstance(relative, str) or not relative:
             continue
@@ -758,108 +761,160 @@ def validate_manifest_bundle(
     shard_count = 0
     all_ids: dict[str, str] = {}
     referenced: set[str] = set()
+    shard_max_entries = limits["shard_max_entries"]
     for layer in CONTENT_GROUPS:
         mapping = shards.get(layer)
-        if not isinstance(mapping, dict) or not isinstance(mapping.get("path"), str):
+        parts = mapping.get("parts") if isinstance(mapping, dict) else None
+        if not isinstance(parts, list) or not parts:
             issues.append(
                 _policy_issue(
                     strict,
                     "SHARD_MAPPING",
                     "agent-manifest.json",
-                    f"shards 映射缺少层 '{layer}' 或 path 非法（四层必须齐全）",
+                    f"shards 映射缺少层 '{layer}' 或 parts 数组非法（四层必须齐全）",
                 )
             )
             continue
-        shard_relative = mapping["path"]
-        if _is_absolute_path(shard_relative):
-            issues.append(
-                _policy_issue(strict, "SHARD_ABSOLUTE_PATH", "agent-manifest.json", f"分片 path 禁止绝对路径：{shard_relative}")
-            )
-            continue
-        referenced.add(shard_relative)
-        shard_path = root / shard_relative
-        if not shard_path.is_file():
-            issues.append(
-                _policy_issue(strict, "SHARD_MISSING", shard_relative, "shards 映射指向的分片文件不存在")
-            )
-            continue
-        shard_count += 1
-        shard_raw = shard_path.read_bytes()
-        shard_text = shard_raw.decode("utf-8-sig", errors="replace")
-        shard = _read_manifest_json(shard_path)
-        if shard is None:
-            issues.append(_policy_issue(strict, "SHARD_SCHEMA", shard_relative, "分片 JSON 无法解析"))
-            continue
-        shard_lines = line_count(shard_text)
-        shard_size = len(shard_raw)
-        if shard_lines > limits["shard_max_lines"]:
-            issues.append(
-                _policy_issue(
-                    strict,
-                    "SHARD_SIZE",
-                    shard_relative,
-                    f"分片行数 {shard_lines} 超过上限 {limits['shard_max_lines']}",
-                )
-            )
-        if shard_size > limits["shard_max_bytes"]:
-            issues.append(
-                _policy_issue(
-                    strict,
-                    "SHARD_SIZE",
-                    shard_relative,
-                    f"分片字节数 {shard_size} 超过上限 {limits['shard_max_bytes']}",
-                )
-            )
-        if shard.get("schema") != SCHEMA_SHARD:
-            issues.append(
-                _policy_issue(strict, "SHARD_SCHEMA", shard_relative, f"分片 schema 不是 {SCHEMA_SHARD}")
-            )
-        if shard.get("layer") != layer:
-            issues.append(
-                _policy_issue(strict, "SHARD_SCHEMA", shard_relative, f"分片 layer={shard.get('layer')!r} 与映射 {layer!r} 不一致")
-            )
-        entries = shard.get("entries")
-        if not isinstance(entries, list):
-            issues.append(_policy_issue(strict, "SHARD_SCHEMA", shard_relative, "分片缺少 entries 数组"))
-            continue
-        if len(entries) > limits["shard_max_entries"]:
-            issues.append(
-                _policy_issue(
-                    strict,
-                    "SHARD_ENTRIES",
-                    shard_relative,
-                    f"分片条目数 {len(entries)} 超过上限 {limits['shard_max_entries']}",
-                )
-            )
-        mapping_count = mapping.get("count")
-        if mapping_count is not None and mapping_count != len(entries):
+        if mapping.get("count") not in (None, actual_counts[layer]):
             issues.append(
                 _policy_issue(
                     strict,
                     "SHARD_MAPPING",
-                    shard_relative,
-                    f"shards 映射 count={mapping_count} 与分片条目数 {len(entries)} 不一致",
+                    "agent-manifest.json",
+                    f"shards.{layer}.count={mapping.get('count')} 与当前内容 {actual_counts[layer]} 不一致：请重跑 index",
                 )
             )
-        if counts.get(layer) is not None and counts.get(layer) != len(entries):
+        expected_parts = max(1, ceil(actual_counts[layer] / shard_max_entries))
+        if len(parts) != expected_parts:
+            issues.append(
+                _policy_issue(
+                    strict,
+                    "SHARD_SPLIT",
+                    "agent-manifest.json",
+                    f"shards.{layer} 应有 {expected_parts} 片（每片 ≤{shard_max_entries} 条），实际 {len(parts)} 片：请重跑 index",
+                )
+            )
+        total_from_parts = 0
+        for part_index, part in enumerate(parts, start=1):
+            if not isinstance(part, dict) or not isinstance(part.get("path"), str):
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "SHARD_MAPPING",
+                        "agent-manifest.json",
+                        f"shards.{layer}.parts[{part_index - 1}] 缺少合法 path",
+                    )
+                )
+                continue
+            shard_relative = part["path"]
+            if shard_relative != shard_relative_path(layer, part_index, len(parts)):
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "SHARD_NAMING",
+                        shard_relative,
+                        "分片命名不符合契约（单片 <layer>.json，多片 <layer>-p01..pNN.json）",
+                    )
+                )
+            if _is_absolute_path(shard_relative):
+                issues.append(
+                    _policy_issue(strict, "SHARD_ABSOLUTE_PATH", "agent-manifest.json", f"分片 path 禁止绝对路径：{shard_relative}")
+                )
+                continue
+            referenced.add(shard_relative)
+            shard_path = root / shard_relative
+            if not shard_path.is_file():
+                issues.append(
+                    _policy_issue(strict, "SHARD_MISSING", shard_relative, "shards 映射指向的分片文件不存在")
+                )
+                continue
+            shard_count += 1
+            shard_raw = shard_path.read_bytes()
+            shard_text = shard_raw.decode("utf-8-sig", errors="replace")
+            shard = _read_manifest_json(shard_path)
+            if shard is None:
+                issues.append(_policy_issue(strict, "SHARD_SCHEMA", shard_relative, "分片 JSON 无法解析"))
+                continue
+            shard_lines = line_count(shard_text)
+            shard_size = len(shard_raw)
+            if shard_lines > limits["shard_max_lines"]:
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "SHARD_SIZE",
+                        shard_relative,
+                        f"分片行数 {shard_lines} 超过上限 {limits['shard_max_lines']}",
+                    )
+                )
+            if shard_size > limits["shard_max_bytes"]:
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "SHARD_SIZE",
+                        shard_relative,
+                        f"分片字节数 {shard_size} 超过上限 {limits['shard_max_bytes']}",
+                    )
+                )
+            if shard.get("schema") != SCHEMA_SHARD:
+                issues.append(
+                    _policy_issue(strict, "SHARD_SCHEMA", shard_relative, f"分片 schema 不是 {SCHEMA_SHARD}")
+                )
+            if shard.get("layer") != layer:
+                issues.append(
+                    _policy_issue(strict, "SHARD_SCHEMA", shard_relative, f"分片 layer={shard.get('layer')!r} 与映射 {layer!r} 不一致")
+                )
+            entries = shard.get("entries")
+            if not isinstance(entries, list):
+                issues.append(_policy_issue(strict, "SHARD_SCHEMA", shard_relative, "分片缺少 entries 数组"))
+                continue
+            if len(entries) > shard_max_entries:
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "SHARD_ENTRIES",
+                        shard_relative,
+                        f"分片条目数 {len(entries)} 超过上限 {shard_max_entries}（应按 ≤{shard_max_entries} 条拆分）",
+                    )
+                )
+            if part_index < len(parts) and len(entries) != shard_max_entries:
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "SHARD_SPLIT",
+                        shard_relative,
+                        f"非末片条目数 {len(entries)} 应恰为 {shard_max_entries}（按层内顺序满片切分）",
+                    )
+                )
+            part_count = part.get("count")
+            if part_count is not None and part_count != len(entries):
+                issues.append(
+                    _policy_issue(
+                        strict,
+                        "SHARD_MAPPING",
+                        shard_relative,
+                        f"shards 映射 count={part_count} 与分片条目数 {len(entries)} 不一致",
+                    )
+                )
+            total_from_parts += len(entries)
+            issues.extend(
+                _shard_entries_issues(
+                    root,
+                    shard_relative,
+                    entries,
+                    actual_by_layer_id[layer],
+                    all_ids,
+                    strict,
+                )
+            )
+        if total_from_parts != actual_counts[layer]:
             issues.append(
                 _policy_issue(
                     strict,
                     "MANIFEST_COUNTS",
-                    shard_relative,
-                    f"counts.{layer}={counts.get(layer)} 与分片条目数 {len(entries)} 不一致",
+                    "agent-manifest.json",
+                    f"shards.{layer} 各分片条目合计 {total_from_parts} 与当前内容 {actual_counts[layer]} 不一致：请重跑 index",
                 )
             )
-        issues.extend(
-            _shard_entries_issues(
-                root,
-                layer,
-                entries,
-                actual_by_layer_id[layer],
-                all_ids,
-                strict,
-            )
-        )
 
     # 分片目录中的孤儿文件（本工具生成但未被根映射引用）
     shard_dir = default_shard_dir(root)

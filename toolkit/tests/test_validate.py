@@ -356,6 +356,50 @@ class ManifestLifecycleTests(unittest.TestCase):
         report = validate_repo(self.root)
         self.assertIn("SHARD_CONTENT", _codes(report))
 
+    def test_shard_split_over_40_is_valid(self) -> None:
+        for index in range(2, 41):  # 2 + 39 = 41 > 40（PIT 有 40 条上限，故用 methodology）
+            write_doc(
+                self.root,
+                f"methodology/{index:02d}-batch-{index}.md",
+                entry_id=f"MTH-{index:03d}",
+                title=f"批量方法 {index}",
+                doc_type="methodology",
+                body=f"# 批量方法 {index}\n\n正文。\n",
+            )
+        write_bundle(self.root)
+        shard_dir = default_shard_dir(self.root)
+        self.assertTrue((shard_dir / "methodology-p01.json").is_file())
+        self.assertTrue((shard_dir / "methodology-p02.json").is_file())
+        self.assertFalse((shard_dir / "methodology.json").exists())
+        report = validate_repo(self.root, strict=True)
+        self.assertTrue(report["ok"], _codes(report))
+        self.assertEqual(report["checked"]["shards"], 5)  # 四层 4 片 + methodology 拆 2 片
+        self.assertNotIn("SHARD_SPLIT", _codes(report))
+
+    def test_shard_split_contract_violations_detected(self) -> None:
+        for index in range(2, 41):
+            write_doc(
+                self.root,
+                f"methodology/{index:02d}-batch-{index}.md",
+                entry_id=f"MTH-{index:03d}",
+                title=f"批量方法 {index}",
+                doc_type="methodology",
+                body=f"# 批量方法 {index}\n\n正文。\n",
+            )
+        write_bundle(self.root)
+        shard_dir = default_shard_dir(self.root)
+        manifest_path = self.root / "agent-manifest.json"
+        manifest_text = manifest_path.read_text(encoding="utf-8").replace(
+            "agent-manifest.d/methodology-p02.json", "agent-manifest.d/methodology-2.json"
+        )
+        manifest_path.write_text(manifest_text, encoding="utf-8")
+        (shard_dir / "methodology-p02.json").rename(shard_dir / "methodology-2.json")
+        report = validate_repo(self.root)
+        self.assertIn("SHARD_NAMING", _codes(report))
+        self.assertNotIn("SHARD_MISSING", _codes(report))
+        report = validate_repo(self.root, strict=True)
+        self.assertFalse(report["ok"])
+
     def test_manifest_schema_error_reported_by_json_check(self) -> None:
         (self.root / "agent-manifest.json").write_text(
             json.dumps({"schema": "wrong"}), encoding="utf-8"

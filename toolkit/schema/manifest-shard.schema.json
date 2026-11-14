@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://haydn-server.local/toolkit/schema/manifest-shard.schema.json",
   "title": "repurpose.manifest-shard.v1",
-  "description": "agent-manifest.d/ 下的按层分片（methodology/pitfalls/guardrails/case-studies）。由 python -m toolkit.repurpose index 生成，Agent 按需只读一个分片；不要手改。每片 ≤300 行 / ≤32KB / ≤40 条（上限见 toolkit/schema/doc-policy.json）。本文件是自描述 JSON Schema（draft-07），校验器不依赖 jsonschema 库。",
+  "description": "agent-manifest.d/ 下的按层分片（methodology/pitfalls/guardrails/case-studies）。由 python -m toolkit.repurpose index 生成，Agent 按需只读一个分片；不要手改。每片 ≤300 行 / ≤32KB / ≤40 条（上限见 toolkit/schema/doc-policy.json）；单层 >40 条时按层内顺序拆为 <layer>-p01.json…<layer>-pNN.json（单片沿用 <layer>.json，非末片满 40 条）。本文件是自描述 JSON Schema（draft-07），校验器不依赖 jsonschema 库。",
   "type": "object",
   "required": ["schema", "layer", "generated_at", "count", "entries"],
   "properties": {

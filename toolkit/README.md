@@ -84,7 +84,7 @@ toolkit/
 
 # 仓库根生成物（由 index 生成，不手改）
 agent-manifest.json        # 根摘要（≤160 行/≤16KB，含 shards 映射）
-agent-manifest.d/          # methodology.json / pitfalls.json / guardrails.json / case-studies.json
+agent-manifest.d/          # <layer>.json；单层 >40 条时拆为 <layer>-p01.json…<layer>-pNN.json
 ```
 
 ## 3. CLI 契约
@@ -101,7 +101,7 @@ agent-manifest.d/          # methodology.json / pitfalls.json / guardrails.json 
 | `rootcheck` | `--profile`（必填）、`--json`、`--strict` | 人类摘要 | 离线检查 Root 实验设备技术姿态（`repurpose.rootcheck.v1`）：bootloader/AVB/verity/SELinux/管理器/唯一性/内核前提/分区/ARB + 授权/救援/演练/数据/固件/网络人工项；不改变 assess 路线顺序；`--strict` 非 `tech-ready` 时 exit 4 |
 | `rescue-kit` | `--dir`（必填）、`--init`/`--verify`（二选一）、`--notes`、`--force`、`--json` | 人类摘要 | 对救援包目录生成/校验 `rescue-manifest.json`（相对路径+sha256）；已有清单默认拒绝覆盖（`--force` 需先核对来源/版本）；`--verify` 缺失/清单外新增/哈希不一致时 exit 4；只读写本地目录 |
 | `new-profile` | `--codename`（必填）、`--out` | 打印 profile JSON | 从模板生成可编辑骨架（含 unknowns 提示），后续人工补证 |
-| `index` | `--root`、`--out`、`--check`、`--json` | 人类摘要 | 扫描四层 front matter，生成根摘要 + `agent-manifest.d/` 分片；目录缺失跳过不失败；旧分片自动清理。`--check` 只读重建并与磁盘生成物比较（规范化 generated_at；一致 exit 0 / 不一致 exit 4，不写盘） |
+| `index` | `--root`、`--out`、`--check`、`--json` | 人类摘要 | 扫描四层 front matter，生成根摘要 + `agent-manifest.d/` 分片；单层 >40 条按层内顺序自动拆为 `<layer>-p01.json`…（每片 ≤40 条）；目录缺失跳过不失败；旧分片自动清理。`--check` 只读重建并与磁盘生成物比较（规范化 generated_at；一致 exit 0 / 不一致 exit 4，不写盘） |
 | `validate` | `--root`、`--strict`、`--mtime-check`、`--json` | 人类摘要 | 检查 front matter/ID/相对链接/JSON、AGENTS.md 协议（章节/版本/哨兵/320 行硬上限）、新层命名、PIT/ADR/CHANGELOG 归档/backlog schema、manifest 一致性；`--strict` 下 warning 也失败；索引一致性以内容机检为准，`--mtime-check` 才按文件 mtime 判过期（默认关闭，CI 安全） |
 | `preflight` | `--root`、`--no-index`、`--skip-tests`、`--skip-links`、`--json` | 步骤表 | 串联 index → validate --strict → unittest → check-links；输出步骤 name/status/耗时/摘要；`--json` 为 `repurpose.preflight.v1`（ok/steps/skipped/failed）；退出码 **0 全绿 / 3 有 SKIPPED / 4 任一步 FAILED**；index 步幂等（内容未变保留原 `generated_at`，不产生时间戳变更） |
 
@@ -234,13 +234,11 @@ checkout 时间必然晚于提交的 `generated_at`，若按 mtime 判定会假�
 | 产物 | schema | 内容/上限 |
 |---|---|---|
 | `agent-manifest.json` | `repurpose.agent-manifest.v1` | 根摘要：generated_at、repo、entrypoints、reading_order（按层分组的 id 列表）、counts、shards 映射、tools、invariants、commands、warnings/errors；**不含 content 条目数组**；≤160 行/≤16KB |
-| `agent-manifest.d/methodology.json` | `repurpose.manifest-shard.v1` | layer/generated_at/count/entries；entries 含 id,title,path,type,status,tags,agent_hint（pitfall/guardrail 带 severity/domain 或 scope，可选 oem）；每片 ≤300 行/≤32KB/≤40 条 |
-| `agent-manifest.d/pitfalls.json` | 同上 | 同上 |
-| `agent-manifest.d/guardrails.json` | 同上 | 同上 |
-| `agent-manifest.d/case-studies.json` | 同上 | 同上 |
+| `agent-manifest.d/<layer>.json` | `repurpose.manifest-shard.v1` | 单片层（≤40 条）：layer/generated_at/count/entries；entries 含 id,title,path,type,status,tags,agent_hint（pitfall/guardrail 带 severity/domain 或 scope，可选 oem）；每片 ≤300 行/≤32KB/≤40 条 |
+| `agent-manifest.d/<layer>-pNN.json` | 同上 | 拆分片（单层 >40 条）：按层内既有顺序每 40 条一片（`p01..pNN`，末片 1..40 条）；≤40 条的层仍用单文件名，不出现 `-pNN` |
 
-缺目录/front matter 半成品：记 warning 并跳过，不中断生成；不属于四层且带本工具 schema 标记的旧分片会被清理
-（未知文件不删、只记 warning）。分片超过 40 条时 index 记 error（需扩展拆分策略）；根/分片超限由 validate 强制。
+缺目录/front matter 半成品：记 warning 并跳过，不中断生成；不属于当前分片集合且带本工具 schema 标记的旧分片会被清理
+（未知文件不删、只记 warning）。单层 >40 条时 index 自动拆分（不再报错）；片数、`-pNN` 命名与非末片满片由 validate 强制。
 
 Agent 示例（只读）：
 

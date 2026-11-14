@@ -1,7 +1,7 @@
 {
   "schema": "repurpose.manifest-shard.v1",
   "layer": "methodology",
-  "generated_at": "2026-11-14T03:59:19Z",
+  "generated_at": "2026-11-14T04:13:56Z",
   "count": 19,
   "entries": [
     {"id":"MTH-000","title":"方法论门户：定位、路径与文档地图","path":"methodology/README.md","type":"index","status":"current","tags":["methodology","portal","index","navigation"],"agent_hint":"先读本页确认定位、索引四表与阅读路径；Agent 的完整启动顺序以根 AGENTS.md 为准，本页不是工作协议。"},

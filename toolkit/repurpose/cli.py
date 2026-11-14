@@ -613,7 +613,7 @@ def cmd_preflight(args: argparse.Namespace, *, transport: Any = None) -> int:
         info = write_bundle(root)
         status = "FAILED" if info.get("errors") else "OK"
         summary = (
-            f"根摘要 {info['root']['lines']} 行 / 分片 {len(info['shards'])} 个"
+            f"根摘要 {info['root']['lines']} 行 / 分片 {sum(len(item['parts']) for item in info['shards'].values())} 个"
             + ("；内容未变，未重写（保留原 generated_at）" if info.get("written") is False else "")
             + (f"；errors：{_tail_summary(' / '.join(info['errors']))}" if info.get("errors") else "")
         )

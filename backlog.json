@@ -225,7 +225,7 @@
       "title": "单层 >40 条的分片拆分与 backlog 归档机检",
       "priority": "P2",
       "area": "toolkit",
-      "status": "pending",
+      "status": "done",
       "acceptance": "manifest 分片超过 40 条时自动按子目录/字母区间拆分为多片并在根 shards 映射；backlog done 超过 5 条时自动归档到 backlog-archive.json 并机检；两者均有测试。",
       "outputs": [
         "toolkit/repurpose/indexgen.py",
@@ -236,10 +236,13 @@
       "depends": [
         "BL-016"
       ],
-      "notes": "2026-11-14 已完成 backlog 归档机检（backlog-archive.json + done 窗口 ≤5 + 并集 ID 连续）；manifest 单层 >40 条自动拆分仍未实现（当前四层均 ≤40，尚未触发）。规则见 MTH-015。",
-      "agent_hint": "剩余部分：先定拆分键（ID 区间或 domain），再改 index/validate 与测试。",
+      "notes": "2026-11-14 全部完成：backlog 归档机检（backlog-archive.json + done 窗口 ≤5 + 并集 ID 连续）先落地；分片拆分按层内既有顺序每 40 条一片（不用子目录/字母区间键），规则与命名见 MTH-015、toolkit/README 与两份 schema。",
+      "agent_hint": "后续四层均可能超 40 条：只需重跑 index，勿手改分片；命名/片数由 validate 机检。",
       "requires": "",
-      "owner": "", "updated": "", "result": ""
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "index 单层 >40 条自动拆为 <layer>-p01.json…（≤40 条仍用 <layer>.json，非末片满 40 条），根 shards 改为 {count, parts[]}；validate 新增 SHARD_SPLIT/SHARD_NAMING（片数、命名、非末片满片、各片合计）；新增 40 不拆 / 41 拆、拆分完整性、单文件→多片→回退清理测试，297 项单测全绿；同步 toolkit/README、agent-manifest.schema.json、manifest-shard.schema.json、MTH-015；preflight 全绿、advisories=0。",
+      "risk": "L"
     },
     {
       "id": "BL-019",
@@ -325,28 +328,6 @@
       "updated": "",
       "result": "",
       "risk": "M"
-    },
-    {
-      "id": "BL-029",
-      "title": "AGENTS.md 容量分流（警示档降至健康档 ≤200 行）",
-      "priority": "P2",
-      "area": "repo",
-      "status": "done",
-      "acceptance": "AGENTS.md 从当前警示档（201~320 行）降至 ≤200 行健康档：把操作细节下沉到 MTH-009/MTH-011/MTH-014，协议只留一线指针与 agent_hint；validate 协议检查报 healthy。",
-      "outputs": [
-        "AGENTS.md",
-        "methodology/08-agent-handoff.md",
-        "methodology/10-document-lifecycle.md",
-        "adr/0003-agents-capacity-split.md"
-      ],
-      "depends": [],
-      "notes": "2026-11-14 完成：291→199 行；§0 预算/停止条件、§4 文档约定、§5 任务协议、§6 扩展 SOP 去重并加 MTH 指针，删除重复的 §8.1 YAML（改指 agent-manifest）；协议 v1.2→v1.3（ADR-0003），未删红线/未改权威顺序。",
-      "agent_hint": "后续新增规则优先写入对应 MTH，AGENTS 只加指针；每次结构性变更复核行数档位。",
-      "requires": "",
-      "owner": "protocol",
-      "updated": "2026-11-14",
-      "result": "AGENTS.md 199 行（validate protocol_tier=healthy）；新增 ADR-0003 并在 adr 索引登记；README 协议版本同步 v1.3；preflight 全绿。",
-      "risk": "L"
     },
     {
       "id": "BL-030",

@@ -230,6 +230,28 @@
       "updated": "2026-11-13",
       "result": "已成文；AR-04/AR-05 等机检用例在 test_governance.py 落地，其余依赖模型的回归项明确标注'人工/半自动'。",
       "risk": "M"
+    },
+    {
+      "id": "BL-029",
+      "title": "AGENTS.md 容量分流（警示档降至健康档 ≤200 行）",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "AGENTS.md 从当前警示档（201~320 行）降至 ≤200 行健康档：把操作细节下沉到 MTH-009/MTH-011/MTH-014，协议只留一线指针与 agent_hint；validate 协议检查报 healthy。",
+      "outputs": [
+        "AGENTS.md",
+        "methodology/08-agent-handoff.md",
+        "methodology/10-document-lifecycle.md",
+        "adr/0003-agents-capacity-split.md"
+      ],
+      "depends": [],
+      "notes": "2026-11-14 完成：291→199 行；§0 预算/停止条件、§4 文档约定、§5 任务协议、§6 扩展 SOP 去重并加 MTH 指针，删除重复的 §8.1 YAML（改指 agent-manifest）；协议 v1.2→v1.3（ADR-0003），未删红线/未改权威顺序。",
+      "agent_hint": "后续新增规则优先写入对应 MTH，AGENTS 只加指针；每次结构性变更复核行数档位。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "AGENTS.md 199 行（validate protocol_tier=healthy）；新增 ADR-0003 并在 adr 索引登记；README 协议版本同步 v1.3；preflight 全绿。",
+      "risk": "L"
     }
   ]
 }

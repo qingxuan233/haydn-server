@@ -86,9 +86,29 @@ def default_shard_dir(root: str | Path) -> Path:
     return Path(root) / SHARD_DIR
 
 
-def shard_relative_path(layer: str) -> str:
-    """分片的仓库相对 POSIX 路径。"""
-    return f"{SHARD_DIR}/{SHARD_FILENAMES[layer]}"
+SHARD_PART_MAX = 40
+"""每片条目上限（与 doc-policy 的 shard_max_entries 一致；单层超过即自动拆分）。"""
+
+
+def shard_part_filename(layer: str, part_index: int = 1, total: int = 1) -> str:
+    """分片文件名：单片沿用 ``<layer>.json``；多片为 ``<layer>-pNN.json``（从 p01 起）。"""
+    if total <= 1:
+        return SHARD_FILENAMES[layer]
+    stem = SHARD_FILENAMES[layer][: -len(".json")]
+    return f"{stem}-p{part_index:02d}.json"
+
+
+def shard_relative_path(layer: str, part_index: int = 1, total: int = 1) -> str:
+    """分片的仓库相对 POSIX 路径（单层拆分后含 ``-pNN`` 后缀）。"""
+    return f"{SHARD_DIR}/{shard_part_filename(layer, part_index, total)}"
+
+
+def split_entries(entries: list[dict[str, Any]], max_entries: int) -> list[list[dict[str, Any]]]:
+    """按层内既有顺序切片，每片 ≤ ``max_entries`` 条；空层返回一个空片。"""
+    if max_entries <= 0:
+        raise ValueError("max_entries 必须为正整数")
+    chunks = [entries[index : index + max_entries] for index in range(0, len(entries), max_entries)]
+    return chunks or [[]]
 
 
 # ---------------------------------------------------------------------------
@@ -440,7 +460,8 @@ def build_bundle(
     """构建根摘要与分片（不写文件），返回 bundle。
 
     bundle 键：root（根 manifest）、root_text、root_lines、root_bytes、
-    shards（layer → {data,text,path,lines,bytes}）、limits、warnings、errors、policy_warnings。
+    shards（layer → {count, parts[{data,text,path,lines,bytes}]}）、limits、
+    warnings、errors、policy_warnings。
     """
     repo_root = Path(root)
     warnings: list[str] = list(extra_warnings or [])
@@ -458,45 +479,54 @@ def build_bundle(
 
     shards: dict[str, dict[str, Any]] = {}
     warnings_from_policy: list[str] = []
+    max_entries = limits["shard_max_entries"]
     for layer in CONTENT_GROUPS:
         entries = content[layer]
-        shard = {
-            "schema": SCHEMA_SHARD,
-            "layer": layer,
-            "generated_at": timestamp,
-            "count": len(entries),
-            "entries": [_shard_entry(entry) for entry in entries],
-        }
-        if len(entries) > limits["shard_max_entries"]:
-            errors.append(
-                f"分片超限：{shard_relative_path(layer)} 条目数 {len(entries)} 超过上限 "
-                f"{limits['shard_max_entries']}（需要拆分策略扩展）"
-            )
-        text = render_shard(shard)
-        lines = len(text.splitlines())
-        size = len(text.encode("utf-8"))
-        if lines > limits["shard_max_lines"]:
-            errors.append(
-                f"分片超限：{shard_relative_path(layer)} 行数 {lines} 超过上限 {limits['shard_max_lines']}"
-            )
-        if size > limits["shard_max_bytes"]:
-            errors.append(
-                f"分片超限：{shard_relative_path(layer)} 字节数 {size} 超过上限 {limits['shard_max_bytes']}"
+        chunks = split_entries(entries, max_entries)
+        total_parts = len(chunks)
+        parts: list[dict[str, Any]] = []
+        for part_index, chunk in enumerate(chunks, start=1):
+            relative = shard_relative_path(layer, part_index, total_parts)
+            shard = {
+                "schema": SCHEMA_SHARD,
+                "layer": layer,
+                "generated_at": timestamp,
+                "count": len(chunk),
+                "entries": [_shard_entry(entry) for entry in chunk],
+            }
+            text = render_shard(shard)
+            lines = len(text.splitlines())
+            size = len(text.encode("utf-8"))
+            if lines > limits["shard_max_lines"]:
+                errors.append(f"分片超限：{relative} 行数 {lines} 超过上限 {limits['shard_max_lines']}")
+            if size > limits["shard_max_bytes"]:
+                errors.append(f"分片超限：{relative} 字节数 {size} 超过上限 {limits['shard_max_bytes']}")
+            parts.append(
+                {
+                    "data": shard,
+                    "text": text,
+                    "path": relative,
+                    "lines": lines,
+                    "bytes": size,
+                }
             )
         shards[layer] = {
-            "data": shard,
-            "text": text,
-            "path": shard_relative_path(layer),
-            "lines": lines,
-            "bytes": size,
+            "count": len(entries),
+            "parts": parts,
         }
 
     shards_mapping = {
         layer: {
-            "path": shards[layer]["path"],
-            "count": shards[layer]["data"]["count"],
-            "lines": shards[layer]["lines"],
-            "bytes": shards[layer]["bytes"],
+            "count": shards[layer]["count"],
+            "parts": [
+                {
+                    "path": part["path"],
+                    "count": part["data"]["count"],
+                    "lines": part["lines"],
+                    "bytes": part["bytes"],
+                }
+                for part in shards[layer]["parts"]
+            ],
         }
         for layer in CONTENT_GROUPS
     }
@@ -570,9 +600,12 @@ def build_manifest(root: str | Path, generated_at: str | None = None) -> dict[st
 # ---------------------------------------------------------------------------
 
 
-def cleanup_stale_shards(root: str | Path) -> tuple[list[str], list[str]]:
-    """清理 agent-manifest.d/ 中不属于当前四层、且确认由本工具生成的旧分片。
+def cleanup_stale_shards(
+    root: str | Path, expected: set[str] | None = None
+) -> tuple[list[str], list[str]]:
+    """清理 agent-manifest.d/ 中不属于当前分片集合、且确认由本工具生成的旧分片。
 
+    ``expected`` 为当前应存在的分片文件名集合；缺省用四层单文件名（兼容调用）。
     安全规则：只删除带 ``repurpose.manifest-shard.v1`` schema 标记的 JSON（即本工具
     生成物）；无法解析或未知文件不删除，只记 warning。
     """
@@ -581,9 +614,9 @@ def cleanup_stale_shards(root: str | Path) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
     if not shard_dir.is_dir():
         return removed, warnings
-    expected = {SHARD_FILENAMES[layer] for layer in CONTENT_GROUPS}
+    expected_names = expected or {SHARD_FILENAMES[layer] for layer in CONTENT_GROUPS}
     for path in sorted(shard_dir.glob("*.json")):
-        if path.name in expected:
+        if path.name in expected_names:
             continue
         relative = rel_posix(path, root)
         try:
@@ -616,8 +649,15 @@ def write_bundle(
     显式 ``out`` 或显式 ``generated_at``（测试/外部调用）仍强制写盘。
     """
     repo_root = Path(root)
-    removed, cleanup_warnings = cleanup_stale_shards(repo_root)
-    bundle = build_bundle(repo_root, generated_at=generated_at, extra_warnings=cleanup_warnings)
+    bundle = build_bundle(repo_root, generated_at=generated_at)
+    expected_shards = {
+        Path(part["path"]).name
+        for info in bundle["shards"].values()
+        for part in info["parts"]
+    }
+    removed, cleanup_warnings = cleanup_stale_shards(repo_root, expected_shards)
+    if cleanup_warnings:
+        bundle = build_bundle(repo_root, generated_at=generated_at, extra_warnings=cleanup_warnings)
     root_target = Path(out) if out is not None else default_manifest_path(repo_root)
 
     unchanged = (
@@ -627,10 +667,16 @@ def write_bundle(
     )
     shards_info: dict[str, dict[str, Any]] = {
         layer: {
-            "path": shard_info["path"],
-            "entries": shard_info["data"]["count"],
-            "lines": shard_info["lines"],
-            "bytes": shard_info["bytes"],
+            "count": shard_info["count"],
+            "parts": [
+                {
+                    "path": part["path"],
+                    "entries": part["data"]["count"],
+                    "lines": part["lines"],
+                    "bytes": part["bytes"],
+                }
+                for part in shard_info["parts"]
+            ],
         }
         for layer, shard_info in bundle["shards"].items()
     }
@@ -662,9 +708,9 @@ def write_bundle(
             }
 
     write_text(root_target, bundle["root_text"])
-    for layer, shard_info in bundle["shards"].items():
-        target = repo_root / shard_info["path"]
-        write_text(target, shard_info["text"])
+    for shard_info in bundle["shards"].values():
+        for part in shard_info["parts"]:
+            write_text(repo_root / part["path"], part["text"])
 
     return {
         "root_path": root_target,
@@ -765,19 +811,20 @@ def _bundle_matches_disk(
     ):
         return False
     for layer, shard_info in bundle["shards"].items():
-        path = repo_root / shard_info["path"]
-        if not path.is_file():
-            return False
-        try:
-            disk_shard = load_json(path)
-        except Exception:
-            return False
-        if _diff_fields(
-            _normalize_generated_at(shard_info["data"]),
-            _normalize_generated_at(disk_shard),
-            f"shard[{layer}]",
-        ):
-            return False
+        for part_index, part in enumerate(shard_info["parts"], start=1):
+            path = repo_root / part["path"]
+            if not path.is_file():
+                return False
+            try:
+                disk_shard = load_json(path)
+            except Exception:
+                return False
+            if _diff_fields(
+                _normalize_generated_at(part["data"]),
+                _normalize_generated_at(disk_shard),
+                f"shard[{layer}:{part_index}]",
+            ):
+                return False
     return True
 
 
@@ -829,43 +876,44 @@ def check_bundle(root: str | Path) -> dict[str, Any]:
                 checked["root"]["ok"] = True
 
     for layer, shard_info in bundle["shards"].items():
-        relative = shard_info["path"]
-        path = repo_root / relative
-        shard_checked: dict[str, Any] = {"path": relative, "ok": False}
-        checked["shards"].append(shard_checked)
-        if not path.is_file():
-            diffs.append(
-                {
-                    "path": relative,
-                    "reason": "missing",
-                    "message": "分片文件不存在：请运行 python -m toolkit.repurpose index",
-                }
-            )
-            continue
-        try:
-            disk_shard = load_json(path)
-        except Exception as exc:
-            diffs.append(
-                {
-                    "path": relative,
-                    "reason": "json_error",
-                    "message": f"分片无法解析：{exc.__class__.__name__}",
-                }
-            )
-        else:
-            actual_shard = _normalize_generated_at(disk_shard)
-            fields = _diff_fields(shard_info["data"], actual_shard, f"shard[{layer}]")
-            if fields:
+        for part_index, part in enumerate(shard_info["parts"], start=1):
+            relative = part["path"]
+            path = repo_root / relative
+            shard_checked: dict[str, Any] = {"path": relative, "ok": False}
+            checked["shards"].append(shard_checked)
+            if not path.is_file():
                 diffs.append(
                     {
                         "path": relative,
-                        "reason": "mismatch",
-                        "fields": fields,
-                        "message": f"分片 {layer} 与内容/生成器不一致：请重跑 index",
+                        "reason": "missing",
+                        "message": "分片文件不存在：请运行 python -m toolkit.repurpose index",
+                    }
+                )
+                continue
+            try:
+                disk_shard = load_json(path)
+            except Exception as exc:
+                diffs.append(
+                    {
+                        "path": relative,
+                        "reason": "json_error",
+                        "message": f"分片无法解析：{exc.__class__.__name__}",
                     }
                 )
             else:
-                shard_checked["ok"] = True
+                actual_shard = _normalize_generated_at(disk_shard)
+                fields = _diff_fields(part["data"], actual_shard, f"shard[{layer}:{part_index}]")
+                if fields:
+                    diffs.append(
+                        {
+                            "path": relative,
+                            "reason": "mismatch",
+                            "fields": fields,
+                            "message": f"分片 {layer} 第 {part_index} 片与内容/生成器不一致：请重跑 index",
+                        }
+                    )
+                else:
+                    shard_checked["ok"] = True
 
     return {
         "schema": SCHEMA_INDEX_CHECK,
@@ -914,11 +962,12 @@ def format_index_summary(info: dict[str, Any]) -> str:
     if shards:
         lines.append("- 分片：")
         for layer, shard in shards.items():
-            lines.append(
-                "  - {layer}: {path}（{entries} 条 / {lines} 行 / {bytes} 字节）".format(
-                    layer=layer, **shard
+            for part in shard.get("parts", []):
+                lines.append(
+                    "  - {layer}: {path}（{entries} 条 / {lines} 行 / {bytes} 字节）".format(
+                        layer=layer, **part
+                    )
                 )
-            )
     if info.get("removed_shards"):
         lines.append("- 已清理旧分片：" + "、".join(info["removed_shards"]))
     counts = manifest.get("counts") or {}

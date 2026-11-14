@@ -69,11 +69,13 @@ agent_hint: 归档 CHANGELOG、限制状态段、控制阅读预算或核对数�
 AGENTS.md / README.md（入口，不计预算）
   → agent-manifest.json 根摘要（≤160 行：入口/读序/分层指向/计数）
   → agent-manifest.d/ 中【一个】分片：methodology | pitfalls | guardrails | case-studies
+    （单层 >40 条时为 <layer>-p01.json…<layer>-pNN.json，一次仍只读一片）
   → 单篇主题文档（计入 3 份预算）；仅在不足时再读工具契约或单个案例
 ```
 
 - **必须**：根摘要只留导航与计数，条目下沉分片；分片由 `index` 生成，**不手改**；根摘要缺失/过期/超限先重建，不得猜内容。
 - **必须**：一次只读**一个**分片，禁止四个分片一起读或"先全读再挑"；根摘要命中多个候选时按 ID/标签选 1 篇。
+- **必须**：单层 >40 条时由 `index` 按层内既有顺序拆为 `<layer>-p01.json`…`<layer>-pNN.json`（每片 ≤40 条、非末片满片）；拆分只改文件名与根 `shards` 映射，不改条目内容与顺序；片数/命名/合计由 `validate`（`SHARD_SPLIT`/`SHARD_NAMING`）机检。
 - **获取顺序**：入口（AGENTS/README）→ 根摘要 → 单个分片定位候选 → 单篇正文确认结论与验证方式 → 需要时再读工具契约/单个案例；冲突/不确定/预算耗尽 → 停止条件（§4.4）。
 
 ### 4.4 停止条件
@@ -114,7 +116,7 @@ AGENTS.md / README.md（入口，不计预算）
 | AGENTS §9 / README 状态段落 | 非空行 ≤ 8 | 只写结论 + 链接 |
 | methodology / pitfalls / guardrails 单文件 | 行数上限（按层设置） | methodology 当前 300 行硬上限 |
 | AGENTS.md 容量 | ≤200 推荐 / 201–320 警示 / >320 债务 | 警示档需评审并登记知识债分流 |
-| `agent-manifest.json` / 分片 | 根 ≤160 行；分片大小与条目数有上限 | 超出须精简或按层再拆 |
+| `agent-manifest.json` / 分片 | 根 ≤160 行；每片 ≤40 条 | 超出按 `<layer>-pNN` 自动拆分，禁止把超量条目塞进一片 |
 | `changelog/YYYY-MM.md` | 字节上限 | 接近上限按更细月份拆分 |
 | 单文件行数余量 | 距上限 < `line_limit_margin.warning_within` | `DOC_LINES_MARGIN`（advisory：提示拆篇/精简，不使 strict/preflight 失败） |
 | 归档索引一致性 | 条数/版本范围一致 | `CHANGELOG_ARCHIVE` 机检 |
@@ -140,6 +142,7 @@ python -m unittest discover -s toolkit/tests -t . -v
 | ADR | `ADR_FILENAME/ID/STATUS/SECTION/SUPERSEDED/INDEX` | 未登记、状态非法、被取代无回链 |
 | backlog | `BACKLOG_SCHEMA`、`BACKLOG_SEMANTIC`、`BACKLOG_DONE_WINDOW`、`BACKLOG_ARCHIVE` | 字段缺失、ID 跳号、done 缺 result、active done >5、归档非法 |
 | CHANGELOG 归档 | `CHANGELOG_ARCHIVE` | 窗口超 8、索引与归档不一致 |
+| 分片拆分 | `SHARD_SPLIT`、`SHARD_NAMING` | 片数不符、命名非 `<layer>-pNN`、非末片未满片、各片合计与计数不一致 |
 | 行数余量 | `DOC_LINES_MARGIN`（advisory） | 未超上限但距上限不足阈值；提示拆篇/精简，不阻断 |
 | Agent 回归 | `AGENT_REGRESSION`（AR-01..10） | 协议/红线/回归契约退化 |
 | 统一入口 | `preflight`（`repurpose.preflight.v1`） | 任一步失败或有跳过未申报 |
