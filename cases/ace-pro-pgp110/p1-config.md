@@ -74,6 +74,44 @@ iw dev wlan0 set power_save on
 # 停用单个服务：supervisorctl -c /etc/supervisor/supervisord.conf stop haydn-tailscaled
 ```
 
+## 1.1 2026-11-14 晚间追加（输入法 / 应用卸载 / boot 备份）
+
+**讯飞输入法（唯一 IME，最小权限）**：
+```sh
+ime list -s                                    # 安装前为空；安装后应仅 com.iflytek.inputmethod/.FlyIME
+ime enable com.iflytek.inputmethod/.FlyIME
+ime set    com.iflytek.inputmethod/.FlyIME
+/data/server/bin/ime-lockdown.sh               # uid 10343：iptables/ip6tables REJECT + appops ignore
+iptables -L OUTPUT -v -n | grep 10343          # 期望 pkts>0（联网尝试被拒）
+# 回滚
+ime enable com.baidu.input_oppo/.ImeService
+pm uninstall com.iflytek.inputmethod
+# 删除 service.sh 尾部 IME 段（备份 service.sh.bak-20261114-p2）后：
+iptables -D OUTPUT -m owner --uid-owner 10343 -j REJECT
+ip6tables -D OUTPUT -m owner --uid-owner 10343 -j REJECT
+```
+应用内云输入/账号等开关无 adb 入口，只能手工在键盘工具栏「讯」→ 设置里关闭；网络已按 uid 封禁，应用首页显示"网络故障"。
+
+**第三方应用卸载（`--user 0` 已由小包试验证明等同完整卸载）**：
+```sh
+# 删除前清单（包名/版本/APK 大小/路径）
+sh /data/local/tmp/pkg-snap.sh                 # 源脚本在运行期 inventory/thirdparty-version-snapshot.sh；产物 /data/server/etc/package-inventory-20261114.txt（随备份入包）
+pm uninstall --user 0 <pkg>                    # 逐包；结果与空间变化写 /data/server/logs/app-removal-20261114.log
+pm list packages -3                            # 卸载后应剩 14 个（含讯飞/KernelSU/保留工具）
+# 校验单包：pm path <pkg> 为空、ls -d /data/app/*<name>* 无输出
+```
+注意：`pm list packages <文本>` 是**子串过滤**，会误命中 `com.coloros.translate.engine` 之类；判断是否移除必须用 `pm path` 或 `pm list packages --user 0 | grep -x`。
+
+**boot_b 备份（只读导出，未刷写）**：
+```sh
+dd if=/dev/block/by-name/boot_b of=/data/server/backups/boot_b-20261114.img bs=1M
+sha256sum /data/server/backups/boot_b-20261114.img
+dd if=/dev/block/by-name/boot_b bs=1M | sha256sum   # 两值必须一致
+# 元数据：slot/_b、uname -r、build ota、安全补丁、ksud -V → boot-backup-20261114.txt
+# PC 侧：adb pull 后复核大小/SHA-256 与文件头 "ANDROID!" 魔数
+```
+回刷演练需 `fastboot` 与重启，按用户要求延后至 soak run #2 满期；恢复前先用 `ksud`/官方包确认与当前 build 匹配。
+
 ## 2. 关联
 
 - 正文：[CASE-003](README.md)（关键事实/时间线/验收与未完成项）· [OEM profile](oem-profile.md) · [profile.json](profile.json)
