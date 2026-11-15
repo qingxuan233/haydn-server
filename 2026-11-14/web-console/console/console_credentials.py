@@ -268,6 +268,19 @@ def _request(host: str, port: int, method: str, path: str, headers: dict | None 
         conn.close()
 
 
+def _request_text(host: str, port: int, method: str, path: str, headers: dict | None = None,
+                  body: bytes | None = None, timeout: int = 10) -> tuple[int, str]:
+    conn = http.client.HTTPConnection(host, port, timeout=timeout)
+    try:
+        conn.request(method, path, body=body, headers=headers or {})
+        resp = conn.getresponse()
+        return resp.status, resp.read().decode("utf-8", "replace")
+    except OSError:
+        return 0, ""
+    finally:
+        conn.close()
+
+
 def _basic_header(user: str, password: str) -> dict:
     raw = f"{user}:{password}".encode("utf-8")
     return {"Authorization": "Basic " + base64.b64encode(raw).decode("ascii")}
@@ -330,6 +343,64 @@ def _change_forgejo(svc: dict, password: str) -> None:
     if proc.returncode != 0:
         tail = proc.stdout.decode("utf-8", "replace").strip().splitlines()[-3:]
         raise RotationError("forgejo 改密失败：" + " | ".join(tail)[:300])
+
+
+# ---------- AList ----------
+def _alist_cli(svc: dict, args: list[str], timeout: int = 60) -> str:
+    binary = str(svc.get("binary") or "/opt/alist/alist")
+    data = str(svc.get("data_dir") or "/opt/alist/data")
+    try:
+        proc = subprocess.run([binary] + args + ["--data", data], stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RotationError(f"alist 命令执行失败：{type(exc).__name__}") from exc
+    out = proc.stdout.decode("utf-8", "replace")
+    if proc.returncode != 0:
+        raise RotationError("alist 改密失败：" + " | ".join(out.strip().splitlines()[-2:])[:200])
+    return out
+
+
+def _alist_api_prefix(svc: dict) -> str:
+    # site_url 带子路径时 AList 把 API 也挂在同一前缀下（实测 v3.66.0）
+    return "/" + str(svc.get("api_path") or "/alist").strip("/")
+
+
+def _change_alist(svc: dict, password: str) -> None:
+    _alist_cli(svc, ["admin", "set", password])
+    # 实测 v3.66.0：运行中的进程沿用内存里的口令哈希，CLI 改密后登录仍报 code=400，
+    # 必须重启进程才生效；AList 由 supervisor 托管，重启约 2 秒。
+    program = str(svc.get("supervisor_program") or "haydn-alist")
+    try:
+        proc = subprocess.run(["supervisorctl", "restart", program], stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=60, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RotationError(f"alist 重启失败：{type(exc).__name__}") from exc
+    if proc.returncode != 0:
+        tail = proc.stdout.decode("utf-8", "replace").strip().splitlines()[-2:]
+        raise RotationError("alist 重启失败：" + " | ".join(tail)[:160])
+
+
+def _verify_alist(svc: dict, user: str, password: str) -> tuple[bool, str]:
+    port = int(str(svc.get("port") or 5244))
+    path = _alist_api_prefix(svc) + "/api/auth/login"
+    body = json.dumps({"username": user, "password": password}).encode("utf-8")
+    detail = "alist 连接失败"
+    for _ in range(10):  # 重启后进程拉起需要时间，轮询最多 10 秒
+        status, text = _request_text("127.0.0.1", port, "POST", path,
+                                     {"Content-Type": "application/json"}, body)
+        if status == 200:
+            try:
+                payload = json.loads(text)
+            except ValueError:
+                detail = "alist login 返回不可解析"
+            else:
+                if int(payload.get("code") or 0) == 200 and (payload.get("data") or {}).get("token"):
+                    return True, ""
+                detail = f"alist 拒绝新口令（code={payload.get('code')}）"
+        elif status:
+            detail = f"alist login HTTP {status}"
+        time.sleep(1)
+    return False, detail
 
 
 # ---------- 密码库（bw CLI） ----------
@@ -660,6 +731,16 @@ def _rotate_locked(cfg: dict, service_id: str, servers: list | None = None) -> d
             step("API 验证", ok, detail)
             if not ok:
                 raise RotationError("新口令 API 验证失败")
+        elif mode == "alist":
+            _change_alist(svc, password)
+            written = True
+            if svc.get("plain_file"):
+                write_plain(svc["plain_file"], password)
+            step("写入服务账号", True)
+            ok, detail = _verify_alist(svc, service_username(svc), password)
+            step("登录 API 验证", ok, detail)
+            if not ok:
+                raise RotationError("新口令登录 API 验证失败")
         else:
             raise RotationError(f"未实现的轮换方式 {mode}")
     except Exception as exc:  # 含 RotationError：任何失败都要回滚并留下可见原因
@@ -683,7 +764,12 @@ def _rotate_locked(cfg: dict, service_id: str, servers: list | None = None) -> d
     state_path = str((cfg.get("credentials") or {}).get("state_file") or "")
     vault_result = {"ok": False, "skipped": True, "error": "", "at": now_utc()}
     if ((cfg.get("credentials") or {}).get("vault") or {}).get("enabled"):
-        ok, error = _vault_upsert(cfg, svc, password)
+        # 服务端口令已生效，写库失败只能是“部分成功”，不能把整次轮换判为失败：
+        # 否则调用方拿到 500，而服务端实际已是新口令，状态里也不会记 rotated_at。
+        try:
+            ok, error = _vault_upsert(cfg, svc, password)
+        except Exception as exc:  # noqa: BLE001 - 写库任何异常都要折叠成可读原因
+            ok, error = False, f"{type(exc).__name__}: {exc}"
         vault_result = {"ok": ok, "skipped": False, "error": error, "at": now_utc()}
         step("写入密码库", ok, vault_reason(error))
     else:
@@ -724,6 +810,11 @@ def _rollback(cfg: dict, svc: dict, mode: str, old_secret: bytes | None,
             if not old_plain:
                 return False
             _change_forgejo(svc, old_plain)
+            _restore(str(svc.get("plain_file") or ""), old_plain_bytes)
+        elif mode == "alist":
+            if not old_plain:
+                return False
+            _change_alist(svc, old_plain)
             _restore(str(svc.get("plain_file") or ""), old_plain_bytes)
     except (RotationError, OSError):
         restored = False

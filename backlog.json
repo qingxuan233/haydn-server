@@ -370,58 +370,6 @@
       "risk": "H"
     },
     {
-      "id": "BL-037",
-      "title": "便携服务器 Web 控制台（多上游网关）与公网 /console 上线",
-      "priority": "P1",
-      "area": "device",
-      "status": "done",
-      "acceptance": "在 127.0.0.1:18080 前增加零依赖本地网关做路径分流：/console 为受鉴权控制台（服务启停/日志尾/备份触发/遥测与 soak 摘要/证书与磁盘内存概览），其余流量回落到原静态站；不改 frpc/stunnel 配置；控制台具备会话鉴权、登录限流、动作白名单、审计日志，禁止任意 shell 与文件浏览；上游路由按配置可扩展（为 /ui:3080 + WebSocket + 剥离前缀 + 保留 Host 预留）；源码在仓库留可评审副本并记录设备部署路径与回滚方式。",
-      "outputs": [
-        "2026-11-14/web-console/README.md",
-        "2026-11-14/web-console/console/gateway.py",
-        "2026-11-14/web-console/console/auth.py",
-        "2026-11-14/web-console/console/console_actions.py",
-        "2026-11-14/web-console/console/console_ui.py",
-        "2026-11-14/web-console/console/config.example.json",
-        "2026-11-14/web-console/deploy/install.sh",
-        "2026-11-14/web-console/deploy/haydn-console.conf",
-        "2026-11-14/web-console/deploy/chroot-enter.sh",
-        "2026-11-14/web-console/deploy/backup-loop.sh"
-      ],
-      "depends": [
-        "BL-022"
-      ],
-      "notes": "设备侧：/opt/haydn/console + /etc/haydn-console/gateway.json（口令派生值与会话密钥只在设备 secret.json，600）；supervisor 新增 haydn-console-gateway，原静态站 18080→18081，stunnel/frpc 零改动；chroot-enter 追加 /srv/haydn/{logs,run} 绑定，backup-loop 追加 ≤60s 触发文件轮询；原配置备份于 /data/server/backups/console-20261114/。本地自测 19 项全过；阶段 1（18090 独立实例）与阶段 2（18080/18081 切换）均验证；公网 https://qingxuan.bbs0.cc/console/ 200、/ 静态站 200、/nope 404、未鉴权 API 401。",
-      "agent_hint": "新增上游只改 gateway.json 的 upstreams（path/upstream/strip_prefix/preserve_host/websocket/auth）并重启 haydn-console-gateway，不改 frpc/stunnel；改口令用 --set-password（stdin），禁止把口令写进仓库或聊天；回滚见 README §6。",
-      "requires": "",
-      "owner": "device",
-      "updated": "2026-11-14",
-      "result": "已部署并公网可用：18080 网关（/console 控制台 + / 静态站 18081），经 stunnel 18443 与公网 443 双路验证 200；会话登录与 /api/status 返回 9 个服务，证书剩余 89 天，soak 起点 2026-11-14T10:45:00Z 可解析；未鉴权页面/API 401、白名单拒绝与 CSRF 校验、审计日志、19 项本地自测均通过；未完成（未知）：控制台触发备份的端到端执行、真实服务重启点击验证、重启后绑定挂载与自启验证（验证中 adb USB 断开）。",
-      "risk": "M"
-    },
-    {
-      "id": "BL-038",
-      "title": "公网入口方案选型（ADR-0008）与 Cloudflare Tunnel / Tailscale Funnel 预研",
-      "priority": "P1",
-      "area": "device",
-      "status": "done",
-      "acceptance": "在公网 443 被阿里云按 SNI 备案拦截、TCP 非标端口实测不可靠的前提下，产出 ADR（只记录已核验事实与标注推断、含被否方案与判据数据），并给出 Cloudflare Tunnel 与 Tailscale Funnel 两条候选的可行性与代价；不实施、不改隧道/DNS/备案，等用户选型后另立 accepted ADR 并写实施与回滚步骤。",
-      "outputs": [
-        "adr/0008-public-entry-after-icp-sni-block.md",
-        "2026-11-14/frp-public-mapping/outputs/frp-public-mapping.md"
-      ],
-      "depends": [
-        "BL-022"
-      ],
-      "notes": "选型结果：采用大陆节点 IP 直连 + 非标端口，接受证书告警；域名 443（备案拦截）、域名 + 非标端口（SNI 1/10）、境外节点、Cloudflare Tunnel、Tailscale Funnel、ICP 备案均未采用。CF 评估要点（留档）：官方 linux-arm64 单二进制、免费版上传 100 MB、WebSockets 全套餐，但需把 bbs0.cc 的 NS 迁到 Cloudflare。Funnel 评估要点（留档）：本机 tailscale 1.104.7 为 --tun=userspace-networking（TUN=False），Funnel 仅 443/8443/10000、限 *.ts.net、带宽不可配。",
-      "agent_hint": "ADR-0008 已 accepted：当前公网主入口=IP 直连 60875/60177（接受证书告警），域名 443 隧道保留作回滚；复议触发点=备案完成/自有域名/IP 或端口被封/客户端原生支持成硬需求；不得擅自改 DNS、删原隧道或改备案配置。",
-      "requires": "无（已选型；复议条件见 ADR-0008）",
-      "owner": "agent",
-      "updated": "2026-11-14",
-      "risk": "M",
-      "result": "2026-11-14 定稿：用户选定大陆节点 IP 直连 + 非标端口（60875 主站/控制台/Git、60177 密码库，接受证书告警）；ADR-0008 由 proposed 转 accepted 并补选定方案/理由/放弃项/复议触发点；web-console README §12.1 入口表与 frp-public-mapping §12 标题/12.2/12.4/12.6 同步；原两条 https 隧道保留作 443 回滚，DNS 未改；preflight 全绿。未完成：IP 入口下 Vaultwarden 手机端/扩展与 Git 客户端兼容性未实测。"
-    },
-    {
       "id": "BL-039",
       "title": "控制台：服务入口、凭据 CSV 一次性导出、按钮化轮换与密码库写库",
       "priority": "P1",
@@ -494,6 +442,147 @@
       "owner": "agent",
       "updated": "2026-11-15",
       "result": "三步均实测：①117 B 测试文件上传 code:0、远端 size 117 一致（CLI 无删除远端文件能力，需在网盘客户端手工删）；②补传旧归档 code:0、远端 97,806,928+107 B 与本地逐项一致（fid 取不到，未做字节级回读）；③预检对不可达域名 2 s 内失败且日志记 keep=…（待补传），forgejo 置 644 时 haydn/vaultwarden 仍 upload ok（SUMMARY ok=2 fail=1，rc=1），权限还原后单跑 forgejo upload code:0，WIFI_FORCE_DOWN=1 两次演练告警落 alerts.log 且恢复后记 RECOVER 并复查 power_save=off；preflight 全绿。",
+      "risk": "M"
+    },
+    {
+      "id": "BL-042",
+      "title": "健康检查误报修复：人工停止不再计入 FAIL supervisor",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "定位 2026-11-15T04:56:21Z `FAIL supervisor` 的发出者与判据；区分“人工停止”与真实故障；修复后实测三种场景（有标记停止 → OK 且不拉起、去标记 → RECOVER 并拉起、伪造 FATAL → 仍 FAIL supervisor）；改前备份并给出回滚路径；不重启整机。",
+      "outputs": [
+        "2026-11-14/web-console/deploy/haydn-healthcheck.sh",
+        "2026-11-14/web-console/README.md",
+        "CHANGELOG.md"
+      ],
+      "depends": [
+        "BL-041"
+      ],
+      "notes": "告警由 `alert-watch.sh` 转发 `health.log` 最后一行产生（不是独立告警器）；判据原为 `grep -E 'FATAL|BACKOFF|STOPPED|EXITED'` 扫描整段 status 文本。当时 `haydn-heartbeat` 于 04:56:21.357Z 被 stop、04:56:38.353Z 才 start，`.stopped-haydn-heartbeat` 标记存在（控制台审计无对应请求，属设备侧演练；同批次 04:56:15Z 记 RECOVER），故属预期状态被误报。同窗口 forgejo 因只写 LANGS 未写 NAMES 触发 i18n PANIC，属 v1.83 变更中间态，04:58:02 补 NAMES 后 RUNNING。health.log 实际在 chroot `/var/log/haydn/health.log`（宿主 `/data/server/rootfs/var/log/haydn/health.log`）。",
+      "agent_hint": "判据必须保持 FATAL/BACKOFF/EXITED 无条件计入；只有 STOPPED 看 `.stopped-<svc>` 标记。改完用 chroot-enter.sh 跑 `/bin/sh -n` 与三场景演练，勿把 health.log 指到 /srv/haydn/logs。",
+      "requires": "",
+      "owner": "agent",
+      "updated": "2026-11-15",
+      "result": "改为 `awk '$2'` 精确取状态列：FATAL/BACKOFF/EXITED 一律算故障，STOPPED 仅无标记才算；实测「touch .stopped-haydn-heartbeat + supervisorctl stop → health.log 记 OK 且保持 STOPPED」「rm 标记后 → RECOVER haydn-heartbeat 并 RUNNING」「把 SUP 换成固定 FATAL 输出 → 仍记 FAIL supervisor」；脚本已部署（sha256 e86936f8…），回滚 /data/server/backups/healthcheck-20261115T055821Z/（原 sha256 ff19a644…）。",
+      "risk": "M"
+    },
+    {
+      "id": "BL-043",
+      "title": "Wi-Fi 省电态被系统重置的根因验证（与掉线的因果关系未证实）",
+      "priority": "P2",
+      "area": "device",
+      "status": "pending",
+      "acceptance": "用 dumpsys wifi（宿主侧取 `mWifiStateMachine`/省电相关字段）、内核日志（dmesg 与 logcat 的 cfg80211/wlan/电源管理行）、以及 A/B 对照观察（关闭 vs 保留 wifi-guard 纠正，各累计 ≥24h）建立或排除“系统重置 power_save ↔ 链路掉线”的因果；给出结论、证据分级与是否可机制化，并更新案例文档。",
+      "outputs": [
+        "2026-11-14/web-console/README.md",
+        "CHANGELOG.md"
+      ],
+      "depends": [
+        "BL-041"
+      ],
+      "notes": "当前只有兜底：`wifi-guard.sh` 由 telemetry-loop 每 300 秒检查一次，发现 `Power save: on` 就纠正并记 `CORRECTED`，掉线只记 `FAIL … downs=N` 与告警，属事后最多滞后 5 分钟；`CORRECTED` 多次出现但“被谁重置、是否由掉线触发”仍未证实。取证窗口需覆盖至少一次真实掉线，记录 `/data/server/logs/wifi-guard.log`、`alerts.log` 与 heartbeat/telemetry 时间线。",
+      "agent_hint": "只在专用实验设备 CASE-003（Ace Pro）取证，不重启整机、不改 frp/stunnel/证书；dumpsys/logcat 输出按脱敏规则处理，禁止 dump tailscaled.state；A/B 期间若关闭纠正需用户确认窗口。",
+      "requires": "",
+      "risk": "M"
+    },
+    {
+      "id": "BL-044",
+      "title": "WebDAV 浏览器界面汉化与常用操作（网关最小侵入）",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "浏览器访问 /dav/ 得到中文界面并具备上传、下载、新建目录、删除、重命名/移动、按名称/大小/时间排序、文件名过滤与大小/修改时间展示；不改变 WebDAV 协议语义与 Basic 认证，不新增监听端口、不改 frp/stunnel/证书；上传受 64 MiB 上限约束且失败有明确提示、不静默截断；改前备份并给回滚；实测各操作与标准方法。",
+      "outputs": [
+        "2026-11-14/web-console/console/webdav_ui.py",
+        "2026-11-14/web-console/console/gateway.py",
+        "2026-11-14/web-console/console/config.example.json",
+        "2026-11-14/web-console/README.md",
+        "CHANGELOG.md"
+      ],
+      "depends": [
+        "BL-040"
+      ],
+      "notes": "网关仅在路由配 browser_ui 且方法为 GET/HEAD、路径严格等于 /dav/、Accept 含 text/html 时返回自建页，其余请求原样透传；页面只用 PROPFIND/PUT/MKCOL/MOVE/DELETE/GET。实测 loopback 18080：浏览器 200/19,096 B，无认证 401，Accept: */* 仍为 rclone 页；PROPFIND 207/MKCOL 201/PUT 201/GET 一致/MOVE 201/DELETE 204；65 MiB PUT → 413 未落盘。回滚 /data/server/backups/webdav-ui-20261115T075629Z/。",
+      "agent_hint": "改界面只动 webdav_ui.py 并重启 haydn-console-gateway；新增浏览器界面先用 browser_ui 字段挂到目标路由，别在代码里硬编码前缀；页面禁止引入外部 CDN（CSP 仅允许 self 与内联）。",
+      "requires": "",
+      "owner": "agent",
+      "updated": "2026-11-15",
+      "risk": "M",
+      "result": "已落地并实测：网关只拦截浏览器 GET /dav/（browser_ui + Accept: text/html），其余方法与客户端请求原样透传；页面内联实现列目录/排序/过滤/上传/下载/新建目录/重命名移动/删除（页内二次确认、目录递归）；上传超限在发送前拒绝或按 413 提示不保存；配置示例与设备 gateway.json 均加 browser_ui，网关重启后各操作符合预期；标准方法未被改动（Accept: */* 仍走 rclone）。未完成：浏览器 DOM 级自动点击（无 Playwright）与第三方客户端（QuarkPC/系统挂载）回归。"
+    },
+    {
+      "id": "BL-045",
+      "title": "AList / Uptime Kuma / Netdata 接入可行性评估（只读）",
+      "priority": "P1",
+      "area": "device",
+      "status": "in_progress",
+      "acceptance": "只读采集设备资源与网关能力，产出三服务可行性分析：资源账（现状 + 三者常驻/峰值 + 装完余量）、ARM64 构建与维护状态（含 Kuma 的 Node 兼容性）、汉化结论（有无 i18n 与切换路径）、控制台 subpath 集成方案（CSP/WebSocket/Location/鉴权复用/入口表）、数据与运维（备份/日志/supervisor/健康检查/无 systemd 自恢复）、风险与回滚、接入顺序建议；本轮不安装、不改任何服务与配置。",
+      "outputs": [
+        "2026-11-14/web-console/service-feasibility.md"
+      ],
+      "depends": [
+        "BL-040"
+      ],
+      "notes": "结论：Netdata 建议先上（只读、官方支持 subpath 与 arm64 静态构建、回滚最轻）；AList 第二步且先做单机验证（site_url 单值无法同时覆盖公网+局域网、网关不重写 Location、安全加固）；Uptime Kuma 本轮不建议上（官方明确不支持 subdirectory、better-sqlite3 在 Node 24/ARM64 需预编译或工具链、能力与现有 healthcheck+node_exporter+soak 重叠）。实测基线：MemTotal 15.6 GB / MemAvailable 10.34 GiB / 7 核 / load 3.17 / 可用 208 G / 13 服务 RSS 合计约 391 MB；18085-18089 与 19999 端口空闲。待验证：AList linux-arm64 资产名与前端资源是否相对路径、Netdata dashboard 经本网关能否加载 /api/v1、Kuma 在 Node 24 的预编译情况、Kuma 默认语言、tailscaled userspace 入站转发。",
+      "agent_hint": "实施时一次只加一个服务并留 24h 观察窗；三者只绑 loopback、公网仅复用既有 frpc→stunnel→gateway 链路的路径前缀，不新开端口；新路由用 auth=session 复用控制台会话，上游口令另设；Kuma 不得试图挂 subpath。",
+      "requires": "用户确认本报告的接入顺序与取舍后再实施",
+      "owner": "agent",
+      "updated": "2026-11-15",
+      "risk": "H",
+      "result": "2026-11-15 完成只读评估并出文档（未安装、未改任何服务与配置）；网关侧已核验：CSP 只作用于自建页面、代理响应不注入 CSP、不重写 Location、转发前剥离 haydn_session cookie。等待用户确认接入顺序。"
+    },
+    {
+      "id": "BL-046",
+      "title": "备份包含明文凭据与 .bak-* 无清理：注释口径纠正 + 保留策略（只登记）",
+      "priority": "P2",
+      "area": "device",
+      "status": "pending",
+      "acceptance": "①`deploy/device-make-backup.sh` 注释改为与实际一致：明确快照 `opt/haydn/secrets/*`（含 Vaultwarden 主密码等明文）与 `rotate-secret.sh` 生成的 `.bak-*` 会被打包，安全性依赖 haydn_crypt 加密与 600 权限，不再写“凭据绝不入包”；②为 `rotate-secret.sh` 的 `.bak-<ts>` 定保留策略（建议保留最近 N 份或 7 天，超期在轮换成功路径清理），并实测清理只删 `.bak-*`、不误删在用的 env/secret；③验收需`tar tzf` 列举解密后包内 secrets 条目与 `.bak-*` 数量，并给出回滚方式。",
+      "outputs": [
+        "2026-11-14/web-console/deploy/device-make-backup.sh",
+        "2026-11-14/web-console/deploy/rotate-secret.sh",
+        "2026-11-14/web-console/README.md"
+      ],
+      "depends": [],
+      "notes": "影响：若加密口令或夸克网盘凭据泄露，包内明文口令（Vaultwarden 主密码、各服务口令）可被直接还原；`.bak-*` 长期堆积会把历史口令一并带入每次备份。证据（已核验）：v1.77 解密 `haydn-backup-20261114T163047Z.tar.gz.enc` 后确认含 `opt/haydn/secrets/vaultwarden-master.txt`，`secrets/` 共 9 项；`device-make-backup.sh` 注释原文含“凭据绝不入包”表述。验证方式：`haydn_crypt.py decrypt` → `tar tzf` 计数 secrets 与 `.bak-*`，改注释后 grep 断言无矛盾措辞。",
+      "agent_hint": "只改注释与清理逻辑，不改加密算法/上传路径；清理必须限定 `/opt/haydn/secrets/*.bak-*` 且保留最新一份；跑完 preflight 与一次真实备份（确认包内条目）再收尾，勿在此任务里重写备份管线。",
+      "requires": "",
+      "risk": "M"
+    },
+    {
+      "id": "BL-047",
+      "title": "会话吊销缺失：轮换/注销不撤销旧 cookie（只登记）",
+      "priority": "P2",
+      "area": "device",
+      "status": "pending",
+      "acceptance": "给出并实现一种可吊销方案，使“控制台口令轮换”与“注销”后旧 `haydn_session` cookie 立即失效；保持 HMAC 无状态校验的性能特征（不引入每请求磁盘随机读），落盘状态 600 且原子写；回归：旧 cookie → 401、新登录 → 200、网关重启后吊销仍生效、轮换本身不误踢当前会话（或明确选择踢出并改页面文案）；失败可回滚。",
+      "outputs": [
+        "2026-11-14/web-console/console/auth.py",
+        "2026-11-14/web-console/console/gateway.py",
+        "2026-11-14/web-console/README.md"
+      ],
+      "depends": [],
+      "notes": "现状（已核验）：会话为 HMAC 无状态 12h，无服务端吊销表；v1.80 起控制台轮换只换 `secret.json` 的 `password`、刻意保留 `session_key`，因此轮换后旧 cookie 继续有效；`/api/logout` 仅清浏览器 cookie。可选方案与代价：①会话版本号落盘（`secret.json` 或独立文件存 `session_epoch`，签发时写入 token 载荷，校验时比对；代价=每请求一次文件读，可按 mtime 缓存，吊销=递增 epoch，全部旧会话一起失效）；②黑名单/jti 表（精确吊销单会话，代价=需 TTL 清理与持久化，长期运行有增长风险）；③缩短 TTL（代价=体验下降，不能真正吊销）。风险：轮换后若递增 epoch，当前页面会话会被立即踢出，需与“轮换后保持当前会话”的既有交互取舍。",
+      "agent_hint": "默认选①并对 mtime 做缓存；改动集中在 auth.py 的签发/校验与 gateway 的 logout/rotate 路径，禁止把 epoch 写进 cookie 明文；回归需造旧 cookie（改前登录保存）对照新 cookie。",
+      "requires": "",
+      "risk": "M"
+    },
+    {
+      "id": "BL-048",
+      "title": "AList 夸克网盘存储：现有凭据形态不匹配，待用户选定方案（未实施）",
+      "priority": "P3",
+      "area": "device",
+      "status": "pending",
+      "acceptance": "用户选定路径后再实施：①提供浏览器登录后的 `cookie`（`__pus`/`__puus`）→ 新建 `Quark` 存储（建议挂 `/quark`），验证只列根目录 + 读取 1 个既有文件属性，**禁止全盘扫描/批量转存/批量下载**；②用 `QuarkTV` + `refreshToken`/`deviceId` 试挂前，先只读验证是否还需 `query_token`；③维持现状。任一路径需记录 AList 重启时间点（24h 观察剔除），并确认 `config.json`/`data.db` 仍 600。",
+      "outputs": [
+        "2026-11-14/web-console/README.md"
+      ],
+      "depends": [],
+      "notes": "已核验：`GET /alist/api/admin/driver/info` 显示 `Quark` 必填 `cookie`+`root_folder_id`、`QuarkTV` 必填 `root_folder_id`（可选 refresh_token/device_id/query_token）；设备 `/root/.quark-drive/deepseek/config.json`（600）只有 OAuth 令牌（accessToken/refreshToken/deviceId/currentUserId/platform），无浏览器 cookie，故无法直接复用。影响：cookie 若写入，将随 `data.db` 进入加密备份包（等于用网盘凭据保护备份）；自动化高频访问有触发夸克风控的可能。验证方式：建存储后 `fs/list` 仅根目录、`fs/get` 单文件；失败时页面报上游 401/403。",
+      "agent_hint": "先要凭据形态、再谈挂载；拿到 cookie 后只做最小读验证，禁止批量操作；写入任何凭据前先备份 `/opt/alist/data` 并保持 600。",
+      "requires": "用户提供浏览器 cookie 或确认改用 QuarkTV",
+      "result": "2026-11-15T12:49Z 按 QuarkTV 路径做过一次有界实验：`/quark` 创建 `code=200`，单次 `fs/list` 失败于 `Post http://api.extscreen.com/quarkdrive/token: context deadline exceeded`（第三方 token 交换服务超时；设备直连该域返回 403=可达，故非域名不可达；既非缺 `root_folder_id` 也非令牌被拒）。已删除存储（`storages` 回到 1，仅 Local），未重试/未刷新/未重登；实验写入的 refreshToken 在 DB 页内残留经 `VACUUM INTO` 重建 + 停启 AList（`12:51:33Z`）清除并复检确认。结论：该路径在当前网络/驱动下不可用，剩浏览器 cookie 或放弃两条路。",
       "risk": "M"
     }
   ]

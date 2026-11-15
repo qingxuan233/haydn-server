@@ -1,3 +1,4 @@
+# 仅匹配 *.log；CSV 规则见同目录 haydn-csv（observe/telemetry 不参与日轮转）
 /var/log/haydn/*.log {
     weekly
     rotate 4

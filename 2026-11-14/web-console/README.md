@@ -28,9 +28,12 @@
 | `console/console_credentials.py` | `/opt/haydn/console/console_credentials.py` | 凭据定义、一次性导出、轮换与回滚（§13） |
 | `console/console_ui.py` | `/opt/haydn/console/console_ui.py` | 登录页与控制台页面（内联资源） |
 | `console/lan_access.py` | `/opt/haydn/console/lan_access.py` | 局域网网段探测、网段文件、一次性票据 |
+| `console/webdav_ui.py` | `/opt/haydn/console/webdav_ui.py` | WebDAV 中文文件管理界面（§15，由网关在浏览器 GET 时返回） |
 | `deploy/lan-fw-loop.sh` | `/data/server/bin/lan-fw-loop.sh` | 宿主侧：按网段文件幂等维护 18090 放行规则 |
 | `console/config.example.json` | `/etc/haydn-console/gateway.json` | 路由与白名单配置 |
 | `deploy/haydn-console.conf` | `/etc/supervisor/conf.d/haydn-console.conf` | supervisor 程序定义 |
+| `deploy/haydn-alist.conf` | `/etc/supervisor/conf.d/haydn-alist.conf` | AList 程序定义（§17） |
+| `deploy/haydn-netdata.conf` | `/etc/supervisor/conf.d/haydn-netdata.conf` | Netdata 程序定义（§16） |
 | `deploy/chroot-enter.sh` | `/data/server/bin/chroot-enter.sh` | 追加 `/srv/haydn/{logs,run}` 绑定挂载 |
 | `deploy/backup-loop.sh` | `/data/server/bin/backup-loop.sh` | 追加"控制台手动触发"轮询 |
 | `deploy/haydn-backup.sh` | `/data/server/bin/haydn-backup.sh` | 逐来源：加密→解密自检→上传→保留 7 份 |
@@ -39,9 +42,12 @@
 | `deploy/device-make-backup.sh` | `/data/server/bin/device-make-backup.sh` | 整机配置快照（排除可重建大二进制） |
 | `deploy/install.sh` | `/data/local/tmp/web-console/deploy/install.sh` | 幂等安装脚本（自动备份原配置） |
 | `deploy/haydn-healthcheck.sh` | `/usr/local/bin/haydn-healthcheck.sh` | 周期健康检查（磁盘/内存水位 + 异常服务自动拉起，§14.3） |
+| `deploy/haydn-observe.sh` | `/usr/local/bin/haydn-observe.sh` | 24 小时观察采样：每小时 host 汇总 + 每服务 RSS（§18） |
+| `deploy/cron.d-haydn-observe` | `/etc/cron.d/haydn-observe` | 观察采样定时（每小时第 7 分钟，§18） |
+| `deploy/cron.d-haydn-health` | `/etc/cron.d/haydn-health` | 健康检查定时（每 5 分钟，设备侧已生效、仓库补登） |
 | `deploy/wifi-guard.sh` | `/data/server/bin/wifi-guard.sh` | Wi-Fi 省电态纠正 + 掉线告警/计数 + 重连后复查（§11.6） |
-| `deploy/logrotate.d-haydn` | `/etc/logrotate.d/haydn` | 日志轮转（`*.log` 周轮转 + 10M 上限） |
-| `deploy/logrotate.d-haydn-csv` | `/etc/logrotate.d/haydn-csv` | 遥测 CSV 日轮转（`copytruncate`，§14.3） |
+| `deploy/logrotate.d-haydn` | `/etc/logrotate.d/haydn` | 日志轮转（仅 `*.log` 周轮转 + 10M 上限；不匹配 CSV） |
+| `deploy/logrotate.d-haydn-csv` | `/etc/logrotate.d/haydn-csv` | CSV 轮转：普通 CSV 日轮转 20M；`observe.csv`/`telemetry.csv` **移出日轮转**（仅 20M 大小兜底，§14.3/§18） |
 | `deploy/vaultwarden-run.sh` | `/opt/haydn/bin/vaultwarden-run.sh` | 读 env 与 600 token 后降权启动 Vaultwarden |
 | `deploy/haydn-vaultwarden.conf` | `/etc/supervisor/conf.d/haydn-vaultwarden.conf` | supervisor 程序定义 |
 | `deploy/vaultwarden.env.example` | `/etc/haydn/vaultwarden.env` | 非敏感配置模板（部署后 600） |
@@ -76,7 +82,8 @@
 | `strip_prefix` | 转发前剥离前缀，`/ui/a` → `/a` |
 | `preserve_host` | 保留原始 `Host: qingxuan.bbs0.cc`（上游做虚拟主机/回调时需要） |
 | `websocket` | 允许 `Upgrade: websocket` 走原始 TCP 双向隧道 |
-| `auth` | `none` / `session`（共享控制台会话），每条路由独立 |
+| `auth` | `none` / `session` / `basic`，每条路由独立 |
+| `browser_ui` | 可选 `{title}`：该前缀根路径的浏览器 GET 返回自建中文页（目前仅 `/dav`，见 §15）；缺省不启用 |
 | `enabled` | 关闭时不参与匹配 |
 
 启用 `/ui` 的步骤：本机 `127.0.0.1:3080` 起来后，把该条 `enabled` 改为 `true`，
@@ -487,11 +494,11 @@ su -c "/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/superviso
 | 占位符 | `{lan_ip}`、`{lan_port}`、`{lan_root}`、`{public_host}` 由服务端按当前配置与探测结果替换 |
 | 改端口/改地址 | 只改 `entries`（或 `lan.listen`）一处，无需改代码/模板 |
 
-默认覆盖（2026-11-15 调整后 5 条）：控制台 `/console/`、WebDAV `/dav/`、Forgejo `/git/`、Vaultwarden `https://8.137.162.154:60177/`、Prometheus `/console/api/metrics`。原"主站 `/`"与"局域网省流 `{lan_root}/console/`"两条已移除：`/` 改为 302 到控制台（判定见 §13.6），局域网切换只保留 §10 的一次性票据按钮。未探测到局域网地址时对应入口显示"当前不可用"而不是死链。
+默认覆盖（2026-11-15 调整后 7 条）：控制台 `/console/`、WebDAV `/dav/`、Forgejo `/git/`、Vaultwarden `https://8.137.162.154:60177/`、Prometheus `/console/api/metrics`、Netdata `/netdata/`、AList `/alist/`。原"主站 `/`"与"局域网省流 `{lan_root}/console/`"两条已移除：`/` 改为 302 到控制台（判定见 §13.6），局域网切换只保留 §10 的一次性票据按钮。未探测到局域网地址时对应入口显示"当前不可用"而不是死链。
 
 **入口地址口径（2026-11-15）**：`entries[]` 不展示任何域名入口（`qingxuan.bbs0.cc` / `vault.qingxuan.bbs0.cc` 公网不可用，见 §12.2；隧道保留仅作回滚）。主站/控制台/WebDAV/Forgejo 用站内相对路径，随当前 origin 解析——公网即 `https://8.137.162.154:60875/...`，局域网即 `http://<lan_ip>:18090/...`，不写死主机；Vaultwarden 固定 `https://8.137.162.154:60177/`。设备侧配置中仅 `cert_file` 与 `NODE_EXTRA_CA_CERTS` 保留域名（是证书文件路径，不是入口）。
 
-**已核验（2026-11-15）**：`GET /api/entries` 返回 5 条且 `available` 全为 True；指标入口为站内相对路径 `/console/api/metrics`（登录后可看，经控制台代理 `127.0.0.1:9100`，不新增对外端口）；`/api/lan` 返回 `public_root=https://8.137.162.154:60875`，用于"当前入口"展示。
+**已核验（2026-11-15）**：`GET /api/entries` 返回 7 条且 `available` 全为 True（第 6 条 Netdata 见 §16，第 7 条 AList 见 §17）；指标入口为站内相对路径 `/console/api/metrics`（登录后可看，经控制台代理 `127.0.0.1:9100`，不新增对外端口）；`/api/lan` 返回 `public_root=https://8.137.162.154:60875`，用于"当前入口"展示。
 
 ### 13.2 凭据定义（单一事实来源）
 
@@ -499,7 +506,8 @@ su -c "/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/superviso
 
 - CSV 表头：`folder,name,login_uri,login_username,login_password,notes`（Bitwarden 可直接导入），folder 固定 `haydn-server`。
 - 明文只在设备侧 600 文件；页面与接口不返回完整口令（轮换结果除外，且只展示一次）。
-- 当前 6 条：控制台、WebDAV、Forgejo、Vaultwarden 主密码、Vaultwarden 管理令牌、设备 root/su（仅提示，不保存口令）。
+- 当前 7 条：控制台、WebDAV、Forgejo、Vaultwarden 主密码、Vaultwarden 管理令牌、AList 管理员、设备 root/su（仅提示，不保存口令）。
+- 新增 `rotate:"alist"` 模式：`alist admin set <新口令> --data /opt/alist/data` → `supervisorctl restart haydn-alist`（进程缓存口令哈希，不重启不生效）→ 直连 loopback `POST /alist/api/auth/login` 校验 `code=200` 并轮询最多 10 秒；失败按快照回滚（§17.3）。
 
 ### 13.3 下载（一次性令牌）
 
@@ -644,6 +652,7 @@ su -c "/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/superviso
   - 轮转：`/etc/logrotate.d/haydn` 保持 `*.log` 周轮转并加 `maxsize 10M`；新增 `/etc/logrotate.d/haydn-csv` 对 `*.csv` 日轮转（`copytruncate` + `maxsize 20M`）。`logrotate -d` 解析无 duplicate/error。
   - 水位与自恢复：`haydn-healthcheck.sh` 新增内存水位（`MemAvailable/MemTotal < 10%` → `mem_Npct`），磁盘沿用 `stat -f` 的 ≥90% 口径；对 `STOPPED/FATAL/BACKOFF/EXITED` 且**无** `/srv/haydn/run/.stopped-<svc>` 标记的服务执行一次 `supervisorctl start`，并记 `RECOVER <svc>`。标记由控制台 `service_action()` 维护（stop 写入、start 删除）。
   - supervisor 配置：设备侧 `haydn-forgejo.conf` 与仓库一致（含 `environment=`），此前 791B/876B 漂移已消除。
+  - 告警判据修正（2026-11-15）：`04:56:21Z FAIL supervisor` 来自人工停止演练——`haydn-heartbeat` 于 `04:56:21.357Z` 被 `supervisorctl stop`、`04:56:38.353Z` 才重新 start，期间 `.stopped-haydn-heartbeat` 标记存在，旧判据 `grep -E 'FATAL|BACKOFF|STOPPED|EXITED'` 把“预期的人工停止”也算成故障（控制台审计无对应请求，属设备侧手工演练；v1.83 记录“实测 RECOVER/跳过”）。改为用 `awk '$2'` 精确取状态列：`FATAL/BACKOFF/EXITED` 一律算故障，`STOPPED` 仅**无**标记才算；实测「标记 + 停止 → `OK` 且不拉起」「去标记 → `RECOVER` 并拉起」「伪造 `FATAL` → 仍 `FAIL supervisor`」；回滚 `/data/server/backups/healthcheck-20261115T055821Z/`。`health.log` 以 chroot 内 `/var/log/haydn/health.log` 为准（宿主 `/data/server/rootfs/var/log/haydn/health.log`），不在 `/srv/haydn/logs/`。
 - **实测（阶段二）**：`/console/` 200、登录 200、`/api/status` 200（`protected` 三行）、无会话 `lan-probe` 403 且无网段泄露、无头 `logout` 403、三个链路服务 `stop` 400、3 MiB 请求 → 413、心跳 stop/start 标记按预期写入/删除、`sleep 3` 后 `haydn-console-gateway RUNNING`。回滚：`/data/server/backups/console-p2-*`（四个 `.py` + `gateway.json`）、`/data/server/backups/p2-runtime-*`（healthcheck + logrotate）、`/data/server/backups/p2-upstream-*`（`vaultwarden.env` + `app.ini`）。
 
 ## 14. 新服务接入（一页）
@@ -671,3 +680,223 @@ su -c "/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/superviso
 
 - **覆盖面**：`haydn`（整机配置/代码，排除可重建大二进制）、`forgejo`（`forgejo.db` + `repositories/` + `data/` + `app.ini`）、`vaultwarden`（`db.sqlite3` + `rsa_key.pem` + attachments + sends），三份各自加密上传，各保留 7 份；每日由 `backup-loop.sh` 触发，也可在控制台点"立即备份"（写触发文件）。
 - **恢复入口**：从夸克网盘取回 `<label>-backup-*.tar.gz.enc` 与 `.sha256` → 设备上 `python3 /opt/haydn/haydn_crypt.py decrypt <enc> <tar.gz> /root/.haydn-backup-pass` → `sha256sum` 对齐 → 解包到暂存区 → 按来源放回：Forgejo 的 `forgejo.db` 需 `chown 999:993 && chmod 644`（`app.ini` 保持 `600 999:993`）、Vaultwarden 的 `rsa_key.pem` 需 `600 997:992`。恢复演练口径见 §11（解密/解包/库完整性/权限已核验，未做独立实例的真实登录回归）。
+
+## 15. WebDAV 浏览器界面（2026-11-15，中文 + 常用操作）
+
+`/dav` 由 rclone 提供，自带目录页为英文且无语言开关。做法是**网关只替换浏览器看到的那一个 GET**，其余请求与方法照旧透传，WebDAV 协议语义不变。
+
+### 15.1 触发条件与不变量
+
+- 新模块 `console/webdav_ui.py`（内联 HTML/CSS/JS，无外部资源）；网关在以下条件**全部**满足时返回它，否则原样代理给 rclone：
+  1. 该路由配置了 `"browser_ui": {"title": "…"}`（缺省不启用）；
+  2. 方法为 `GET` 或 `HEAD`；
+  3. 路径严格等于该路由前缀根（`/dav/`，子目录与文件不受影响）；
+  4. 请求头 `Accept` 含 `text/html`（浏览器会带；WebDAV 客户端多为 `*/*` 或 `application/xml`）。
+- 认证不变：仍由网关 Basic 校验，未认证返回 `401 + WWW-Authenticate`，通过后才给页面；页面本身不接触口令，浏览器复用已缓存的 Basic 凭据。
+- 页面只用标准方法操作同一前缀：`PROPFIND` 列目录、`PUT` 上传、`MKCOL` 建目录、`MOVE` 重命名/移动、`DELETE` 删除、`GET` 下载；`/dav`（无尾斜杠）仍是 `301 → /dav/`。
+- 未新增监听端口，未改 frpc/stunnel/证书；局域网 18090 与控制台同源复用同一份配置。
+- 启用方式：在 `gateway.json` 的 webdav 路由加 `browser_ui` 字段（示例见 `config.example.json`）后 `supervisorctl restart haydn-console-gateway`。
+
+### 15.2 界面能力
+
+列目录（名称/大小/修改时间，时间按设备本地时区）、按名称/大小/时间升降序排序（目录恒在前）、按文件名过滤、多选上传、下载、新建目录、重命名/移动（目标路径从 WebDAV 根写起，改目录即移动）、删除（页内二次确认，目录递归删除）。排序与过滤在前端完成，不额外打上游。
+
+### 15.3 上传边界（不静默截断）
+
+- 单文件上限 **64 MiB**，与网关对 `/dav` 的既有请求体上限一致（`MAX_DAV_BODY_BYTES`，对客户端 PUT 同样生效，不是本界面新增的限制）。
+- 超过上限时页面在**发送前**拒绝并提示改用 WebDAV 客户端；传输中触达上限则服务端返回 `413`，页面按"文件未保存"提示；若网关直接断开连接，页面提示"若文件接近 64 MiB…不会保存"，不会假装成功。
+
+### 15.4 实测（2026-11-15，设备侧 loopback 18080）
+
+- 浏览器路径：`GET /dav/`（`Accept: text/html` + Basic）→ `200`、`text/html; charset=utf-8`、19,096 B，含中文标识、无 rclone 英文页；无认证 → `401`；`Accept: */*` → 仍为 rclone 英文页（透传未变）。
+- 操作路径：`PROPFIND` 207、`MKCOL` 201、`PUT` 201、`GET` 回读内容一致、`MOVE` 201（`Destination: /dav/...` 路径式）、移动后列表命中新名、下载 200、`DELETE` 文件与目录均 204。
+- 边界：65 MiB `PUT` → `413` 且未落盘（随后 `DELETE` 404）。
+- 未做：浏览器 DOM 级自动点击（环境无 Playwright），页面交互以接口行为 + 页面代码 + 内联 JS `node --check` 核验；未跑第三方客户端（QuarkPC/系统挂载）回归，仅验证其依赖的标准方法未被改动。
+
+### 15.5 回滚
+
+设备侧备份在 `/data/server/backups/webdav-ui-<TS>/`（`gateway.py` + `gateway.json`）：还原这两个文件并 `supervisorctl restart haydn-console-gateway` 即回到 rclone 英文页；`webdav_ui.py` 不被引用时不影响运行。
+
+## 16. Netdata 监控（2026-11-15，只监听 loopback）
+
+### 16.1 结构与接入点
+
+| 项 | 值 |
+|---|---|
+| 版本/来源 | 官方 aarch64 静态构建 **v2.12.3**（`netdata-aarch64-v2.12.3.gz.run`）；整包 sha256 `3deeb94a…c127b4` 与官方 `sha256sums.txt` 一致（下载经 `gh-proxy` 镜像，供应链风险由官方 sha256 兜底） |
+| 安装路径 | `/opt/netdata`（二进制 `/opt/netdata/bin/netdata`，配置 `/opt/netdata/etc/netdata/`） |
+| 监听 | `127.0.0.1:19999`（`[web] bind to` + `allow connections from = localhost`） |
+| 网关路由 | `{name:"netdata", path:"/netdata", upstream:"127.0.0.1:19999", strip_prefix:true, websocket:true, auth:"session"}` |
+| 控制台入口 | `entries[]`：`Netdata 监控` → `/netdata/`，说明"服务器实时监控与告警（界面为英文，无官方中文）" |
+| 数据 | dbengine 只留 tier0，`retention size = 512MiB`，tier1/2 `off`；页缓存 32MiB |
+| 日志 | `/var/log/haydn/netdata-{error,collector,health,debug}.log`（`access = off`）由 `/etc/logrotate.d/haydn` 周轮转；supervisor stdout `/srv/haydn/logs/netdata.log`（10MB×3） |
+| 托管 | `/etc/supervisor/conf.d/haydn-netdata.conf`，`autorestart=true`、`stopasgroup/killasgroup=true` |
+| 健康检查 | `haydn-healthcheck.sh` 增 `GET /api/v1/info` 探针；**进程在但 HTTP 失败**时限频 15 分钟重启一次（`RECOVER netdata-http`） |
+| 备份 | `device-make-backup.sh` 只快照 `/opt/netdata/etc`；`/opt/netdata/var/cache/netdata`（dbengine）不入快照 |
+
+### 16.2 实测（2026-11-15，设备侧）
+
+- 内存：启动 20 秒 RSS **52.1 MB**；运行 10 分钟 RSS **66.8 MB**；`MemAvailable` 装前 10.28 GiB → 装后 10.31 GiB（波动范围内，无净下降）。
+- 磁盘：`/opt/netdata/var/cache/netdata` 首 10 分钟 **12 MB**（上限 512 MiB）。
+- 监听面：仅 `127.0.0.1:19999`（`ss -ltn` 核验），无 0.0.0.0 监听。
+- 代理链路（带控制台会话 cookie，经 `127.0.0.1:18080`）：`/netdata/` → `200 text/html` 102,613 B；`/netdata/v3/index.html` → `200`；`/netdata/api/v1/info` → `200`；`/netdata/api/v3/info` → `200`；`/netdata/v3/<chunk>.js` → `200`；无会话 → `401`。
+- 控制台：`GET /console/api/entries` 返回 6 条，新增项 `available=true`、`note` 含"界面为英文，无官方中文"。
+- 健康检查：部署新版 `haydn-healthcheck.sh` 后立即执行，`health.log` 记 `OK`。
+- **未做**：浏览器 DOM 级渲染核验。原因：网关会话 cookie 带 `Secure`，adb 转发的 `http://127.0.0.1:18080` 浏览器不留存会话；本机也无法直连公网入口。判定"页面可打开"目前是 HTTP 层证据（HTML + 全部静态资源 + v1/v3 API 均 200），属**已验证链路、未验证渲染**。
+
+### 16.3 已知限制
+
+- **无 i18n**：Netdata 无官方中文，Dashboard 全英文；中文仅存在于控制台入口标题与说明。
+- 首屏是 Netdata Cloud 的登录/claim 页面；本机未 claim，无云端依赖、无出站连接。
+- 出于容器兼容关闭 `apps`/`cgroups`/`tc` 插件：没有"按应用拆分"的内存/CPU 曲线，只有系统级、磁盘、网络、进程数等。
+- 错误日志有固定噪音（不影响采集）：`system-info.sh` 解析 CPU 核心行失败、`CLAIM` 的 `AGENT_UNCLAIMED` 状态、时区 `/UTC` 被判定不安全而忽略。
+- 静态包安装器在本机自解压校验阶段会长期占满单核（实测 10 分钟无进展），本次改为按 gzip 偏移手工解包后再跑官方 `install-or-update.sh`；升级时沿用同一手法。
+
+### 16.4 回滚
+
+```sh
+supervisorctl -c /etc/supervisor/supervisord.conf stop haydn-netdata
+rm /etc/supervisor/conf.d/haydn-netdata.conf
+supervisorctl -c /etc/supervisor/supervisord.conf update
+# 网关：gateway.json 中 /netdata 路由 enabled:false（备份 /etc/haydn-console/gateway.json.bak-netdata）后 restart haydn-console-gateway
+# 入口：删 entries[] 中 "Netdata 监控" 一项
+# 彻底移除：rm -rf /opt/netdata
+```
+
+改动前快照：`/data/server/backups/netdata-pre-20261115.tgz`（`passwd/group/shadow`、`haydn-console`、`supervisor/conf.d`、`logrotate.d/haydn`、`haydn-healthcheck.sh`）与 `/data/server/backups/netdata-pre-host-20261115.tgz`（`device-make-backup.sh`、`chroot-enter.sh`）。
+
+## 17. AList 文件管理（2026-11-15，只监听 loopback）
+
+### 17.1 结构与接入点
+
+| 项 | 值 |
+|---|---|
+| 版本/来源 | 官方 **v3.66.0** `alist-linux-arm64.tar.gz`（42,239,119 B）；sha256 `675d8cb6…f83d3` 与 GitHub release 的 `digest` 一致（下载经 `gh-proxy` 镜像） |
+| 安装路径 | `/opt/alist/alist`（109 MB 单二进制，前端内嵌）；数据 `/opt/alist/data/`（`config.json`、`data.db`、`log/`、`temp/`） |
+| 监听 | `127.0.0.1:5244`（`config.json` 的 `scheme.address`；`ss -ltn` 无 0.0.0.0） |
+| `site_url` | **只配一个**：`https://8.137.162.154:60875/alist`（公网入口；AList 只支持单值） |
+| 网关路由 | `{name:"alist", path:"/alist", upstream:"127.0.0.1:5244", strip_prefix:false, websocket:true, auth:"session"}` |
+| 控制台入口 | `entries[]`：`AList 文件管理` → `/alist/`，说明"网盘聚合文件管理（中文界面）；局域网可直接访问，分享/直链的绝对地址取自 site_url" |
+| 托管 | `/etc/supervisor/conf.d/haydn-alist.conf`（`autorestart=true`、`stopasgroup/killasgroup=true`） |
+| 日志 | AList 自身 `/var/log/haydn/alist.log`（`max_size 10MB × 3`，应用内轮转）+ supervisor stdout `/srv/haydn/logs/alist.log`（10MB × 3）；未加入 logrotate，避免与应用内轮转叠加 |
+| 凭据 | `credentials.services[]` 的 `id=alist`：明文 `/opt/haydn/secrets/alist-admin.txt`（600），`rotate:"alist"`；控制台"查看"、轮换、密码库、一次性 CSV 共用这份定义 |
+| 备份 | `device-make-backup.sh` 快照 `data/config.json` + `data.db` + `data.db-wal` + `data.db-shm`（WAL 三件套一起拷）；`temp/`、`log/`、109 MB 二进制不入包 |
+
+**为什么不剥前缀**：`site_url` 带 `/alist` 子路径时，AList 把页面、静态资源和 API 全挂在同一前缀下（实测 `/alist/assets/...` 200、`/alist/api/public/settings` 200），且 `GET /` 会 `302 → /alist`。网关若剥前缀，浏览器 `/alist/` 会与上游的 `302 /alist` 形成循环；保持原路径直传即可。
+
+### 17.2 实测（2026-11-15，设备侧）
+
+| 场景 | 结果 |
+|---|---|
+| 直连 `127.0.0.1:5244` | `/ping` 200；`/alist/` 200；`/` 302 → `Location: /alist` |
+| 公网口径（经网关 18080，带会话） | `/alist` → **301 → `/alist/`**（相对路径，不是跳公网域名）；`/alist/` 200 / 3,916 B；`/alist/api/public/settings` 200 / 1,888 B；`/alist/assets/polyfills-legacy.*.js` 200 / 125,830 B |
+| 局域网口径（源地址 `192.168.31.50` → `18090`） | `/alist` 301 → `/alist/`；`/alist/` **200 / 3,916 B**（与公网同字节数）；`/alist/api/public/settings` 200；静态资源 200 —— **未出现跳到公网 site_url 的 302，也未出现静态资源 404** |
+| 非局域网源访问 18090 | `403 {"error":"not in lan subnet"}`（网关既有设计，非 AList 行为） |
+| 无会话 | `/alist/` → **401**（网关会话鉴权生效） |
+| 登录 | 经网关 `POST /alist/api/auth/login` → `code=200` 且返回 token（与 `site_url` 无关） |
+| 内存/磁盘 | RSS **68,536 kB（66.9 MB）**；`/opt/alist/data` 1 MB、`/opt/alist` 105 MB；`MemAvailable` 10.74 GiB（Netdata 后为 10.35 GiB，下降主要来自 page cache/快照 staging，未做长稳结论） |
+| 控制台 | `GET /console/api/entries` **7 条**，`AList 文件管理` `available=true` |
+
+**直链地址（2026-11-15 补充实测）**：挂载本地存储后 `fs/get` 已能生成 `raw_url`，形如 `https://8.137.162.154:60875/alist/p/<name>?sign=…`——绝对地址按 `site_url` 落到**公网入口**，此前"代码层推断"由此证实；设备侧把该 URL 的主机替换为 loopback 后 GET 200 且字节一致。局域网浏览器点"下载"是否被指到公网仍**未做 DOM 级核验**。
+
+### 17.3 凭据与轮换（实测）
+
+| 动作 | 结果 |
+|---|---|
+| 首次随机口令 | 设备侧 `python3 secrets` 生成 24 位，写 `/opt/haydn/secrets/alist-admin.txt`（600）；`alist admin set` 写入 DB（安装器打印的初始 8 位口令随即失效） |
+| 写入密码库 | `gateway.py --vault-sync`：`alist: ok`；folder `haydn-server` 条目 `AList 管理员` |
+| 独立回读 | `bw get item` 与明文逐字符一致（`password_match=True`），`username=admin`，uri `https://8.137.162.154:60875/alist/` |
+| 控制台"查看" | `POST /console/api/credential/reveal`（公网 Host 与局域网 Host 两种）均 200、`Cache-Control: no-store`、与明文一致；无会话 401 |
+| 轮换 | `POST /api/rotate {service:"alist"}` → 200，三步全 True（写入服务账号 / 登录 API 验证 / 写入密码库）；旧口令登录 `code=400`、新口令 `code=200`；一次性口令 24 位；`rotated_at` 落 `credential-state.json` |
+| CSV | `build_csv` 7 行，含 `AList 管理员` 与登录地址 |
+
+**AList 侧改口令后的同步方式**：网页改口令在 AList 内部立即生效，但设备侧明文与密码库会过期。同步有两条路：①在控制台点一次"轮换"（同时改 AList、明文、密码库，最稳）；②手工 `alist admin set '<新口令>' --data /opt/alist/data` 后同步更新 `/opt/haydn/secrets/alist-admin.txt`（600）并重跑 `gateway.py --vault-sync`。
+
+**进程缓存口令哈希（实测坑）**：AList 运行中把 admin 口令哈希留在内存里，`alist admin set` 改库后登录仍报 `code=400`，且 CLI 的 `del_user_cache_online` 因按 `site_url` 回连公网入口而失败。控制台轮换已内置"改密后 `supervisorctl restart haydn-alist` 再验证（最多轮询 10 秒）"。
+
+### 17.4 已知限制与后续选项
+
+- **单 `site_url`**：AList 只接受一个 `site_url`，直链/分享等由它派生的绝对地址固定指向公网入口；局域网看图/浏览不受影响（实测 200，静态资源正常）。
+  - 若后续确认局域网点击下载被指去公网：选项 A 改 `site_url` 为局域网地址（代价：公网侧链接指向内网，不可取）；选项 B 起第二个 AList 实例专供局域网（代价：双份数据与端口、备份翻倍）；选项 C 网关改写 JSON 响应里的绝对地址（代价：需改响应体、风险高）。三者本轮均**不实现**。
+- 存储：已挂载本地存储 `/` → `/srv/haydn/webdav`（与 `/dav` 同一份文件，§17.6）；夸克网盘因凭据形态不匹配仍阻塞（§17.7）。
+- 未做浏览器 DOM 级渲染核验：原因同 §16.2（会话 cookie 带 `Secure`、本机连不到公网入口）。
+- 日志：AList 应用内轮转 + supervisor 轮转两套并存，`/var/log/haydn/alist.log` 与 `/srv/haydn/logs/alist.log` 是不同文件（前者是应用日志，后者是进程 stdout）。
+
+### 17.5 回滚
+
+```sh
+supervisorctl -c /etc/supervisor/supervisord.conf stop haydn-alist
+rm /etc/supervisor/conf.d/haydn-alist.conf
+supervisorctl -c /etc/supervisor/supervisord.conf update
+# 网关：/etc/haydn-console/gateway.json 中 /alist 路由 enabled:false（备份 gateway.json.bak-alist）
+#       并删 entries[] 的 "AList 文件管理"、credentials.services[] 的 alist 后 restart haydn-console-gateway
+rm -f /opt/haydn/secrets/alist-admin.txt
+rm -rf /opt/alist /var/log/haydn/alist.log /srv/haydn/logs/alist.log*
+```
+
+改动前快照：`/data/server/backups/alist-20261115/`（`console_credentials.py.bak`、`gateway.json.bak`），以及各次 `gateway.json.bak-alist*`。
+
+### 17.6 本地存储挂载（2026-11-15 实测）
+
+| 项 | 结果 |
+|---|---|
+| 方式 | 管理 API：`POST /alist/api/admin/storage/create`（先 `POST /alist/api/auth/login` 取 token；未走页面点击） |
+| 参数 | `mount_path=/`、`driver=Local`、`root_folder_path=/srv/haydn/webdav`（与 `/dav` 同一目录）、`thumbnail=false`、`webdav_policy=302_redirect`、`status=work` |
+| 结果 | `storages` 0 → 1（id=1）；**未重启 AList，也未重启网关**（AList uptime 连续） |
+| 选目录理由 | `/srv/haydn/webdav` 非空（`YiCiYuan`、`阅读` 两个真实目录），符合"与 WebDAV 同一份文件"；未新建空目录 |
+| 目录一致 | `POST /alist/api/fs/list {path:"/"}` 返回上述两个目录，与 `ls /srv/haydn/webdav` 一致 |
+| 上传 | `PUT /alist/api/fs/put`（`File-Path` 头）200，文件立即出现在 `/srv/haydn/webdav/`，`fs/get` 的 size 与写入字节一致 |
+| 下载 | `fs/get.raw_url` 主机换成 loopback 后 GET 200、内容逐字节一致（原 URL 指向公网入口） |
+| 清理 | `POST /alist/api/fs/remove` 200，磁盘同步消失；3 个自测文件均已删净 |
+| 权限 | `config.json` 600（原已 600，属主 root = AList 运行用户）；`data.db`/`-wal`/`-shm` 644 → **600**、`config.json.orig` 666 → **600**（含 `jwt_secret`）；`temp/` 仍 777（AList 自建，本轮未改） |
+| 备份范围 | `device-make-backup.sh` 只打包 `opt/alist/data/{config.json,data.db,data.db-wal,data.db-shm}`，**不含** `/srv/haydn/webdav`；挂载只写路径且关了缩略图 → **无重复打包**。反向缺口：新设备恢复后该存储指向的目录不在快照内，需另行恢复 `webdav/` 内容 |
+| 局域网口径 | `/alist` 的 `site_url` 单值结论不变：列表/浏览走相对路径正常，`raw_url` 仍是公网绝对地址 |
+| 回滚 | `DELETE /alist/api/admin/storage/delete?id=1`（或管理页删除）；整目录回滚：停 AList 后用 `/data/server/backups/alist-storage-20261115T123420Z/alist-data.tar.gz`（改前 4 文件，600）覆盖 `/opt/alist/data`，再启 AList |
+
+### 17.7 夸克网盘存储（阻塞，仅报告未实施）
+
+- **驱动入参（实测 `GET /alist/api/admin/driver/info`）**：`Quark` 必填 `cookie`（浏览器会话串）+ `root_folder_id`；`QuarkTV` 必填 `root_folder_id`，可选 `refresh_token`/`device_id`/`query_token`。
+- **现有凭据**：`/root/.quark-drive/deepseek/config.json`（600）为 quark-drive.cjs 的 **OAuth 令牌形态**——`accessToken`(502 字符)、`refreshToken`(239)、`deviceId`、`currentUserId`、`platform`，**不是浏览器 cookie**，与两个驱动的入参都不匹配。
+- **处置**：按要求**先停下报告**——未创建夸克存储、未写入任何凭据、未刷新或重新登录。三条可选路径（均待用户选择）：①浏览器登录夸克后提供 `cookie`（代价：有效期短、自动化访问易被风控）；②`QuarkTV` + `refreshToken`/`deviceId` 试挂（代价：是否还需 `query_token`、PC 令牌能否用于 TV 接口均未验证，存在账号风控风险）；③维持现状（夸克仅由 `quark-drive.cjs` 用于备份，不进 AList）。
+- **失效表现（待验证，推断）**：cookie/令牌失效后 AList 列表接口返回上游 401/403，页面提示加载失败，需重新获取 cookie 并更新存储配置；不影响 AList 其他存储。
+- **QuarkTV 有界实验（2026-11-15T12:49–12:51Z，已回滚，只跑一次）**：用 `refreshToken`+`deviceId`+`root_folder_id=0` 建 `/quark`（create `code=200`），单次 `fs/list` 返回 `code=500`，原文：`failed get objs: failed to list objs: Post "http://api.extscreen.com/quarkdrive/token": context deadline exceeded`。判定为**驱动依赖的第三方 token 交换服务请求超时**——既不是"缺少 root_folder_id"，也不是"令牌被拒绝"（匹配/校验阶段尚未到达，无上游 401/403）。补充证据：设备直连 `api.extscreen.com` 返回 `403`（**可达**），故是 AList 内部该请求超时，而非域名不可达。按"失败即停"删除存储，`storages` 回到 1（仅 Local），未换参数重试、未轮询刷新令牌、未重新登录。
+- **令牌残留清理（实验副作用）**：实验期间 refreshToken 被写入过 `data.db`；删存储后 SQLite 页内未清零的残留仍可检索到，`PRAGMA secure_delete=ON` + `VACUUM` 未能清除 → 改用 `VACUUM INTO` 生成新库，**停 AList 后替换**（`2026-11-15T12:51:33Z` 停、即时启；这是本次唯一一次 AList 重启，网关未重启），复检 `data.db`/`data.db-wal` 均不含令牌；旧库另存 `/data/server/backups/alist-quarktv-20261115T124908Z/data.db.residual`（600）。
+
+## 18. 24 小时观察（2026-11-15 起，Netdata + AList 并存）
+
+### 18.1 采样结构
+
+| 项 | 值 |
+|---|---|
+| 脚本 | `/usr/local/bin/haydn-observe.sh`（仓库 `deploy/haydn-observe.sh`） |
+| 定时 | `/etc/cron.d/haydn-observe`：`7 * * * * root /usr/local/bin/haydn-observe.sh`（cron 守护进程由 supervisor 的 `haydn-cron` 托管，无 systemd） |
+| 输出 | `/var/log/haydn/observe.csv`（**不参与** `logrotate.d/haydn-csv` 日轮转，仅 20M 大小兜底，避免切分观察基线）；每小时 **17 行** = 1 host 汇总 + 15 个 supervisor 程序各 1 行 |
+| 字段 | `ts_utc,kind,name,rss_kb,load1/5/15,mem_avail_kb,mem_total_kb,disk_used,uptime_s`；`kind=host` 行才有负载/内存/磁盘/uptime，`kind=svc` 行只有 `rss_kb` |
+| 起点标记 | `/var/log/haydn/observe-start.txt`；基线偏移量 `/var/log/haydn/observe-baseline.txt`（各日志行数与网关错误计数） |
+| RSS 口径 | 读 `/proc/<pid>/status` 的 `VmRSS`，只对 `RUNNING` 且能取到 pid 的程序计数，否则记 0（用于识别"进程在但取不到"） |
+
+### 18.2 观察起点与判据
+
+- **起点**：`2026-11-15T10:11:37Z`（设备本地 18:11:37），观察窗口 24 小时至 `2026-11-16T10:11:37Z`。
+- **基线偏移（起点值）**：`alerts.log` 7 行、`health.log` 44 行、`console-gateway.log` 5,851 行（其中 `ERROR|Traceback` 292 行）、`backup.log` 152 行、`observe.csv` 17 行。
+- **对比维度**（到期逐项给数，不接受"运行正常"式结论）：
+  1. 内存与负载：`MemAvailable` / `load1/5/15` 的起点、最低点、均值；
+  2. 15 个服务的 RSS 变化（重点 `haydn-netdata`、`haydn-alist` 两个新增项）；
+  3. 告警增量：`alerts.log` 与 `health.log` 新增行数及内容（基线行数之后的部分）；
+  4. 备份三来源：本窗口内的一次 03:30 定时管线（设备本地时区）是否 `SUMMARY ok=3`；
+  5. 网关：`haydn-console-gateway` 是否出现非人工重启（`uptime` 中断）与错误行增量。
+- **口径澄清（易错）**：03:30 定时由宿主 `backup-loop.sh` 用**设备本地时区**判定（`date +%H:%M`），但 `backup.log` 时间戳是 **UTC**——本地 03:30 = UTC 前一日 19:30，排查时不要误判为"漏跑"。
+
+### 18.3 已知限制
+
+- 采样频率为每小时一次，瞬时峰值（如备份 gzip 期间的 IO/负载）会被平均掉；需要更细粒度时只能查 Netdata 的 dbengine 或手工采样。
+- `rss_kb` 是单进程 `VmRSS`，不含子进程与 page cache；Netdata 的 dbengine、AList 的 mmap 会把一部分内存记在缓存而非 RSS。
+- 观察不等于验收：本轮只观测"是否引入退化"，不构成 24h soak 结论（soak 口径见 [cases](../../cases/ace-pro-pgp110/README.md)）。
+
+### 18.4 回滚
+
+```sh
+rm -f /etc/cron.d/haydn-observe /usr/local/bin/haydn-observe.sh
+rm -f /var/log/haydn/observe.csv /var/log/haydn/observe-start.txt /var/log/haydn/observe-baseline.txt
+# 观察脚本只读 /proc 与 supervisorctl status，删除不影响任何被观察服务
+```

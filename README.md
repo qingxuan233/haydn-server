@@ -177,14 +177,27 @@ python scripts/dev/check-links.py --strict-anchors
 
 ---
 
-## 9. 实证案例：Redmi K40 Pro（部分验收）
+## 9. 实证案例：K40 Pro 与 Ace Pro（部分验收）
 
-[cases/haydn-k40pro/README.md](cases/haydn-k40pro/README.md) 记录了完整落地：无 Root、Termux + proot Ubuntu、supervisord 12 服务、Android Bridge APK（release）、Console/DSH 控制面、每日加密备份；也诚实记录了**未完成项与偏差**（24h soak、mTLS/配对/限流、曾出现的明文凭据与"伪 pin"等）。
+> 分级约定：**已核验**=有设备命令输出/日志/接口回执；**推断**=有间接证据但未证实；**待验证**=尚未实测，不得当作通过。
 
-用途：
-- **验证方法论**：哪些 MTH 结论被实测支持，哪些仍是待验证假设；
-- **回归样例**：`cases/haydn-k40pro/profile.json` 可直接跑 `toolkit assess` / `plan`；
-- **反面教材**：偏差项已沉淀为 PIT/GRD，避免换机重蹈覆辙。
+**已核验**
+
+- **K40 Pro（无 Root 基线）**：[cases/haydn-k40pro/README.md](cases/haydn-k40pro/README.md) 记录 Termux + proot Ubuntu、supervisord、Android Bridge APK、控制面与每日加密备份的完整落地；`profile.json` 可直接跑 `toolkit assess` / `plan`，偏差项已沉淀为 PIT/GRD。
+- **Ace Pro（CASE-003，Root 实验轨）**：[cases/ace-pro-pgp110/README.md](cases/ace-pro-pgp110/README.md) 记录解锁/Root（KernelSU）与 3 轮救援演练、A 槽对齐后可启动、B 槽 liblp 元数据重建；设备本身是已 Root 的实验机，而生产服务跑在 chroot、**不依赖整机 Root**。
+- **生产服务（chroot 内）已上线**：Web 控制台与多上游网关（`/console`）、WebDAV（`/dav/`）、Forgejo（`/git/`）、Vaultwarden 与静态站；公网入口为 **IP + 非标端口**（控制台/Git 与密码库各一个端口，浏览器需接受自签证书告警），域名入口因备案按 SNI 拦截不可用、隧道保留作回滚（[ADR-0008](adr/0008-public-entry-after-icp-sni-block.md)、[frp 映射](2026-11-14/frp-public-mapping/outputs/frp-public-mapping.md)）。
+- **三来源备份**（haydn/forgejo/vaultwarden）：每日本地 03:30 触发（这条设备内管线，与 Ace Pro 的 Android 侧计划任务无关），逐来源"加密 → 解密自检 → 上传夸克 → 保留 7 份"；2026-11-15 加固上传前 DNS/TCP 预检、来源互不阻断并汇总、Wi-Fi 掉线告警（[web-console README](2026-11-14/web-console/README.md) §11.6）。
+
+**推断**
+
+- Wi-Fi 省电态被系统反复重置、且与链路掉线存在因果——只有事后纠正的间接证据，根因验证登记为 BL-043。
+
+**待验证**
+
+- K40 Pro 的 24h soak 与 mTLS/配对/限流仍未完成；Ace Pro 的 B 槽 liblp 元数据重建后**未再验证可启动**、24h soak 未满期、tailnet 端到端未完成、**Android 侧备份计划任务未注册**（指 Ace Pro 的 Android 侧计划任务，与本地 03:30 的三来源管线不是同一件事；与 [AGENTS.md](AGENTS.md) §9 同口径）。
+- 移动端（Vaultwarden App/浏览器扩展）与 Git 客户端在 IP + 自签证书下的兼容性未实测。
+- 远端备份仅比对大小与本地哈希，**未做字节级回读**；夸克 CLI 无删除远端文件能力（连通性测试文件需手工删除）。
+- 控制台交互以接口 + 页面代码核验，无浏览器 DOM 级自动化。
 
 > 案例目录冻结（frozen evidence）：只允许修正事实错误，不允许为了"看起来更好"改写历史结论。
 
@@ -192,11 +205,13 @@ python scripts/dev/check-links.py --strict-anchors
 
 ## 10. 当前状态与成熟度
 
-> 本节只写摘要（≤8 行）；详细状态见 [CHANGELOG.md](CHANGELOG.md) 当前窗口、[backlog.json](backlog.json) 与 [cases/README.md](cases/README.md)；历史见 [changelog/](changelog/README.md)（默认不读）。
+> 本节只写摘要（≤8 行）；权威状态见 [AGENTS.md](AGENTS.md) §9、[CHANGELOG.md](CHANGELOG.md) 当前窗口与 [backlog.json](backlog.json)；历史见 [changelog/](changelog/README.md)（默认不读）。
 
-- 方法论：MTH-001..018 初版完成（MTH-012 Root 轨、MTH-013 交付治理、MTH-016 发布/兼容/数据、MTH-014 Agent SOP 多为"已立规范、未全实测"；MTH-017/MTH-018 由 MTH-009/MTH-002 按容量规则拆出）；工具链：零依赖 CLI + fixture 单测，**尚未真机回归**；协议 v1.4（AGENTS 容量分流与 `APP` 附录前缀，细节下沉 MTH）与 ADR 决策层已落地。
-- 案例：haydn 部分验收（24h soak 等未完成，不得表述为全验收）；Ace Pro 已完成解锁/Root/3 轮救援，并部分落地 P1 管理面（Tailscale 登录与 SSH 密钥、原生充电上限 80%、无用应用禁用、Quark 加密备份跑通（含自动化脚本二次执行）；24h soak run #2 未满、tailnet 端到端与备份计划任务（未注册）未完成），仍属实验轨（见 [CASE-003](cases/ace-pro-pgp110/README.md)）。
-- 已知缺口与下一步见 [backlog.json](backlog.json)；模板、schema、校验与归档规则分别见 [toolkit/README.md](toolkit/README.md) 与 [MTH-015](methodology/15-archive-and-context-budget.md)；决策记录见 [adr/README.md](adr/README.md)。
+- 方法论与协议：MTH-001..018 与协议 v1.4 已定型，G0–G7 阶段门成文但**未在真实割接中演练**；工具链零依赖 CLI + fixture 单测，**未做真机回归**。
+- 生产服务：控制台、WebDAV、Forgejo、Vaultwarden 与公网 IP + 非标端口入口已上线并通过接口级验证（[ADR-0008](adr/0008-public-entry-after-icp-sni-block.md)）；域名入口受备案按 SNI 拦截，保留回滚。
+- 备份与告警：三来源每日加密备份 + 上传预检/互不阻断/掉线告警已实测；远端仅大小比对，未做字节级回读。
+- 案例：K40 Pro 与 Ace Pro 均为**部分验收**（B 槽可启动性、24h soak、移动端证书兼容等未验证，见 §9 与案例 README）。
+- 已知缺口与下一步：见 [backlog.json](backlog.json)（P0 仍为真机验证与基线绿化）；归档与容量规则见 [MTH-015](methodology/15-archive-and-context-budget.md)。
 
 ---
 

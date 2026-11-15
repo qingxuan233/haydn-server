@@ -21,6 +21,14 @@ rm -rf "$STAGE/data/server/rootfs/opt/haydn/bin/vaultwarden" \
        "$STAGE/data/server/rootfs/opt/haydn/bin/forgejo" \
        "$STAGE/data/server/rootfs/opt/haydn/vaultwarden-web-vault"
 cp -r /data/server/rootfs/opt/quark/scripts "$STAGE/data/server/rootfs/opt/quark/scripts"
+# Netdata：只备配置；dbengine 历史库（512MiB 上限）可再生，不进每日快照
+mkdir -p "$STAGE/data/server/rootfs/opt/netdata"
+cp -r /data/server/rootfs/opt/netdata/etc "$STAGE/data/server/rootfs/opt/netdata/etc"
+# AList：配置与数据库入包；sqlite 为 WAL 模式，db/wal/shm 三个文件一起拷避免单文件撕裂；
+# data/temp、data/log 可再生，不入包；110MB 二进制不入包（可从 release 重下）
+mkdir -p "$STAGE/data/server/rootfs/opt/alist/data"
+cp -f /data/server/rootfs/opt/alist/data/config.json "$STAGE/data/server/rootfs/opt/alist/data/" 2>/dev/null
+cp -f /data/server/rootfs/opt/alist/data/data.db /data/server/rootfs/opt/alist/data/data.db-wal /data/server/rootfs/opt/alist/data/data.db-shm "$STAGE/data/server/rootfs/opt/alist/data/" 2>/dev/null
 mkdir -p "$STAGE/data/server/rootfs/var/log"
 cp -r /data/server/rootfs/var/log/haydn "$STAGE/data/server/rootfs/var/log/haydn"
 cp -r /data/server/logs "$STAGE/data/server/logs"

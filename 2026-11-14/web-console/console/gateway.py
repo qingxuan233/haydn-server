@@ -35,6 +35,7 @@ import console_actions as actions
 import console_credentials as credentials
 import console_ui
 import lan_access
+import webdav_ui
 
 LOG = logging.getLogger("haydn.gateway")
 
@@ -289,14 +290,18 @@ class Handler(BaseHTTPRequestHandler):
     # ---------- 请求体 ----------
     def _read_body(self, limit: int = MAX_BODY_BYTES) -> bytes:
         if self.headers.get("Transfer-Encoding", "").lower() == "chunked":
+            self._body_consumed = True
             return self._read_chunked(limit)
         length = self.headers.get("Content-Length")
         if not length:
+            self._body_consumed = True
             return b""
         try:
             size = int(length)
         except ValueError:
+            # 无法解析的长度：不猜，交给 _serve 关闭连接
             return b""
+        self._body_consumed = True
         if size <= 0:
             return b""
         if size > limit:
@@ -328,45 +333,67 @@ class Handler(BaseHTTPRequestHandler):
         return bytes(out)
 
     # ---------- 分发 ----------
+    def _has_request_body(self) -> bool:
+        if self.headers.get("Transfer-Encoding", "").lower() == "chunked":
+            return True
+        try:
+            return int(self.headers.get("Content-Length") or 0) > 0
+        except ValueError:
+            return True
+
+    def _serve(self):
+        """统一入口：请求体未被读走时关闭连接。
+
+        401/403/404 等早退路径不读请求体；HTTP/1.1 keep-alive 下剩余字节会被
+        当成下一个请求行解析（日志出现 Bad request version，且请求体内容——
+        例如登录口令——会被原样写进日志）。宁可让客户端重连，也不要流错位。
+        """
+        self._body_consumed = False
+        try:
+            self._dispatch()
+        finally:
+            if not self._body_consumed and self._has_request_body():
+                self.close_connection = True
+
     def do_GET(self):
-        self._dispatch()
+        self._serve()
 
     def do_HEAD(self):
-        self._dispatch()
+        self._serve()
 
     def do_POST(self):
-        self._dispatch()
+        self._serve()
 
     def do_PUT(self):
-        self._dispatch()
+        self._serve()
 
     def do_DELETE(self):
-        self._dispatch()
+        self._serve()
 
     def do_OPTIONS(self):
-        self._dispatch()
+        self._serve()
 
     # WebDAV 动词（rclone serve webdav 需要）
     def do_PROPFIND(self):
-        self._dispatch()
+        self._serve()
 
     def do_PROPPATCH(self):
-        self._dispatch()
+        self._serve()
 
     def do_MKCOL(self):
-        self._dispatch()
+        self._serve()
 
     def do_COPY(self):
-        self._dispatch()
+        self._serve()
 
     def do_MOVE(self):
-        self._dispatch()
+        self._serve()
 
     def do_LOCK(self):
-        self._dispatch()
+        self._serve()
 
     def do_UNLOCK(self):
-        self._dispatch()
+        self._serve()
 
     def _basic_authorized(self, route: dict) -> bool:
         creds = auth.parse_basic(self.headers.get("Authorization"))
@@ -431,6 +458,8 @@ class Handler(BaseHTTPRequestHandler):
                     return
             if policy not in ("none", "session", "basic"):
                 self._json(500, {"error": f"unsupported auth policy: {policy}"})
+                return
+            if self._serve_browser_ui(route, path):
                 return
             if route.get("websocket") and self.headers.get("Upgrade", "").lower() == "websocket":
                 self._tunnel(route, path, parts.query)
@@ -671,6 +700,12 @@ class Handler(BaseHTTPRequestHandler):
         lan_root = f"http://{lan_ip}:{lan_port}" if lan_ip and lan_port else ""
         public_host = self.headers.get("Host", "")
         items = []
+        available_map = {
+            "{lan_ip}": bool(lan_ip),
+            "{lan_port}": bool(lan_port),
+            "{lan_root}": bool(lan_root),
+            "{public_host}": bool(public_host),
+        }
         for entry in self.cfg.get("entries", []):
             raw = str(entry.get("url") or "")
             resolved = (
@@ -679,7 +714,10 @@ class Handler(BaseHTTPRequestHandler):
                 .replace("{lan_root}", lan_root)
                 .replace("{public_host}", public_host)
             )
-            available = bool(resolved) and "{" not in resolved
+            # 占位符被替换成空串时会留下 "http://:18090" 这类看似可用的坏地址，
+            # 必须按“每个占位符各自的取值是否为空”判断，不能只看有没有残留的 "{"。
+            unresolved = [name for name, ok in available_map.items() if name in raw and not ok]
+            available = bool(raw) and not unresolved
             items.append(
                 {
                     "name": str(entry.get("name") or raw),
@@ -837,7 +875,6 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
             self._security_headers()
             self.end_headers()
             if self.command == "GET" and body:
@@ -933,6 +970,24 @@ class Handler(BaseHTTPRequestHandler):
         self._html(code, html)
 
     # ---------- 上游代理 ----------
+    def _serve_browser_ui(self, route: dict, path: str) -> bool:
+        """浏览器访问集合根路径时返回自建中文界面（仅 GET/HEAD + Accept: text/html）。
+
+        最小侵入：只替换 rclone 的英文目录页，其余方法与所有客户端请求继续透传，
+        WebDAV 协议语义（PROPFIND/GET/PUT/DELETE/MKCOL/MOVE）不变；认证仍走本路由 Basic。
+        """
+        ui = route.get("browser_ui")
+        if not ui or self.command not in ("GET", "HEAD"):
+            return False
+        prefix = "/" + str(route.get("path", "/")).strip("/")
+        if path != prefix + "/":
+            return False
+        if "text/html" not in (self.headers.get("Accept") or "").lower():
+            return False
+        title = ui.get("title") if isinstance(ui, dict) else ""
+        self._html(200, webdav_ui.render_page(prefix, str(title or "Haydn WebDAV")))
+        return True
+
     def _upstream_path(self, route: dict, path: str, query: str) -> str:
         target = path
         if route.get("strip_prefix"):

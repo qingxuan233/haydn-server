@@ -1,0 +1,2 @@
+# haydn 24h 观察采样：每小时第 7 分钟（cron 守护进程由 supervisor 托管）
+7 * * * * root /usr/local/bin/haydn-observe.sh

@@ -1,4 +1,6 @@
-/var/log/haydn/*.csv /srv/haydn/logs/*.csv {
+# CSV 轮转规则。取舍：logrotate 不支持 "glob 排除"，
+# 因此普通 CSV 显式登记，新增 CSV 必须在此追加，否则不会被轮转。
+/var/log/haydn/heartbeat.csv /srv/haydn/logs/charge-limit-test-*.csv /srv/haydn/logs/thermal-*.csv {
     daily
     rotate 7
     compress
@@ -6,4 +8,16 @@
     notifempty
     copytruncate
     maxsize 20M
+}
+
+# 观察/遥测基线：/var/log/haydn/observe.csv 与 /srv/haydn/logs/telemetry.csv 承载 24h 观察
+# 窗口与 soak 统计，不参与 daily（避免每日 06:00 的 copytruncate 切分正在进行的基线），
+# 改为仅按大小兜底：20M 按当前写入速率需数年才会触发，正常情况等价于"不轮转"。
+/var/log/haydn/observe.csv /srv/haydn/logs/telemetry.csv {
+    size 20M
+    rotate 2
+    compress
+    missingok
+    notifempty
+    copytruncate
 }

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """控制台页面模板（内联 CSS/JS，无外部资源，可在手机窄屏使用）。"""
 
+import html
+
 LOGIN_HTML = """<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8">
@@ -361,7 +363,9 @@ function renderCredentials(cred) {
   } else {
     body.innerHTML = items.map(function (s) {
       const rot = s.rotated_at
-        ? ((s.rotation_ok === false ? '<span class="state-ERROR">失败</span> ' : '<span class="state-RUNNING">通过</span> ') +
+        ? ((s.rotation_ok === false
+            ? '<span class="state-ERROR" title="' + esc(s.rotation_error || '失败原因未记录') + '">失败</span> '
+            : '<span class="state-RUNNING">通过</span> ') +
            '<span title="' + esc(s.rotated_at) + '">' + esc(fmtTs(s.rotated_at)) + '</span>')
         : '—';
       let vault = '—';
@@ -510,11 +514,11 @@ async function loadEntries() {
     if (!items.length) { box.innerHTML = '<span class="off">未配置服务入口</span>'; return; }
     box.innerHTML = items.map(function (e) {
       if (!e.available) {
-        return '<span class="off" title="' + (e.reason || '') + '">' + e.name + '<small>当前不可用</small></span>';
+        return '<span class="off" title="' + esc(e.reason || '') + '">' + esc(e.name) + '<small>当前不可用</small></span>';
       }
       const ext = /^https?:/i.test(e.url);
-      return '<a href="' + e.url + '"' + (ext ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
-        e.name + (e.note ? '<small>' + e.note + '</small>' : '') + '</a>';
+      return '<a href="' + esc(e.url) + '"' + (ext ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
+        esc(e.name) + (e.note ? '<small>' + esc(e.note) + '</small>' : '') + '</a>';
     }).join('');
     msg.textContent = '';
   } catch (e) {
@@ -770,11 +774,12 @@ setInterval(loadEntries, 30000);
 
 
 def render_login(title: str, console_path: str, host_label: str, error: str = "") -> str:
+    # title/error 来自配置，host_label 来自请求头 Host：都必须转义后再插入 HTML
     return (
-        LOGIN_HTML.replace("__TITLE__", title)
+        LOGIN_HTML.replace("__TITLE__", html.escape(title))
         .replace("__CONSOLE_PATH__", console_path)
-        .replace("__HOST_LABEL__", host_label)
-        .replace("__ERROR__", error)
+        .replace("__HOST_LABEL__", html.escape(host_label[:120]))
+        .replace("__ERROR__", html.escape(error))
     )
 
 

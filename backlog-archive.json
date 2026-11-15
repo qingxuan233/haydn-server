@@ -3,6 +3,58 @@
   "updated": "2026-11-15",
   "items": [
     {
+      "id": "BL-038",
+      "title": "公网入口方案选型（ADR-0008）与 Cloudflare Tunnel / Tailscale Funnel 预研",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "在公网 443 被阿里云按 SNI 备案拦截、TCP 非标端口实测不可靠的前提下，产出 ADR（只记录已核验事实与标注推断、含被否方案与判据数据），并给出 Cloudflare Tunnel 与 Tailscale Funnel 两条候选的可行性与代价；不实施、不改隧道/DNS/备案，等用户选型后另立 accepted ADR 并写实施与回滚步骤。",
+      "outputs": [
+        "adr/0008-public-entry-after-icp-sni-block.md",
+        "2026-11-14/frp-public-mapping/outputs/frp-public-mapping.md"
+      ],
+      "depends": [
+        "BL-022"
+      ],
+      "notes": "选型结果：采用大陆节点 IP 直连 + 非标端口，接受证书告警；域名 443（备案拦截）、域名 + 非标端口（SNI 1/10）、境外节点、Cloudflare Tunnel、Tailscale Funnel、ICP 备案均未采用。CF 评估要点（留档）：官方 linux-arm64 单二进制、免费版上传 100 MB、WebSockets 全套餐，但需把 bbs0.cc 的 NS 迁到 Cloudflare。Funnel 评估要点（留档）：本机 tailscale 1.104.7 为 --tun=userspace-networking（TUN=False），Funnel 仅 443/8443/10000、限 *.ts.net、带宽不可配。",
+      "agent_hint": "ADR-0008 已 accepted：当前公网主入口=IP 直连 60875/60177（接受证书告警），域名 443 隧道保留作回滚；复议触发点=备案完成/自有域名/IP 或端口被封/客户端原生支持成硬需求；不得擅自改 DNS、删原隧道或改备案配置。",
+      "requires": "无（已选型；复议条件见 ADR-0008）",
+      "owner": "agent",
+      "updated": "2026-11-14",
+      "risk": "M",
+      "result": "2026-11-14 定稿：用户选定大陆节点 IP 直连 + 非标端口（60875 主站/控制台/Git、60177 密码库，接受证书告警）；ADR-0008 由 proposed 转 accepted 并补选定方案/理由/放弃项/复议触发点；web-console README §12.1 入口表与 frp-public-mapping §12 标题/12.2/12.4/12.6 同步；原两条 https 隧道保留作 443 回滚，DNS 未改；preflight 全绿。未完成：IP 入口下 Vaultwarden 手机端/扩展与 Git 客户端兼容性未实测。"
+    },
+    {
+      "id": "BL-037",
+      "title": "便携服务器 Web 控制台（多上游网关）与公网 /console 上线",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "在 127.0.0.1:18080 前增加零依赖本地网关做路径分流：/console 为受鉴权控制台（服务启停/日志尾/备份触发/遥测与 soak 摘要/证书与磁盘内存概览），其余流量回落到原静态站；不改 frpc/stunnel 配置；控制台具备会话鉴权、登录限流、动作白名单、审计日志，禁止任意 shell 与文件浏览；上游路由按配置可扩展（为 /ui:3080 + WebSocket + 剥离前缀 + 保留 Host 预留）；源码在仓库留可评审副本并记录设备部署路径与回滚方式。",
+      "outputs": [
+        "2026-11-14/web-console/README.md",
+        "2026-11-14/web-console/console/gateway.py",
+        "2026-11-14/web-console/console/auth.py",
+        "2026-11-14/web-console/console/console_actions.py",
+        "2026-11-14/web-console/console/console_ui.py",
+        "2026-11-14/web-console/console/config.example.json",
+        "2026-11-14/web-console/deploy/install.sh",
+        "2026-11-14/web-console/deploy/haydn-console.conf",
+        "2026-11-14/web-console/deploy/chroot-enter.sh",
+        "2026-11-14/web-console/deploy/backup-loop.sh"
+      ],
+      "depends": [
+        "BL-022"
+      ],
+      "notes": "设备侧：/opt/haydn/console + /etc/haydn-console/gateway.json（口令派生值与会话密钥只在设备 secret.json，600）；supervisor 新增 haydn-console-gateway，原静态站 18080→18081，stunnel/frpc 零改动；chroot-enter 追加 /srv/haydn/{logs,run} 绑定，backup-loop 追加 ≤60s 触发文件轮询；原配置备份于 /data/server/backups/console-20261114/。本地自测 19 项全过；阶段 1（18090 独立实例）与阶段 2（18080/18081 切换）均验证；公网 https://qingxuan.bbs0.cc/console/ 200、/ 静态站 200、/nope 404、未鉴权 API 401。",
+      "agent_hint": "新增上游只改 gateway.json 的 upstreams（path/upstream/strip_prefix/preserve_host/websocket/auth）并重启 haydn-console-gateway，不改 frpc/stunnel；改口令用 --set-password（stdin），禁止把口令写进仓库或聊天；回滚见 README §6。",
+      "requires": "",
+      "owner": "device",
+      "updated": "2026-11-14",
+      "result": "已部署并公网可用：18080 网关（/console 控制台 + / 静态站 18081），经 stunnel 18443 与公网 443 双路验证 200；会话登录与 /api/status 返回 9 个服务，证书剩余 89 天，soak 起点 2026-11-14T10:45:00Z 可解析；未鉴权页面/API 401、白名单拒绝与 CSRF 校验、审计日志、19 项本地自测均通过；未完成（未知）：控制台触发备份的端到端执行、真实服务重启点击验证、重启后绑定挂载与自启验证（验证中 adb USB 断开）。",
+      "risk": "M"
+    },
+    {
       "id": "BL-036",
       "title": "余量预警处置：10 篇距上限 <15 行的文档逐个拆篇或精简",
       "priority": "P2",

@@ -196,41 +196,56 @@ def _read_text(path: str, limit: int = 256 * 1024) -> str:
 
 
 def telemetry_summary(csv_path: str) -> dict:
+    """流式汇总 telemetry.csv：只保留聚合量与最后一行。
+
+    不能只读文件头部再取 rows[-1]：文件超过读取上限后 "最后采样" 会静默停在旧样本；
+    流式读取同时把内存占用固定为 O(1)，长时间运行不会随文件增长而变重。
+    """
+    header = None
+    samples = 0
+    first_ts = None
+    last = None
+    prev_uptime = None
+    reboots = 0
+    up_rows = 0
     try:
-        text = _read_text(csv_path, 8 * 1024 * 1024)
+        with open(csv_path, "r", encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                if header is None:
+                    header = line.split(",")
+                    continue
+                values = line.split(",")
+                if len(values) != len(header):
+                    continue
+                row = dict(zip(header, values))
+                samples += 1
+                if first_ts is None:
+                    first_ts = row.get("ts")
+                last = row
+                try:
+                    value = float(row.get("uptime_s") or "")
+                except ValueError:
+                    value = None
+                if value is not None:
+                    if prev_uptime is not None and value < prev_uptime - 60:
+                        reboots += 1
+                    prev_uptime = value
+                if row.get("supervisord") == "up" and row.get("chroot_http") == "up":
+                    up_rows += 1
     except OSError as exc:
         return {"ok": False, "error": str(exc)}
-    lines = [ln for ln in text.splitlines() if ln.strip()]
-    if len(lines) < 2:
+    if not samples or last is None:
         return {"ok": False, "error": "no samples"}
-    header = lines[0].split(",")
-    rows = []
-    for line in lines[1:]:
-        values = line.split(",")
-        if len(values) != len(header):
-            continue
-        rows.append(dict(zip(header, values)))
-    if not rows:
-        return {"ok": False, "error": "no parsable samples"}
-    last = rows[-1]
-    uptimes = []
-    reboots = 0
-    for row in rows:
-        try:
-            value = float(row.get("uptime_s", "0"))
-        except ValueError:
-            continue
-        if uptimes and value < uptimes[-1] - 60:
-            reboots += 1
-        uptimes.append(value)
-    up_rows = sum(1 for r in rows if r.get("supervisord") == "up" and r.get("chroot_http") == "up")
     return {
         "ok": True,
-        "samples": len(rows),
-        "first_ts": rows[0].get("ts"),
+        "samples": samples,
+        "first_ts": first_ts,
         "last_ts": last.get("ts"),
         "reboots": reboots,
-        "availability_percent": round(up_rows / len(rows) * 100, 2),
+        "availability_percent": round(up_rows / samples * 100, 2),
         "last": {
             "uptime_s": last.get("uptime_s"),
             "load1": last.get("load1"),

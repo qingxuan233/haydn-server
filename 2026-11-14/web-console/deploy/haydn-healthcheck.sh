@@ -19,9 +19,19 @@ if [ -n "$RECOVER" ]; then
   st=$($SUP status 2>&1)
 fi
 
-echo "$st" | grep -qE 'FATAL|BACKOFF|STOPPED|EXITED' && FAIL="$FAIL supervisor"
+# 故障判定（2026-11-15）：FATAL/BACKOFF/EXITED 一律算故障；STOPPED 仅“非人工停止”算故障。
+# 带 .stopped-<svc> 标记的人工停止属预期状态，不再误报 FAIL supervisor（04:56:21Z 案例）。
+BAD=""
+for svc in $(echo "$st" | awk '$2 ~ /^(FATAL|BACKOFF|EXITED)$/ {print $1}'); do BAD="$BAD $svc"; done
+for svc in $(echo "$st" | awk '$2 == "STOPPED" {print $1}'); do
+  [ -f "/srv/haydn/run/.stopped-$svc" ] && continue
+  BAD="$BAD $svc"
+done
+[ -n "$BAD" ] && FAIL="$FAIL supervisor"
 curl -fsS -m 5 http://127.0.0.1:18080/ >/dev/null 2>&1 || FAIL="$FAIL http"
 curl -fsS -m 5 http://127.0.0.1:9100/metrics >/dev/null 2>&1 || FAIL="$FAIL node_exporter"
+[ -f /srv/haydn/run/.stopped-haydn-netdata ] || \
+  curl -fsS -m 5 http://127.0.0.1:19999/api/v1/info >/dev/null 2>&1 || FAIL="$FAIL netdata"
 ss -ltn 2>/dev/null | grep -q '127.0.0.1:22' || FAIL="$FAIL sshd"
 
 USED=$(stat -f / 2>/dev/null | awk '/^Blocks:/{for(i=1;i<=NF;i++){if($i=="Total:")t=$(i+1); if($i=="Available:")a=$(i+1)}} END{if(t>0) print int((t-a)*100/t)}')
@@ -30,6 +40,20 @@ if [ -n "$USED" ] && [ "$USED" -ge 90 ]; then FAIL="$FAIL disk_${USED}pct"; fi
 # 内存水位：MemAvailable 占 MemTotal 的比例（阈值 10%，与磁盘 90% 使用对齐）
 MEM=$(awk '/MemAvailable/{a=$2} /MemTotal/{t=$2} END{if(t>0) print int(a*100/t)}' /proc/meminfo 2>/dev/null)
 if [ -n "$MEM" ] && [ "$MEM" -lt 10 ]; then FAIL="$FAIL mem_${MEM}pct"; fi
+
+# Netdata 自恢复（2026-11-15）：进程 RUNNING 但 HTTP 探针持续失败（卡死）时重启一次；
+# 限频 15 分钟，避免探针抖动导致反复重启；人工停止（.stopped-haydn-netdata）时跳过。
+if ! curl -fsS -m 5 http://127.0.0.1:19999/api/v1/info >/dev/null 2>&1; then
+  MARK=/srv/haydn/run/.netdata-http-restart
+  NOW=$(date +%s)
+  PREV=$(stat -c %Y "$MARK" 2>/dev/null || echo 0)
+  if [ $((NOW - PREV)) -ge 900 ] && [ ! -f /srv/haydn/run/.stopped-haydn-netdata ]; then
+    if $SUP restart haydn-netdata >/dev/null 2>&1; then
+      date +%s > "$MARK"
+      echo "$STAMP RECOVER netdata-http" >> "$LOG"
+    fi
+  fi
+fi
 
 if [ -z "$FAIL" ]; then
   echo "$STAMP OK" >> "$LOG"
