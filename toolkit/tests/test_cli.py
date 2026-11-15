@@ -25,10 +25,12 @@ ROOT_READY_PROFILE = FIXTURES / "profile-root-lab-ready.json"
 ROOT_RESEARCH_PROFILE = REPO_ROOT / "cases" / "ace-pro-pgp110" / "profile.json"
 
 
-def _run(args: list[str], cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess[str]:
+def _run(args: list[str], cwd: Path = REPO_ROOT, env_extra: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
+    if env_extra:
+        env.update(env_extra)
     return subprocess.run(
         [sys.executable, "-m", "toolkit.repurpose", *args],
         cwd=str(cwd),
@@ -225,7 +227,8 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(mode_online, "fixture")
 
     def test_probe_requires_base_or_device(self) -> None:
-        result = _run(["probe", "--json"])
+        # 用空 PATH 模拟“没有 adb 的机器”，否则本机装了 platform-tools 且连着设备时该用例不成立
+        result = _run(["probe", "--json"], env_extra={"PATH": "", "ADB_PATH": ""})
         self.assertEqual(result.returncode, 3)
 
 

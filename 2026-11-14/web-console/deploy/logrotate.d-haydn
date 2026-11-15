@@ -1,0 +1,9 @@
+/var/log/haydn/*.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
+    copytruncate
+    maxsize 10M
+}

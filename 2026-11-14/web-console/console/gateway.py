@@ -10,7 +10,7 @@
 
 安全边界：
 - 只监听 127.0.0.1；不做任意 shell、不做文件系统浏览；
-- 动作仅 supervisorctl start/stop/restart + 配置内日志尾 + 备份触发文件；
+- 动作仅 supervisorctl start/stop/restart + 备份触发文件；
 - 所有页面与 API 需要会话 cookie；登录失败限流；每次动作写审计日志。
 """
 
@@ -49,6 +49,16 @@ HOP_BY_HOP = {
     "upgrade",
 }
 
+# 请求体上限：控制台 API 只需要小 JSON；WebDAV 需要容纳大文件上传。
+# 超限一律 413 并关闭连接，避免把未知大小请求体整体读进内存。
+MAX_BODY_BYTES = 2 * 1024 * 1024
+MAX_DAV_BODY_BYTES = 64 * 1024 * 1024
+
+
+class BodyTooLarge(Exception):
+    """请求体超过路由允许的上限。"""
+
+
 DEFAULT_CONFIG = {
     "listen": "127.0.0.1:18080",
     "console": {
@@ -77,7 +87,6 @@ DEFAULT_CONFIG = {
     "telemetry_csv": "",
     "soak_file": "",
     "cert_file": "",
-    "secrets_dir": "",
     "backup_trigger": "",
     "backup_log": "",
     "upstreams": [],
@@ -146,8 +155,14 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "haydn-gateway/1.0"
     timeout = 60
+    _headers_sent = False
 
     # ---------- 基础设施 ----------
+    def end_headers(self):
+        # 统一记录“响应已开始”，异常兜底据此决定能否再写 500 头
+        self._headers_sent = True
+        super().end_headers()
+
     @property
     def cfg(self) -> dict:
         return self.server.config
@@ -272,9 +287,9 @@ class Handler(BaseHTTPRequestHandler):
         return lan_access.in_subnet(self.client_address[0], snapshot["lan_subnet"])
 
     # ---------- 请求体 ----------
-    def _read_body(self) -> bytes:
+    def _read_body(self, limit: int = MAX_BODY_BYTES) -> bytes:
         if self.headers.get("Transfer-Encoding", "").lower() == "chunked":
-            return self._read_chunked()
+            return self._read_chunked(limit)
         length = self.headers.get("Content-Length")
         if not length:
             return b""
@@ -284,9 +299,13 @@ class Handler(BaseHTTPRequestHandler):
             return b""
         if size <= 0:
             return b""
+        if size > limit:
+            # 不读取、不丢弃：直接关闭连接，避免把剩余字节当成下一个请求解析
+            self.close_connection = True
+            raise BodyTooLarge(f"content-length {size} > {limit}")
         return self.rfile.read(size)
 
-    def _read_chunked(self) -> bytes:
+    def _read_chunked(self, limit: int = MAX_BODY_BYTES) -> bytes:
         out = bytearray()
         while True:
             line = self.rfile.readline(65536)
@@ -300,10 +319,12 @@ class Handler(BaseHTTPRequestHandler):
             if size == 0:
                 self.rfile.readline(65536)
                 break
+            if len(out) + size > limit:
+                # 超限时显式失败：静默截断会让上游收到坏数据且连接流错位
+                self.close_connection = True
+                raise BodyTooLarge(f"chunked body > {limit}")
             out.extend(self.rfile.read(size))
             self.rfile.read(2)
-            if len(out) > 4 * 1024 * 1024:
-                break
         return bytes(out)
 
     # ---------- 分发 ----------
@@ -359,6 +380,7 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def _dispatch(self):
+        self._headers_sent = False
         try:
             parts = urlsplit(self.path)
             path = parts.path or "/"
@@ -414,10 +436,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._tunnel(route, path, parts.query)
             else:
                 self._proxy(route, path, parts.query)
+        except BodyTooLarge as exc:
+            self._audit("request.body", self.path, "refused", str(exc))
+            if self._headers_sent:
+                self.close_connection = True
+            else:
+                self._json(413, {"error": "请求体超过允许上限"})
         except (BrokenPipeError, ConnectionResetError):
             self.close_connection = True
         except Exception as exc:  # 兜底：不让单请求异常拖垮线程
             LOG.exception("dispatch failed")
+            if self._headers_sent:
+                # 响应已经开始，再写一个 500 头只会产生损坏的响应
+                self.close_connection = True
+                return
             try:
                 self._json(500, {"error": f"gateway error: {exc}"})
             except OSError:
@@ -490,8 +522,6 @@ class Handler(BaseHTTPRequestHandler):
             self._api_metrics()
         elif rel == "/api/lan-ticket" and self.command == "POST":
             self._api_lan_ticket(console_path)
-        elif rel == "/api/log" and self.command in ("GET", "HEAD"):
-            self._api_log(parse_qs(query))
         elif rel == "/api/service" and self.command == "POST":
             self._api_service()
         elif rel == "/api/backup" and self.command == "GET":
@@ -504,9 +534,15 @@ class Handler(BaseHTTPRequestHandler):
             self._api_credentials_token(console_path)
         elif rel == "/api/credentials/download" and self.command in ("GET", "HEAD"):
             self._api_credentials_download(parse_qs(query))
+        elif rel == "/api/credential/reveal" and self.command == "POST":
+            self._api_credential_reveal()
         elif rel == "/api/rotate" and self.command == "POST":
             self._api_rotate()
         elif rel == "/api/logout" and self.command == "POST":
+            if not self._csrf_ok():
+                self._audit("logout", "-", "refused", "csrf/session check failed")
+                self._json(403, {"error": "请求来源校验失败"})
+                return
             self._audit("logout", "-", "ok")
             self._json(200, {"ok": True}, [("Set-Cookie", self._clear_cookie_header())])
         else:
@@ -533,11 +569,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def _api_login(self, console_path: str):
         limiter = self.server.limiter  # type: ignore[attr-defined]
-        blocked = limiter.blocked_for()
-        if blocked:
-            self._audit("login", "-", "blocked", f"retry after {blocked}s")
-            self._json(429, {"error": f"尝试过于频繁，请 {blocked} 秒后再试"}, [("Retry-After", str(blocked))])
-            return
         body = self._read_body()
         password = ""
         ctype = self.headers.get("Content-Type", "")
@@ -552,10 +583,19 @@ class Handler(BaseHTTPRequestHandler):
             password = ""
 
         secret = self.server.secret  # type: ignore[attr-defined]
-        if not secret:
-            self._json(503, {"error": "服务端未初始化口令"}, [("Location", console_path + "/")])
+        record = secret.get("password") if isinstance(secret, dict) else None
+        if not record:
+            # 口令轮换期间 secret 可能被整体替换：此处不同于“未初始化”，返回 503 让客户端重试
+            self._json(503, {"error": "服务端口令暂不可用，请重试"}, [("Retry-After", "1")])
             return
-        if not password or not auth.verify_password(secret["password"], password):
+        if not password or not auth.verify_password(record, password):
+            # 限流只拦截“失败尝试”：持有正确口令的管理员始终可以登录，
+            # 避免匿名者用 5 次错误把管理员锁在门外（DoS）。
+            blocked = limiter.blocked_for()
+            if blocked:
+                self._audit("login", "-", "blocked", f"retry after {blocked}s")
+                self._json(429, {"error": f"尝试过于频繁，请 {blocked} 秒后再试"}, [("Retry-After", str(blocked))])
+                return
             limiter.record_failure()
             self._audit("login", "-", "fail")
             self._json(401, {"error": "口令错误"})
@@ -582,33 +622,10 @@ class Handler(BaseHTTPRequestHandler):
                 "telemetry": telemetry,
                 "soak": soak,
                 "cert": cert,
-                "secrets": actions.secrets_summary(cfg.get("secrets_dir", "")) if cfg.get("secrets_dir") else [],
                 "credentials": credentials.summary(cfg),
-                "logs": sorted(cfg.get("logs", {}).keys()),
                 "backup": actions.recent_backup(cfg["backup_log"]) if cfg.get("backup_log") else None,
             },
         )
-
-    def _api_log(self, query: dict):
-        name = (query.get("name") or [""])[0]
-        lines_text = (query.get("lines") or ["200"])[0]
-        logs = self.cfg.get("logs", {})
-        if name not in logs:
-            self._json(400, {"error": "log not in whitelist"})
-            return
-        try:
-            lines = int(lines_text)
-        except ValueError:
-            lines = 200
-        path = logs[name]
-        try:
-            content = actions.tail_file(path, lines)
-            size = os.path.getsize(path)
-        except OSError as exc:
-            self._json(404, {"error": f"read failed: {exc}"})
-            return
-        self._audit("log.read", name, "ok", path)
-        self._json(200, {"ok": True, "name": name, "path": path, "bytes": size, "content": content})
 
     def _api_service(self):
         if not self._csrf_ok():
@@ -723,6 +740,42 @@ class Handler(BaseHTTPRequestHandler):
             [("Content-Disposition", f'attachment; filename="{name}"')],
         )
 
+    def _api_credential_reveal(self):
+        """按服务返回当前生效口令：仅登录态 + 同源校验可用，审计只记服务名/来源/路径，不记口令本身。"""
+        if not self._csrf_ok():
+            self._audit("credentials.reveal", "-", "refused", "csrf/session check failed")
+            self._json(403, {"error": "请求来源校验失败"})
+            return
+        body = self._read_body()
+        try:
+            payload = json.loads(body.decode("utf-8", "replace") or "{}")
+            service_id = str(payload.get("service") or "")
+        except (ValueError, TypeError):
+            self._audit("credentials.reveal", "-", "refused", "invalid payload")
+            self._json(400, {"error": "请求格式错误"})
+            return
+        svc = credentials.find_service(self.cfg, service_id)
+        if not svc:
+            self._audit("credentials.reveal", service_id or "-", "refused", "unknown service")
+            self._json(400, {"error": "未知服务"})
+            return
+        path = str(svc.get("plain_file") or svc.get("account_file") or "")
+        password = credentials.service_password(svc)
+        if not password:
+            self._audit("credentials.reveal", service_id, "refused", f"no plaintext; path={path or '-'}")
+            self._json(400, {"error": "该服务在设备侧没有可读取的明文口令"})
+            return
+        self._audit("credentials.reveal", service_id, "ok", f"path={path or '-'}")
+        self._json(
+            200,
+            {
+                "ok": True,
+                "service": service_id,
+                "username": credentials.service_username(svc),
+                "password": password,
+            },
+        )
+
     def _api_rotate(self):
         if not self._csrf_ok():
             self._audit("credentials.rotate", "-", "refused", "csrf/session check failed")
@@ -824,22 +877,16 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def _api_lan_probe(self):
-        """探测端点：公网页面用它判断"是否同网段"，带 CORS 便于跨源读结果。"""
-        snapshot = self._lan_snapshot()
+        """探测端点：只回答“是否同网段”。
+
+        该端点无需登录，公网入口也可访问，因此不能回传局域网地址、网段或来源地址，
+        否则等于给未鉴权访问者一个内网枚举接口。跨源读取仅用于这一个布尔值。
+        """
         allowed = self._lan_allowed()
         headers = [("Access-Control-Allow-Origin", "*"), ("Timing-Allow-Origin", "*")]
         self._json(
             200 if allowed else 403,
-            {
-                "ok": True,
-                "probe": True,
-                "listener": "lan" if getattr(self.server, "lan_mode", False) else "public",
-                "client_ip": self.client_address[0],
-                "same_subnet": bool(allowed),
-                "lan_ip": snapshot.get("lan_ip", ""),
-                "lan_subnet": snapshot.get("lan_subnet", ""),
-                "updated_at": snapshot.get("updated_at", ""),
-            },
+            {"ok": True, "probe": True, "same_subnet": bool(allowed)},
             headers,
         )
 
@@ -896,24 +943,42 @@ class Handler(BaseHTTPRequestHandler):
             target = f"{target}?{query}"
         return target
 
+    @staticmethod
+    def _strip_session_cookie(value: str) -> str:
+        """转发上游前移除控制台会话 cookie，避免把 haydn_session 泄露给上游进程/日志。"""
+        kept = []
+        for item in (value or "").split(";"):
+            item = item.strip()
+            if not item or item.startswith(auth.SESSION_COOKIE + "="):
+                continue
+            kept.append(item)
+        return "; ".join(kept)
+
     def _proxy(self, route: dict, path: str, query: str):
         host, port = parse_hostport(route["upstream"])
         target = self._upstream_path(route, path, query)
-        body = self._read_body()
+        prefix = "/" + str(route.get("path", "/")).strip("/")
+        limit = int(route.get("max_body_bytes") or (MAX_DAV_BODY_BYTES if prefix == "/dav" else MAX_BODY_BYTES))
+        body = self._read_body(limit)
 
         headers: dict[str, str] = {}
         for key, value in self.headers.items():
-            if key.lower() in HOP_BY_HOP or key.lower() == "host":
+            lower = key.lower()
+            if lower in HOP_BY_HOP or lower == "host":
                 continue
+            if lower == "cookie":
+                value = self._strip_session_cookie(value)
+                if not value:
+                    continue
             headers[key] = value
         if route.get("preserve_host") and self.headers.get("Host"):
             headers["Host"] = self.headers["Host"]
         else:
             headers["Host"] = f"{host}:{port}"
         headers["X-Forwarded-For"] = self.client_address[0]
-        headers["X-Forwarded-Proto"] = "https"
+        headers["X-Forwarded-Proto"] = "http" if getattr(self.server, "lan_mode", False) else "https"
         headers["X-Forwarded-Host"] = self.headers.get("Host", "")
-        headers["X-Forwarded-Prefix"] = "/" + str(route.get("path", "/")).strip("/")
+        headers["X-Forwarded-Prefix"] = prefix
 
         conn = HTTPConnection(host, port, timeout=60)
         try:
@@ -967,6 +1032,11 @@ class Handler(BaseHTTPRequestHandler):
                 lines.append(f"Host: {host_value}")
             elif key.lower() == "x-forwarded-prefix":
                 continue
+            elif key.lower() == "cookie":
+                value = self._strip_session_cookie(value)
+                if not value:
+                    continue
+                lines.append(f"{key}: {value}")
             else:
                 lines.append(f"{key}: {value}")
         lines.append(f"X-Forwarded-Prefix: /{str(route.get('path', '/')).strip('/')}")

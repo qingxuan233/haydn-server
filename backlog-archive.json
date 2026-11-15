@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.backlog-archive.v1",
-  "updated": "2026-11-14",
+  "updated": "2026-11-15",
   "items": [
     {
       "id": "BL-034",
@@ -323,6 +323,34 @@
       "owner": "protocol",
       "updated": "2026-11-14",
       "result": "AGENTS.md 199 行（validate protocol_tier=healthy）；新增 ADR-0003 并在 adr 索引登记；README 协议版本同步 v1.3；preflight 全绿。",
+      "risk": "L"
+    },
+    {
+      "id": "BL-035",
+      "title": "MTH-009/MTH-002 拆分与容量余量预警规则",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "methodology/08-agent-handoff.md（284/300）与 methodology/01-assessment.md（277/300）拆到健康档：扩展 SOP/变更传播/CLI 契约迁入 MTH-017，评估执行/OEM/失败处理迁入 MTH-018；不删规则、不重复抄写；同步全仓引用、manifest、ADR 与 CHANGELOG；doc-policy 新增余量 <15 行预警且不阻断 preflight；preflight 全绿且未弱化检查。",
+      "outputs": [
+        "methodology/08-agent-handoff.md",
+        "methodology/01-assessment.md",
+        "methodology/17-expansion-and-cli-contract.md",
+        "methodology/18-assessment-execution.md",
+        "adr/0006-mth-009-mth-002-split.md",
+        "adr/0007-line-margin-advisory.md",
+        "toolkit/schema/doc-policy.json",
+        "toolkit/repurpose/validate.py"
+      ],
+      "depends": [
+        "BL-034"
+      ],
+      "notes": "2026-11-14 完成：MTH-009 约 200 行、MTH-002 约 180 行、MTH-017/MTH-018 约 110–120 行；余量预警定为 advisory 级（DOC_LINES_MARGIN），不使 validate --strict 失败。",
+      "agent_hint": "改交接/ID 读 MTH-009；改评估口径读 MTH-002；扩展/契约读 MTH-017；执行/OEM/失败处理读 MTH-018。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "两篇拆到健康档（MTH-009/MTH-002 均 ≤200 行；MTH-017/MTH-018 各约 110–120 行）；新增 ADR-0006/0007 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-000/001/003/004/005/006/007/009/010/013/015、toolkit/README；doc-policy 余量预警以 advisory 输出且不改变 preflight 退出码；preflight 全绿。",
       "risk": "L"
     }
   ]

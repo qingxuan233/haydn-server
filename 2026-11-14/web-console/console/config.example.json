@@ -25,6 +25,11 @@
   "supervisor": {
     "conf": "/etc/supervisor/supervisord.conf",
     "ctl": "/usr/bin/supervisorctl",
+    "protected": [
+      "haydn-frpc",
+      "haydn-tls",
+      "haydn-sshd"
+    ],
     "services": [
       "haydn-cron",
       "haydn-frpc",
@@ -55,7 +60,6 @@
   "telemetry_csv": "/srv/haydn/logs/telemetry.csv",
   "soak_file": "/srv/haydn/logs/soak-run3-start.txt",
   "cert_file": "/etc/ssl/certs/qingxuan.bbs0.cc.fullchain.pem",
-  "secrets_dir": "/opt/haydn/secrets",
   "backup_trigger": "/srv/haydn/run/backup-trigger",
   "backup_log": "/srv/haydn/logs/backup.log",
   "entries": [

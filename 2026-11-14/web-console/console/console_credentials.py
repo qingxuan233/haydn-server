@@ -20,6 +20,7 @@ import json
 import os
 import secrets
 import subprocess
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -27,6 +28,9 @@ import auth
 
 CSV_HEADER = ["folder", "name", "login_uri", "login_username", "login_password", "notes"]
 DEFAULT_STATE = {"version": 1, "services": {}}
+
+# 轮换与状态写盘都是“读-改-写”，并发执行会互相覆盖；用进程内可重入锁串行化。
+_STATE_LOCK = threading.RLock()
 
 
 class RotationError(RuntimeError):
@@ -106,10 +110,12 @@ def load_state(path: str) -> dict:
 
 
 def save_state(path: str, state: dict) -> None:
-    tmp = path + ".tmp"
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    write_file(tmp, json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
-    os.replace(tmp, path)
+    # 串行化 + 每线程独立临时文件：并发轮换不同服务时不会写坏 JSON 或丢更新
+    with _STATE_LOCK:
+        tmp = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        write_file(tmp, json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        os.replace(tmp, path)
 
 
 # ---------- 密码库状态（与“上次轮换”分开记录） ----------
@@ -277,16 +283,20 @@ def _verify_console(cfg: dict, password: str) -> tuple[bool, str]:
     return code == 200, ("console 连接失败" if code == 0 else f"console login HTTP {code}")
 
 
-def _verify_basic(route: dict, user: str, password: str) -> tuple[bool, str]:
-    host, _, port_text = str(route.get("upstream", "")).rpartition(":")
-    port = int(port_text or 0)
+def _verify_basic(cfg: dict, route: dict, user: str, password: str) -> tuple[bool, str]:
+    # 必须经网关校验：rclone 自身没有启用认证（--user/--pass 为空），
+    # 直连 18082 会对任意 Authorization 无条件返回 207，等于“验证永远通过”。
     headers = _basic_header(user, password)
     headers["Depth"] = "0"
     # rclone 以 --baseurl 服务时只接受带前缀的路径（如 /dav/），不能再用根路径探测
     prefix = "/" + str(route.get("path", "/")).strip("/")
     path = "/" if prefix == "/" else prefix + "/"
-    code = _request(host or "127.0.0.1", port, "PROPFIND", path, headers)
-    return code in (200, 207), ("webdav 连接失败" if code == 0 else f"webdav propfind HTTP {code}")
+    code = _request(cfg["_listen_host"], cfg["_listen_port"], "PROPFIND", path, headers)
+    if code in (200, 207):
+        return True, ""
+    if code in (401, 403):
+        return False, f"网关拒绝新口令（HTTP {code}）"
+    return False, ("网关连接失败" if code == 0 else f"网关 propfind HTTP {code}")
 
 
 def _verify_forgejo(port: int, user: str, password: str) -> tuple[bool, str]:
@@ -336,7 +346,8 @@ def vault_status(cfg: dict) -> dict:
     return {"enabled": True, "ready": True, "reason": ""}
 
 
-def _bw(cfg: dict, args: list[str], session: str = "", payload: dict | None = None) -> tuple[int, str]:
+def _bw(cfg: dict, args: list[str], session: str = "", payload: dict | None = None,
+        extra_env: dict | None = None) -> tuple[int, str]:
     vcfg = (cfg.get("credentials") or {}).get("vault") or {}
     client = vcfg.get("client") or "/usr/bin/bw"
     appdata = vcfg.get("appdata_dir") or "/srv/haydn/run/bw-cli"
@@ -348,6 +359,8 @@ def _bw(cfg: dict, args: list[str], session: str = "", payload: dict | None = No
     if extra_path:
         env["PATH"] = extra_path + ":" + env.get("PATH", "/usr/local/bin:/usr/bin:/bin")
     for key, value in (vcfg.get("extra_env") or {}).items():
+        env[str(key)] = str(value)
+    for key, value in (extra_env or {}).items():
         env[str(key)] = str(value)
     env.pop("BW_SESSION", None)
     if session:
@@ -373,19 +386,44 @@ def _vault_session(cfg: dict) -> tuple[str, str]:
     server = str(vcfg.get("server") or "http://127.0.0.1:18084")
     if not account.get("email") or not account.get("password"):
         return "", "设备侧缺少主密码/账号文件"
+    # 主密码经环境变量传入，不出现在进程 argv（/proc/*/cmdline 对同 uid 可见）
+    master_env = {"BW_MASTER_PASSWORD": account["password"]}
     code, out = _bw(cfg, ["status"])
     authenticated = code == 0 and "unauthenticated" not in out.replace(" ", "")
     if not authenticated:
         code, _ = _bw(cfg, ["config", "server", server])
         if code != 0:
             return "", "设置服务器地址失败"
-        code, out = _bw(cfg, ["login", account["email"], account["password"], "--raw"])
+        code, out = _bw(
+            cfg,
+            ["login", account["email"], "--passwordenv", "BW_MASTER_PASSWORD", "--raw"],
+            extra_env=master_env,
+        )
         if code != 0:
             return "", "登录失败（主密码不匹配或账号不存在）"
-    code, out = _bw(cfg, ["unlock", account["password"], "--raw"])
-    if code != 0 or not out:
+
+    def _unlock() -> str:
+        code, out = _bw(
+            cfg,
+            ["unlock", "--passwordenv", "BW_MASTER_PASSWORD", "--raw"],
+            extra_env=master_env,
+        )
+        return out.splitlines()[-1] if code == 0 and out else ""
+
+    session = _unlock()
+    if not session:
+        # Vaultwarden 重启后，客户端可能先报“未登录”再恢复；补一次 login 后重试
+        code, out = _bw(cfg, ["status"])
+        if code == 0 and "unauthenticated" in out.replace(" ", ""):
+            _bw(
+                cfg,
+                ["login", account["email"], "--passwordenv", "BW_MASTER_PASSWORD", "--raw"],
+                extra_env=master_env,
+            )
+        session = _unlock()
+    if not session:
         return "", "解锁失败（主密码不匹配或客户端未登录）"
-    return out.splitlines()[-1], ""
+    return session, ""
 
 
 def _b64json(payload: dict) -> str:
@@ -539,10 +577,8 @@ def _console_reload(cfg: dict, servers: list) -> None:
     if not secret:
         return
     for server in servers:
-        current = getattr(server, "secret", None)
-        if isinstance(current, dict):
-            current.clear()
-            current.update(secret)
+        # 整体替换而不是 clear()+update()：并发登录在清空窗口里读 secret 会 KeyError
+        server.secret = dict(secret)
 
 
 def _basic_apply(cfg: dict, svc: dict, password: str) -> None:
@@ -563,6 +599,12 @@ def _basic_apply(cfg: dict, svc: dict, password: str) -> None:
 
 
 def rotate(cfg: dict, service_id: str, servers: list | None = None) -> dict:
+    # 轮换会写 secret/明文/状态三类文件并做回滚；并发轮换会让两次操作互相覆盖
+    with _STATE_LOCK:
+        return _rotate_locked(cfg, service_id, servers)
+
+
+def _rotate_locked(cfg: dict, service_id: str, servers: list | None = None) -> dict:
     svc = find_service(cfg, service_id)
     if svc is None:
         return {"ok": False, "error": f"未知服务 {service_id}"}
@@ -576,6 +618,7 @@ def rotate(cfg: dict, service_id: str, servers: list | None = None) -> dict:
     old_secret = _snapshot(secret_path) if secret_path else None
     old_plain_bytes = _snapshot(str(svc.get("plain_file") or "")) if svc.get("plain_file") else None
     steps: list[dict] = []
+    written = False  # 新口令是否已经写进服务端（决定失败时能否回显）
 
     def step(name: str, ok: bool, detail: str = "") -> None:
         steps.append({"name": name, "ok": ok, "detail": detail})
@@ -583,6 +626,7 @@ def rotate(cfg: dict, service_id: str, servers: list | None = None) -> dict:
     try:
         if mode == "console":
             _console_apply(cfg, svc, password)
+            written = True
             _console_reload(cfg, servers or [])
             step("写入凭据文件", True)
             record = auth.load_secret(secret_path or cfg["secret_file"])
@@ -600,13 +644,15 @@ def rotate(cfg: dict, service_id: str, servers: list | None = None) -> dict:
             if route is None:
                 raise RotationError(f"未找到 upstream {route_name}")
             _basic_apply(cfg, svc, password)
+            written = True
             step("写入凭据文件", True)
-            ok, detail = _verify_basic(route, service_username(svc), password)
+            ok, detail = _verify_basic(cfg, route, service_username(svc), password)
             step("Basic 验证", ok, detail)
             if not ok:
                 raise RotationError("新口令 Basic 验证失败")
         elif mode == "forgejo":
             _change_forgejo(svc, password)
+            written = True
             if svc.get("plain_file"):
                 write_plain(svc["plain_file"], password)
             step("写入服务账号", True)
@@ -616,26 +662,32 @@ def rotate(cfg: dict, service_id: str, servers: list | None = None) -> dict:
                 raise RotationError("新口令 API 验证失败")
         else:
             raise RotationError(f"未实现的轮换方式 {mode}")
-    except RotationError as exc:
+    except Exception as exc:  # 含 RotationError：任何失败都要回滚并留下可见原因
         rolled = _rollback(cfg, svc, mode, old_secret, old_plain_bytes, old_plain, servers or [])
         status = "已回滚" if rolled else "回滚未完成（旧明文未知，请人工核对）"
+        reason = (str(exc) if isinstance(exc, RotationError) else f"{type(exc).__name__}: {exc}")[:120]
         state_path = str((cfg.get("credentials") or {}).get("state_file") or "")
         if state_path:
             state = load_state(state_path)
             entry = state.setdefault("services", {}).setdefault(service_id, {})
-            entry["rotation"] = {"at": now_utc(), "ok": False, "error": str(exc)[:120]}
+            entry["rotation"] = {"at": now_utc(), "ok": False, "error": reason}
             save_state(state_path, state)
-        return {"ok": False, "service": service_id, "error": str(exc), "steps": steps,
-                "rolled_back": rolled, "rollback": status}
+        payload = {"ok": False, "service": service_id, "name": svc.get("name", service_id),
+                   "error": reason, "steps": steps, "rolled_back": rolled, "rollback": status}
+        if written and not rolled:
+            # 回滚没成功：服务端实际已是新口令，不告诉操作者等于直接把人锁在门外
+            payload["password"] = password
+            payload["warning"] = "新口令已写入服务端但回滚未完成，请立即用此口令登录并再次轮换"
+        return payload
 
     state_path = str((cfg.get("credentials") or {}).get("state_file") or "")
-    vault_result = {"ok": False, "skipped": True, "error": ""}
+    vault_result = {"ok": False, "skipped": True, "error": "", "at": now_utc()}
     if ((cfg.get("credentials") or {}).get("vault") or {}).get("enabled"):
         ok, error = _vault_upsert(cfg, svc, password)
-        vault_result = {"ok": ok, "skipped": False, "error": error}
+        vault_result = {"ok": ok, "skipped": False, "error": error, "at": now_utc()}
         step("写入密码库", ok, vault_reason(error))
     else:
-        vault_result = {"ok": False, "skipped": True,
+        vault_result = {"ok": False, "skipped": True, "at": now_utc(),
                         "error": "密码库写入未启用（credentials.vault.enabled=false）"}
     if state_path:
         state = load_state(state_path)

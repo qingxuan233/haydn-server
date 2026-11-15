@@ -38,6 +38,9 @@
 | `deploy/backup-forgejo.sh` | `/data/server/bin/backup-forgejo.sh` | Forgejo 数据一致性快照（SQLite backup API + 仓库目录） |
 | `deploy/device-make-backup.sh` | `/data/server/bin/device-make-backup.sh` | 整机配置快照（排除可重建大二进制） |
 | `deploy/install.sh` | `/data/local/tmp/web-console/deploy/install.sh` | 幂等安装脚本（自动备份原配置） |
+| `deploy/haydn-healthcheck.sh` | `/usr/local/bin/haydn-healthcheck.sh` | 周期健康检查（磁盘/内存水位 + 异常服务自动拉起，§14.3） |
+| `deploy/logrotate.d-haydn` | `/etc/logrotate.d/haydn` | 日志轮转（`*.log` 周轮转 + 10M 上限） |
+| `deploy/logrotate.d-haydn-csv` | `/etc/logrotate.d/haydn-csv` | 遥测 CSV 日轮转（`copytruncate`，§14.3） |
 | `deploy/vaultwarden-run.sh` | `/opt/haydn/bin/vaultwarden-run.sh` | 读 env 与 600 token 后降权启动 Vaultwarden |
 | `deploy/haydn-vaultwarden.conf` | `/etc/supervisor/conf.d/haydn-vaultwarden.conf` | supervisor 程序定义 |
 | `deploy/vaultwarden.env.example` | `/etc/haydn/vaultwarden.env` | 非敏感配置模板（部署后 600） |
@@ -141,8 +144,8 @@ su -c "/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/superviso
 | 证书剩余天数 | 已核验 | `notAfter=2027-02-11`，剩余 89 天 |
 | 遥测/soak 摘要 | 已核验 | soak 起点 2026-11-14T10:45:00Z，样本与可用率可解析 |
 | 控制台触发备份 | **未知** | 代码与触发文件路径已就绪，但验证时 adb 断开，未做端到端触发 |
-| 真实服务启停（非白名单拒绝） | **未知** | 白名单拒绝已测；对真实服务的 restart 未在控制台点击验证 |
-| 重启后 bind mount 与自启 | **未知** | 未重启设备验证；若 `/srv/haydn/logs` 未挂上，遥测/日志面板会为空（页面本身不受影响） |
+| 真实服务启停（非白名单拒绝） | 已核验 | 白名单拒绝已测；2026-11-15 控制台 `POST /api/service` restart `haydn-heartbeat` 返回 200（`stopped / started`），状态 RUNNING |
+| 重启后 bind mount 与自启 | **未知** | 未重启设备验证；若 `/srv/haydn/logs` 未挂上，遥测会为空、日志文件不可读（页面本身不受影响，日志已改为设备侧直接查看） |
 
 ## 8. 已知限制与后续
 
@@ -553,7 +556,83 @@ su -c "/data/server/bin/chroot-enter.sh /usr/bin/supervisorctl -c /etc/superviso
 ### 13.7 主站判定、入口去重与指标代理（2026-11-15）
 
 - **主站判定（只读实测）**：`GET /` 经网关落到 `127.0.0.1:18081`，响应 302 字节占位页（"haydn lab chroot" 自检页，正文声明不对局域网/公网开放），无实际内容 → 删除"主站"入口，并把 `/` 改为 **302 → `/console/`**；静态站保留为"未匹配路径"的兜底上游（回滚即恢复 `gateway.json` 旧备份）。
-- **入口去重**：`entries[]` 移除"局域网省流入口"，局域网切换只保留底部带一次性票据的按钮（`{lan_root}` 占位符仍可供其他入口使用）；调整后共 5 条。
+- **入口去重**：`entries[]` 移除"局域网省流入口"，局域网切换只保留页面顶部带一次性票据的按钮（`{lan_root}` 占位符仍可供其他入口使用）；调整后共 5 条。
 - **当前入口**：不再回显 `location.host`；局域网显示 `/api/lan` 的 `lan_url`，公网显示配置的 `public_root`（`https://8.137.162.154:60875`），失效域名不会出现在面板里。
 - **Prometheus 指标**：`node_exporter` 仅绑 `127.0.0.1:9100`，iptables `INPUT` 默认 DROP 且无 9100 放行（LAN 访问为超时而非拒绝）。按"不新增暴露面"原则，入口改为站内 `/console/api/metrics`：会话鉴权后由网关代理 loopback 采集，未登录 401、登录后 200 `text/plain`；未改绑定地址、未加 iptables 规则。
 - **交互统一**：服务启停（start/restart/stop）与备份按钮改为页内两步确认（`armConfirm()`，5 秒窗口），`stop` 写明"立即中断直到 start"、`restart` 写明"短暂中断数秒"；执行中与执行结果（成功/失败原因摘要）均写入 `#svc-msg` / `#backup-msg`。实测只重启了可控目标 `haydn-local-http`（返回 `stopped / started`，状态 RUNNING），未触碰网关、隧道或备份管线。
+
+### 13.8 控制台自轮换与会话、局域网切换按钮上移（2026-11-15）
+
+- **时间戳停更的现状**：`credential-state.json` 里 `console` 只有旧 `rotated_at=16:16:18Z`，没有任务 D 之后才引入的 `rotation` 字段——说明这期间没有一次走到状态写入的轮换；本次实测（新代码）`POST /api/rotate {service:"console"}` → 200，`steps=[写入凭据文件 ok, 回读 ok, 登录验证 ok, 写入密码库 ok]`，`rotation.at=17:21:17Z`、`rotation.ok=true`、库内条目同步，页面刷新后该行时间随之为新值。
+- **失败必留痕**：`rotate()` 的兜底异常由 `RotationError` 放宽为 `Exception`，任何写入/回读/验证异常都会回滚并写 `rotation={at,ok:false,error}`（摘要截断 120 字符，不含口令），接口返回 400；页面在 `#cred-msg` 显示 `error` 与失败步骤。失败路径实测：`{service:"device-root"}` → 400 + "该服务不支持服务端轮换（见说明）"。
+- **会话不被踢出**：控制台轮换只替换 `secret.json` 的 `password`/`updated`，`session_key` 保持不变；实测轮换后同一 cookie 请求 `GET /api/status` 仍 200。页面在成功后明确提示"控制台登录口令已更新，当前会话保持有效；下次登录请使用下方一次性口令"，一次性口令框同时展示。
+- **局域网切换按钮上移**：按钮移到页面顶部"局域网省流入口"卡片，底部"访问入口（公网 / 局域网）"只保留信息网格（当前入口/局域网地址/探测时间/同网段判定），全页唯一 `id="lan-go"`；非同一网段时按钮保留但 `disabled` 并写明原因（不再直接隐藏），同网段判定、文案与一次性票据跳转逻辑未改。
+- 本轮控制台自身口令已再次轮换（`17:21:17Z`），新口令同时写入 `/etc/haydn-console/admin-password.txt`（600）与库内 `Haydn 控制台` 条目；未重启整机、未改 frpc/stunnel/证书。
+
+### 13.9 轮换时间就地刷新与时间显示、移除凭据文件/日志面板（2026-11-15）
+
+- **"时间没变"定位（已核验）**：审计 `/var/log/haydn/console-audit.log` 中 `credentials.rotate` 记录显示 webdav `17:24:23Z`、forgejo `17:23:44Z` **均到达服务端且 `result=ok`**，`credential-state.json` 对应条目 `rotation.at` 已写入 → 属"请求到了、状态也写了，只是页面没有重新拉取"，不是服务端丢写（webdav 那次仅"写入密码库=fail"，重跑 `--vault-sync` 后 `vault=ok`）。
+- **前端就地刷新**：`rotate()` 成功分支调用 `patchCredRow()` 就地改写该行（轮换时间/验证/密码库三列），随后 `loadStatus()` 兜底；失败分支同样 `loadStatus()`，让"失败+时间"可见；`api()` 统一加 `cache:'no-store'`。实测：`POST /api/rotate {service:"console"}` → 200、`rotated_at` 前 `17:21:17Z` → 后 `17:30:17Z`、`rotation.ok=true`、`vault=ok`，同一会话 `GET /api/status` 该行已为新值（`changed: True`）；失败路径 `{service:"device-root"}` → 400 + 原因。
+- **时间显示**：服务端仍是 UTC（`Z`），页面统一经 `fmtTs()` 转本地时间并标注时区（如 `2026-11-15 01:30:17（UTC+08:00）`），UTC 原值保留在 `title` 悬浮提示，避免把 UTC 误读成本地时间。
+- **移除两个区块**：删除"凭据文件（仅存在与权限）"表格与"日志"面板，连同只服务它们的 `GET /api/log`（`_api_log`）、`/api/status` 的 `secrets`/`logs` 字段、`actions.secrets_summary()`、配置项 `secrets_dir`；`logs` 映射保留，仅用于 `--check-config` 打印文件路径与存在性。页面其余区块（局域网省流入口、服务入口、服务启停、概览、访问入口、遥测与 soak、凭据与轮换、备份）不变。
+- **依赖确认**：仓库内新控制台仅 `console_ui.py` 用过 `/api/log`（本轮已删）；`scripts/server/webui/app.py` 是冻结的旧系统、自带 `/api/logs`，不依赖新网关；`inventory/console-selftest.py`（gitignored 的本地自测脚本）仍引用 `/console/api/log`，属**测试脚本非运行时依赖**，需要时随接口变更另行更新。
+- **日志改在设备直接看**（chroot 内路径；从 adb shell 访问需加前缀 `/data/server/rootfs`，`--check-config` 实测 12 个路径均 `exists=True`）：
+  - 审计：`/var/log/haydn/console-audit.log`（JSONL，含 `credentials.rotate`/`service`/`log.read` 历史）
+  - 网关/进程：`/srv/haydn/logs/supervisord.out`、`/var/log/haydn/http.log`、`/var/log/haydn/tls.log`、`/var/log/haydn/frpc.log`、`/var/log/haydn/health.log`
+  - 业务：`/srv/haydn/logs/webdav.log`、`/srv/haydn/logs/forgejo.log`、`/srv/haydn/logs/alerts.log`
+  - 任务：`/srv/haydn/logs/backup.log`、`/srv/haydn/logs/backup-loop.out`、`/srv/haydn/logs/telemetry-loop.out`、`/srv/haydn/logs/telemetry.csv`
+- **移除后实测**：页面 200（`log-body`/`log-name`/`secrets`/`renderSecrets`/`loadLog` 均不存在）；`GET /api/status` 200 且键为 `services/overview/telemetry/soak/cert/credentials/backup/now/ok`；`/api/log` 与 `/api/secrets` 均 404；服务入口 5 条 `available` 全 True；`POST /api/service` restart `haydn-heartbeat` 200（`stopped / started`）；`/api/lan` 200（`192.168.31.0/24`）、`/api/backup` 200、`/api/metrics` 200（187685 B，含 `node_` 指标）、凭据令牌 200 → 下载 200 / 1208 B / 6 行；局域网监听 `http://192.168.31.50:18090/console/` 登录页 200。
+- **部署与回滚**：`console_ui.py`/`gateway.py`/`console_actions.py` 覆盖到 `/opt/haydn/console/`（644）、chroot `py_compile` 通过、`--check-config` 退出 0，仅 `supervisorctl restart haydn-console-gateway`（未重启整机、未改 frpc/stunnel/证书）；回滚为恢复旧三个 `.py` 并重启网关，设备 `gateway.json` 里的 `logs`/`secrets_dir` 键留着也不影响运行。
+
+### 13.10 凭据"查看口令"与概览/遥测合并（2026-11-15）
+
+- **查看口令（新增只读接口）**：`POST /console/api/credential/reveal`，JSON `{"service":"<id>"}`，仅登录态 + `X-Haydn-Client`/Origin 同源校验可用；响应 `Cache-Control: no-store`，不写文件、不缓存。口令按服务定义取设备侧明文（`plain_file`，Vaultwarden 走 `account_file` 的 `password=` 行），`device-root` 无明文 → 400。每次调用写审计 `credentials.reveal`（`ts/action/target=服务名/result/detail=文件路径/peer=来源地址`），**不含口令内容**。
+- **页面交互**：`has_password=true` 的行显示"查看"按钮（默认不展示口令），点击后就地插入一行 `#cred-services` 下的等宽 `<code>` + "复制"按钮（`navigator.clipboard`，失败回退 `execCommand`），再次点击"收起"移除该行；Vaultwarden 主密码查看前复用 `armConfirm()` 做一次 5 秒页内确认；`device-root` 行无按钮。原"下载凭据 CSV（一次性链接）"逻辑未改。
+- **实测（已核验）**：console/webdav/forgejo/vaultwarden/vaultwarden-admin 五次 `reveal` 均 200 且与设备文件逐字符一致（脚本内比对，不打印口令），响应头 `no-store`；`device-root` → 400"该服务在设备侧没有可读取的明文口令"；无会话 → 401；审计新增 5 条 `ok` + 1 条 `refused`（`peer=127.0.0.1`），对追加区做子串检查确认**未出现任何口令**。
+- **概览/遥测合并**：两张卡片并为"概览与设备遥测"，上层主机资源（`运行时长（主机）`、负载 1/5/15、内存、磁盘、证书剩余），下层设备遥测（最后采样+样本数、电池与状态、温度、服务可用率、重启次数）；`负载` 只在主机层出现一次；soak 改为卡片底部独立状态行，文案为"本轮 soak：起点/已运行/剩余/样本"，与"主机运行时长"口径分开；放电中与可用率 <100% 用 `warn` 黄色，证书 <21 天沿用 `warn`；卡片保留"只展示观测值，不判定验收通过"。数据全部来自现有 `/api/status`（`overview/telemetry/soak`），未新增采集。
+- **实测**：`/api/status` 200，键仍为 `backup/cert/credentials/now/ok/overview/services/soak/telemetry`；`overview.load=[3.07,3.18,3.29]`、`uptime=17062.46`；`telemetry.samples=327`、`availability=98.17`、`reboots=11`、最后采样含 `batt_level/batt_status/batt_temp_raw`；`soak.elapsed=16969`、`remaining=69430`、`samples_since_start=56`；页面含"概览与设备遥测/主机资源/设备遥测/运行时长（主机）/本轮 soak/只展示观测值，不判定验收通过"，且不再含"遥测与 soak"与重复负载渲染。其余接口回归：入口 5 条全可用、`/api/lan` 200、`/api/backup` 200、`/api/metrics` 200（187661 B 含 `node_`）、restart `haydn-heartbeat` 200、`/api/rotate` 失败路径 400、CSV 令牌 200。
+- **部署与回滚**：`console_ui.py`/`gateway.py` 覆盖 `/opt/haydn/console/`（644）、chroot `py_compile` 通过、`--check-config` 退出 0，仅重启 `haydn-console-gateway`；回滚为恢复旧两个 `.py` 并重启网关。页面内联 JS 另用 `node --check` 做过语法校验。
+
+### 13.11 走读修复与运行环境加固（2026-11-15，阶段二）
+
+- **H1 WebDAV 验证恒真**：`_verify_basic()` 原来直连 `127.0.0.1:18082`，而 rclone 没有启用 `--user/--pass`，对任意 Authorization 都回 207，等于"轮换验证永远通过"。改为经网关 `http://127.0.0.1:18080/<prefix>/` 做 `PROPFIND`（`Depth: 0`）：200/207 通过、401/403 失败。实测：正确口令 → `(True, '')`；错误口令 → `(False, '网关拒绝新口令（HTTP 401）')`；直连 18082 仍回 207（保留为根因证据）。
+- **H2 最后采样时间**：`/api/status` 的 `telemetry.last` 里没有 `ts`，页面取 `tel.last` 的时间恒为空。改用顶层 `last_ts` 并统一 `fmtTs()`；`null` 一律显示 `—`（内存/磁盘/电池/重启次数/可用率/soak 剩余）。
+- **H3 Vaultwarden 登录回路**：`DOMAIN` 原为不可达的 `https://vault.qingxuan.bbs0.cc`，Web 客户端按该地址拼 API 会断。备份后改为 `https://8.137.162.154:60177`，重启 `haydn-vaultwarden`；实测公网 `60177/api/config` 200 且 `environment.{api,identity,notifications}` 均为新地址。
+- **M8 Forgejo 外部地址**：`app.ini` 的 `ROOT_URL` 改为 `https://8.137.162.154:60875/git/`（`DOMAIN=8.137.162.154`），重启后日志回显 `AppURL(ROOT_URL): https://8.137.162.154:60875/git/`，经网关页面内链接已使用新地址；`app.ini` 保持 `600 999:993`（`sed -i` 后重新 `chown`）。
+- **服务保护**：`gateway.json` 的 `supervisor.protected = [haydn-frpc, haydn-tls, haydn-sshd]`；`service_action()` 对 `stop` 返回 `refused`，`/api/status` 每行带 `protected`，页面把停止按钮置灰并在区块底部说明"承载公网入口/远程登录，仅允许重启，设备侧仍可维护"。实测三个服务 `stop` 均为 400 + 原因。
+- **登录/会话/同源**：`/api/logout` 补 `X-Haydn-Client`/Origin 校验（无头 403）；`_api_login` 改为**先验口令、失败才记限流**（正确口令永不被匿名尝试锁死，无 record 时 503 + `Retry-After: 1`）；`/console/lan-probe` 不再回传 `lan_ip/lan_subnet/client_ip/listener/updated_at`，未登录 403（实测响应体仅 `{"ok":false,"error":"forbidden"}`）。
+- **代理与会话隔离**：向上游转发前剥离 `haydn_session` cookie（`/dav`、`/git`、WebSocket 隧道一致）；`X-Forwarded-Proto` 按 `lan_mode` 取 `http/https`；请求体上限 2 MiB，`/dav` 64 MiB（路由可覆盖 `max_body_bytes`），超限 413 + 审计 `request.body`，分段编码超限同样显式抛错。
+- **凭据并发与密码库**：状态写盘加 `RLock` + 每线程临时文件；`secret` 热加载改为整体替换（消除 `clear()` 窗口）；`bw login/unlock` 改用 `--passwordenv`，主密码不进 argv；Vaultwarden 重启后客户端可能先报"未登录"，`_vault_session()` 增加一次 login+unlock 重试（实测 `--vault-sync` 6 条中 5 ok / 1 skipped，`vault_sync: ok`）。
+- **页面口径**：错误/成功消息不再被轮询覆盖（确认态在 5 秒窗口内保持文案、展开的口令行刷新后不丢、轮换成功即清本地展开态）；`renderStatus()` 刷新失败时显示"本次刷新失败，上方数值可能已过期"；证书过期显示 `已过期 N 天`；soak 起点与备份时间均转本地时间并标注时区。
+- **运行环境**：
+  - 权限：`/var/log/haydn`、`/srv/haydn/logs`、`/srv/haydn/run` 由 777 收紧为 755；`console-audit.log`、`heartbeat.csv`、`telemetry.csv` 为 640。
+  - 轮转：`/etc/logrotate.d/haydn` 保持 `*.log` 周轮转并加 `maxsize 10M`；新增 `/etc/logrotate.d/haydn-csv` 对 `*.csv` 日轮转（`copytruncate` + `maxsize 20M`）。`logrotate -d` 解析无 duplicate/error。
+  - 水位与自恢复：`haydn-healthcheck.sh` 新增内存水位（`MemAvailable/MemTotal < 10%` → `mem_Npct`），磁盘沿用 `stat -f` 的 ≥90% 口径；对 `STOPPED/FATAL/BACKOFF/EXITED` 且**无** `/srv/haydn/run/.stopped-<svc>` 标记的服务执行一次 `supervisorctl start`，并记 `RECOVER <svc>`。标记由控制台 `service_action()` 维护（stop 写入、start 删除）。
+  - supervisor 配置：设备侧 `haydn-forgejo.conf` 与仓库一致（含 `environment=`），此前 791B/876B 漂移已消除。
+- **实测（阶段二）**：`/console/` 200、登录 200、`/api/status` 200（`protected` 三行）、无会话 `lan-probe` 403 且无网段泄露、无头 `logout` 403、三个链路服务 `stop` 400、3 MiB 请求 → 413、心跳 stop/start 标记按预期写入/删除、`sleep 3` 后 `haydn-console-gateway RUNNING`。回滚：`/data/server/backups/console-p2-*`（四个 `.py` + `gateway.json`）、`/data/server/backups/p2-runtime-*`（healthcheck + logrotate）、`/data/server/backups/p2-upstream-*`（`vaultwarden.env` + `app.ini`）。
+
+## 14. 新服务接入（一页）
+
+新增一个上游（示例：`/pad`）**不用改代码**，只动配置与三处运维项。全程保持单槽运行，只重启受影响的服务。
+
+1. **上游进程**：写 `/etc/supervisor/conf.d/haydn-<name>.conf`（照抄现有文件结构：`command` 只用绝对路径、`stdout_logfile` 放 `/srv/haydn/logs/<name>.log`、`environment=` 里的变量一行一个、`autostart/autorestart=true`），然后 `supervisorctl -c /etc/supervisor/supervisord.conf reread && update`，再用 `status <name>` 确认 `RUNNING`。
+2. **路由**：在 `/etc/haydn-console/gateway.json` 的 `upstreams` 追加一条
+   `{"name":"<name>","path":"/pad","upstream":"127.0.0.1:18085","auth":"none","strip_prefix":true}`。
+   `path` 决定对外前缀；上游若以 `--baseurl /pad` 自服务则 `strip_prefix` 设 `false`；需要 Basic 时 `auth:"basic"`（网关校验，上游不要再配一份）。
+3. **入口与凭据**：`entries` 加展示项（`{title,url,desc}`，公网地址用 `{public_root}` 占位），`credentials.services` 加一条（`id/name/login_uri/plain_file 或 account_file`，`secret_file` 指到 `/etc/haydn-console/secrets/<name>.json`），`credentials.services` 之外不要写口令。
+4. **启停白名单**：`supervisor.services` 加 `<name>` 才会出现按钮；承载公网入口/远程登录的服务加进 `supervisor.protected`（只允许重启）。
+5. **运维三件套**：
+   - 日志：`/srv/haydn/logs/<name>.log` 已被 `/etc/logrotate.d/haydn`（`*.log`）覆盖；若是 CSV/JSONL 明细，放进 `/srv/haydn/logs/*.csv` 或另加规则，避免与现有 glob 重复（logrotate 会报 duplicate）。
+   - 健康：在 `haydn-healthcheck.sh` 增加一条 `curl -fsS -m 5 http://127.0.0.1:<port>/<health>`，失败写 `FAIL <name>`；异常退出会被自动拉起，控制台主动停止请走页面（写 `.stopped-<svc>` 标记）。
+   - 备份：数据目录若需进备份，参考 `backup-vaultwarden.sh` 的 SQLite 一致性快照写法，在 `haydn-backup.sh` 里加一次 `process_archive <archive> "<label>"`，并补进"恢复演练"记录。
+6. **落地顺序**：`--check-config` 退出 0 → 仅 `supervisorctl restart haydn-console-gateway` → 浏览器无痕窗口验证登录、入口、启停、`/api/status`；回滚是还原 `gateway.json` 备份并重启网关。
+
+### 14.1 界面语言（服务端默认 vs 用户级）
+
+- **Forgejo（服务端默认中文，已核验）**：`app.ini` 的 `[i18n]` 必须同时给 `LANGS` 与 `NAMES`（只写 `LANGS` 会让进程启动时 panic：`index out of range`）。当前配置 `LANGS = zh-CN,en-US` / `NAMES = 简体中文,English`——**第一项即默认语言**。实测无 `Accept-Language` → `<html lang="zh-CN">`；`zh-CN` → `zh-CN`；`en-US` → `en-US`。已登录用户仍可在个人设置里切换，优先级高于浏览器。
+- **Vaultwarden（无服务端开关，只能在客户端选）**：官方 Web 保险库不带服务端语言配置，语言存在用户/浏览器侧。可用中文已随包提供（`/opt/haydn/vaultwarden-web-vault/locales/zh_CN`）。操作路径：登录 Web 保险库 → 右上角账号菜单 → **Account settings**（账户设置）→ **Options**（选项）→ **Language**（语言）→ 选择 **中文/简体中文** 并保存；只影响当前账号，换浏览器需再选一次。CLI（`bw`）语言由终端环境决定，服务端口令轮换不依赖界面语言。
+
+### 14.2 备份覆盖面与恢复入口
+
+- **覆盖面**：`haydn`（整机配置/代码，排除可重建大二进制）、`forgejo`（`forgejo.db` + `repositories/` + `data/` + `app.ini`）、`vaultwarden`（`db.sqlite3` + `rsa_key.pem` + attachments + sends），三份各自加密上传，各保留 7 份；每日由 `backup-loop.sh` 触发，也可在控制台点"立即备份"（写触发文件）。
+- **恢复入口**：从夸克网盘取回 `<label>-backup-*.tar.gz.enc` 与 `.sha256` → 设备上 `python3 /opt/haydn/haydn_crypt.py decrypt <enc> <tar.gz> /root/.haydn-backup-pass` → `sha256sum` 对齐 → 解包到暂存区 → 按来源放回：Forgejo 的 `forgejo.db` 需 `chown 999:993 && chmod 644`（`app.ini` 保持 `600 999:993`）、Vaultwarden 的 `rsa_key.pem` 需 `600 997:992`。恢复演练口径见 §11（解密/解包/库完整性/权限已核验，未做独立实例的真实登录回归）。

@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.backlog.v1",
-  "updated": "2026-11-14",
+  "updated": "2026-11-15",
   "owner": "maintainers / agents",
   "notes": [
     "本文件是 Agent 领取任务的机器可读队列；状态取值 pending/in_progress/done/blocked。",
@@ -370,34 +370,6 @@
       "risk": "H"
     },
     {
-      "id": "BL-035",
-      "title": "MTH-009/MTH-002 拆分与容量余量预警规则",
-      "priority": "P2",
-      "area": "repo",
-      "status": "done",
-      "acceptance": "methodology/08-agent-handoff.md（284/300）与 methodology/01-assessment.md（277/300）拆到健康档：扩展 SOP/变更传播/CLI 契约迁入 MTH-017，评估执行/OEM/失败处理迁入 MTH-018；不删规则、不重复抄写；同步全仓引用、manifest、ADR 与 CHANGELOG；doc-policy 新增余量 <15 行预警且不阻断 preflight；preflight 全绿且未弱化检查。",
-      "outputs": [
-        "methodology/08-agent-handoff.md",
-        "methodology/01-assessment.md",
-        "methodology/17-expansion-and-cli-contract.md",
-        "methodology/18-assessment-execution.md",
-        "adr/0006-mth-009-mth-002-split.md",
-        "adr/0007-line-margin-advisory.md",
-        "toolkit/schema/doc-policy.json",
-        "toolkit/repurpose/validate.py"
-      ],
-      "depends": [
-        "BL-034"
-      ],
-      "notes": "2026-11-14 完成：MTH-009 约 200 行、MTH-002 约 180 行、MTH-017/MTH-018 约 110–120 行；余量预警定为 advisory 级（DOC_LINES_MARGIN），不使 validate --strict 失败。",
-      "agent_hint": "改交接/ID 读 MTH-009；改评估口径读 MTH-002；扩展/契约读 MTH-017；执行/OEM/失败处理读 MTH-018。",
-      "requires": "",
-      "owner": "protocol",
-      "updated": "2026-11-14",
-      "result": "两篇拆到健康档（MTH-009/MTH-002 均 ≤200 行；MTH-017/MTH-018 各约 110–120 行）；新增 ADR-0006/0007 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-000/001/003/004/005/006/007/009/010/013/015、toolkit/README；doc-policy 余量预警以 advisory 输出且不改变 preflight 退出码；preflight 全绿。",
-      "risk": "L"
-    },
-    {
       "id": "BL-036",
       "title": "余量预警处置：10 篇距上限 <15 行的文档逐个拆篇或精简",
       "priority": "P2",
@@ -502,6 +474,34 @@
       "updated": "2026-11-14",
       "risk": "M",
       "result": "四项已落地并实测：7 个入口由配置注入；CSV 6 行一次性下载（二次 410）并拉至 inventory/haydn-credentials.csv（gitignored，设备侧 /srv/haydn/run、/tmp、/data/local/tmp 明文副本已删）；webdav(207)/forgejo(200)/console(新 200/旧 401) 轮换通过；密码库账号重建后 --vault-sync 写入 5 条并逐条回读一致（device-root 无明文口令跳过），WebDAV 轮换三项步骤全 True 且库内同步，停服务轮换 400/rolled_back:True，vault.client=/bin/false 时保留一次性口令并报错。"
+    },
+    {
+      "id": "BL-040",
+      "title": "便携服务器控制台走读审查、缺陷修复与界面汉化（三阶段）",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "阶段一只读取证并单独产出缺陷清单（严重级别/证据/影响/修复建议/已确证-推断-待验证）；阶段二修复确证缺陷并补齐日志轮转、水位告警、健康检查与自恢复、权限复核、备份恢复入口与“新服务接入”一页说明；阶段三 Forgejo 设服务端默认中文并实测、Vaultwarden 写明客户端语言选择路径；全程不重启整机、不动 frpc/stunnel/证书、不打印口令、敏感值不入库、改配置前备份并给回滚。",
+      "outputs": [
+        "2026-11-14/web-console/console/gateway.py",
+        "2026-11-14/web-console/console/console_ui.py",
+        "2026-11-14/web-console/console/console_credentials.py",
+        "2026-11-14/web-console/console/console_actions.py",
+        "2026-11-14/web-console/console/config.example.json",
+        "2026-11-14/web-console/deploy/haydn-healthcheck.sh",
+        "2026-11-14/web-console/deploy/logrotate.d-haydn",
+        "2026-11-14/web-console/deploy/logrotate.d-haydn-csv",
+        "2026-11-14/web-console/README.md"
+      ],
+      "depends": [
+        "BL-039"
+      ],
+      "notes": "用户分三阶段确认：H3（Vaultwarden DOMAIN）/M8（Forgejo ROOT_URL）允许备份→改→重启→实测→失败回滚；M6 同意禁止从控制台停止 frpc/tls/sshd 并在页面说明原因；其余项直接做；阶段三 Forgejo 设服务端默认中文、Vaultwarden 只写客户端选择路径。Forgejo [i18n] 实测必须 LANGS 与 NAMES 成对，只写 LANGS 会在启动时 panic（index out of range）。",
+      "agent_hint": "维护先读 web-console README §13.11（本轮修复口径）与 §14（新服务接入/语言/备份恢复）；healthcheck 依赖 /srv/haydn/run/.stopped-<svc> 区分人工停止与异常退出；改 app.ini 后要 chown 999:993 chmod 600；控制台只重启 haydn-console-gateway。",
+      "owner": "agent",
+      "updated": "2026-11-15",
+      "risk": "M",
+      "result": "阶段一确证 3 高（WebDAV 验证恒真、最后采样时间恒空、Vaultwarden 登录回路断）12 中 10 低并单独汇报；阶段二 H1 改经网关 PROPFIND（错误口令 401/直连 18082 仍 207 作根因证据）、H2 改用 last_ts 并统一空值/证书过期/soak 本地时间、H3 DOMAIN 改 60177（公网 /api/config 200 且 environment 为新地址）、M8 ROOT_URL 改 60875/git/、链路服务禁止 stop（400+原因）、logout 补 CSRF、lan-probe 收敛字段、登录先验口令再记限流、代理剥离会话 cookie、请求体 2MiB/64MiB 上限（3MiB→413）、凭据锁与 bw --passwordenv 及登录后解锁重试（--vault-sync 5 ok/1 skipped）；运行环境：目录 777→755、审计与 CSV 640、logrotate 加 maxsize 与 CSV 日轮转（-d 解析无 duplicate）、healthcheck 增内存水位与异常自动拉起并实测 RECOVER/跳过人工停止；阶段三 Forgejo [i18n] LANGS=zh-CN,en-US + NAMES 后无 Accept-Language 即 zh-CN、zh-CN/en-US 各自正确，Vaultwarden locales/zh_CN 存在并写出客户端设置路径；未重启整机、未改 frpc/stunnel/证书，回滚备份在 /data/server/backups/{console-p2,p2-runtime,p2-upstream}-*；preflight 全绿。"
     }
   ]
 }

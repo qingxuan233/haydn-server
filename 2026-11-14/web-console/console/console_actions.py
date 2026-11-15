@@ -37,9 +37,20 @@ def _run(cmd: list[str], timeout: int = 20) -> tuple[int, str]:
         return 124, "timeout"
 
 
+def _protected(sup: dict) -> set[str]:
+    """承载控制台链路的服务：允许 restart（恢复用），但禁止从控制台 stop，避免自锁失联。"""
+    return set(sup.get("protected") or [])
+
+
+def _stop_marker(sup: dict, name: str) -> str:
+    """控制台主动 stop 的标记：健康检查据此区分“人工停止”与“异常退出”，避免自动拉起。"""
+    return os.path.join(str(sup.get("run_dir") or "/srv/haydn/run"), f".stopped-{name}")
+
+
 def supervisor_status(sup: dict) -> list[dict]:
     code, out = _run([sup["ctl"], "-c", sup["conf"], "status"], timeout=15)
     services = []
+    protected = _protected(sup)
     for line in out.splitlines():
         m = re.match(r"^(\S+)\s+(\S+)\s*(.*)$", line.strip())
         if not m:
@@ -61,6 +72,7 @@ def supervisor_status(sup: dict) -> list[dict]:
                 "uptime": uptime,
                 "detail": rest.strip(),
                 "actionable": name in set(sup.get("services", [])),
+                "protected": name in protected,
             }
         )
     if code != 0 and not services:
@@ -73,7 +85,22 @@ def service_action(sup: dict, name: str, verb: str) -> tuple[bool, str]:
         return False, f"refused: verb {verb!r} not allowed"
     if name not in set(sup.get("services", [])):
         return False, f"refused: service {name!r} not in whitelist"
+    if verb == "stop" and name in _protected(sup):
+        return False, f"refused: {name} 承载公网入口/远程登录，禁止从控制台停止（可在设备侧维护）"
     code, out = _run([sup["ctl"], "-c", sup["conf"], verb, name], timeout=40)
+    if code == 0:
+        # 成功才动标记：start 清标记，stop 写标记；写失败不影响动作本身的返回值
+        marker = _stop_marker(sup, name)
+        try:
+            if verb == "start":
+                if os.path.exists(marker):
+                    os.unlink(marker)
+            elif verb == "stop":
+                os.makedirs(os.path.dirname(marker) or ".", exist_ok=True)
+                with open(marker, "w", encoding="utf-8") as fh:
+                    fh.write(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") + "\n")
+        except OSError:
+            pass
     return code == 0, out or f"exit {code}"
 
 
@@ -266,36 +293,6 @@ def trigger_backup(path: str) -> tuple[bool, str]:
         fh.write(json.dumps({"requested_at": datetime.now(timezone.utc).isoformat()}))
     os.replace(tmp, path)
     return True, f"trigger written: {path}"
-
-
-def secrets_summary(directory: str) -> list[dict]:
-    """只暴露凭据文件的存在性与轮换时间，不读取/返回任何口令或哈希。"""
-    items: list[dict] = []
-    try:
-        names = sorted(n for n in os.listdir(directory) if n.endswith(".json"))
-    except OSError:
-        return items
-    for name in names:
-        path = os.path.join(directory, name)
-        try:
-            st = os.stat(path)
-        except OSError:
-            continue
-        updated = None
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                updated = json.load(fh).get("updated")
-        except (OSError, ValueError, AttributeError):
-            updated = None
-        items.append(
-            {
-                "name": name[: -len(".json")],
-                "exists": True,
-                "updated": updated or datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "mode": oct(st.st_mode & 0o777)[2:],
-            }
-        )
-    return items
 
 
 def recent_backup(backup_log: str) -> dict:

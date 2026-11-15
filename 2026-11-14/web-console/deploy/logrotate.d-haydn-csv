@@ -1,0 +1,9 @@
+/var/log/haydn/*.csv /srv/haydn/logs/*.csv {
+    daily
+    rotate 7
+    compress
+    missingok
+    notifempty
+    copytruncate
+    maxsize 20M
+}
