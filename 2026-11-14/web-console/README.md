@@ -39,6 +39,7 @@
 | `deploy/device-make-backup.sh` | `/data/server/bin/device-make-backup.sh` | 整机配置快照（排除可重建大二进制） |
 | `deploy/install.sh` | `/data/local/tmp/web-console/deploy/install.sh` | 幂等安装脚本（自动备份原配置） |
 | `deploy/haydn-healthcheck.sh` | `/usr/local/bin/haydn-healthcheck.sh` | 周期健康检查（磁盘/内存水位 + 异常服务自动拉起，§14.3） |
+| `deploy/wifi-guard.sh` | `/data/server/bin/wifi-guard.sh` | Wi-Fi 省电态纠正 + 掉线告警/计数 + 重连后复查（§11.6） |
 | `deploy/logrotate.d-haydn` | `/etc/logrotate.d/haydn` | 日志轮转（`*.log` 周轮转 + 10M 上限） |
 | `deploy/logrotate.d-haydn-csv` | `/etc/logrotate.d/haydn-csv` | 遥测 CSV 日轮转（`copytruncate`，§14.3） |
 | `deploy/vaultwarden-run.sh` | `/opt/haydn/bin/vaultwarden-run.sh` | 读 env 与 600 token 后降权启动 Vaultwarden |
@@ -346,6 +347,40 @@ su -c "rm -f /data/server/bin/backup-vaultwarden.sh"
 1. 恢复演练只做了解密/解包/库完整性/权限校验，未在独立实例上做"真实登录 + 客户端同步"回归。
 2. 恢复 Forgejo 时需补一次属主/权限：备份副本的 `forgejo.db` 为 `600 root:root`（stage 以 `umask 077` 生成），放回原路径后应 `chown 999:993` 并 `chmod 644`；`app.ini` 已按原 600/999:993 保留。
 3. 未等到 03:30 自动定时执行，已验证的是手工全链路。
+
+### 11.6 上传失败定位与备份/网络加固（2026-11-15）
+
+**根因（已核验）**：11-15 03:30（本地）定时备份在**上传**这一步失败——`snapshot` 与 `encrypt+verify` 均成功，`upload` 三次（`19:39:54Z`/`19:44:55Z`/`19:59:56Z`）返回 `{"code":1007,"msg":"getaddrinfo EAI_AGAIN open-api-drive.quark.cn"}`，末行 `FAIL`。同一窗口 `frpc` 用 **IP 直连**（`8.137.162.154:1210`，不经 DNS）持续报 `network is unreachable`（18:1x–21:3x 每 10 分钟 30 条＝每 20 秒全失败），`console-gateway` 记录 wlan0 `18:17:30` 失去地址、`18:38`/`19:39`/`21:39` 各恢复 30–60 秒、`21:42:38` 起稳定 → 判定为**设备侧 Wi-Fi 链路中断**，非夸克侧、非 resolver 配置。当前实测：`getent hosts/ahostsv4/ahostsv6` 全 rc=0、原始 UDP/53 三个上游（192.168.31.1 / 223.5.5.5 / 119.29.29.29）全 `rcode=0`、`getaddrinfo` 5/5、`node dns.lookup` 双栈、TCP 443 握手 58 ms、夸克 `get-user-info` `code=0`。省电态在每次重连后被系统重新打开（`wifi-guard` 逐次 `CORRECTED power_save on->off`），与掉线的因果仍属**推断**（未做 A/B）。为何报 `EAI_AGAIN` 而非 `ENETUNREACH`：node 上传走 `getaddrinfo`，链路断时上游不可达；frpc 走 IP 直连故报路由不可达，两者同源。
+
+| 文件 | 变化 |
+|---|---|
+| `deploy/haydn-backup.sh` | ① 上传前 `precheck`（chroot 内 `getaddrinfo` + TCP/443，`PRECHECK_TIMEOUT` 默认 6 s）：不通则记 `upload precheck fail` 立即返回，密文留在 `/var/backups/haydn/` 待补传，不再空转 300+900 秒；② 三来源改为 `run_source` 循环，逐来源 `source ok/fail` 并汇总 `SUMMARY ok=N fail=M failed=[…]`，单来源失败不再中断其余（原为 `\|\| fail` 直接退出）；③ `SOURCES` 环境变量选择来源（如 `SOURCES=vaultwarden` 手工单来源） |
+| `deploy/wifi-guard.sh` | 掉线（无 IPv4）记 `FAIL … downs=N` 并写 `alerts.log` + `cmd notification`，首次翻转及每 12 次（约 1 小时）告警；状态存 `run/wifi-guard.state`；`down/missing → up` 记 `RECOVER` 并立即复查省电态 |
+
+**验证（2026-11-15，已核验）**
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| 预检快速失败 | rc=1，耗时 **2 s**（改造前为 300+900 s 退避） | `SOURCES=vaultwarden PRECHECK_HOST=no-such-host.invalid.` → `upload precheck fail label=vaultwarden rc=2 dns-fail gaierror` + `upload skipped … keep=…vaultwarden-backup-20261115T053032Z…enc` |
+| 预检通过路径 | 正常连通时 `precheck ok` 后继续上传 | `upload precheck ok label=haydn ok ips=203.119.175.186,2408:4001:f00::2ec` → `upload ok attempt=1`（97,871,170 B） |
+| 单来源失败不阻断 | `chmod 644 backup-forgejo.sh` 后跑全量：haydn `upload ok`（97.87 MB/2 文件）、forgejo `source fail … stage=snapshot rc=126`、vaultwarden `upload ok`、`SUMMARY ok=2 fail=1 failed=[ forgejo ]`，退出码 1；脚本权限已还原 755 | 05:42:41Z–05:42:45Z |
+| wifi-guard 告警落盘 | `WIFI_FORCE_DOWN=1` 演练：`FAIL wlan0 down no-ipv4 downs=1/2`；`alerts.log` 记 `ALERT_NOTIFY wifi link down dev=wlan0 downs=1`（第 2 次不重复告警）；恢复后 `RECOVER wlan0 link up after downs=2` 且 `Power save: off`；演练计数已归零 | 05:31:03Z |
+| 小文件连通性 | 117 B 测试文件上传 `code:0`，远端 117 B 与本地一致 | `haydn-upload-probe-20261115.txt` |
+| 补传昨晚归档 | `code:0 successCount=2 totalSize=97807035`（＝97,806,928 + 107 字节目录），远端检索到同名的 97,806,928 与 107 两个大小，与本地逐项一致 | 05:37Z |
+
+**回滚**（两个脚本均由 cron/loop 调用，无常驻进程，回滚后下一周期即生效，无需重启服务）：
+
+```sh
+su -c "cp /data/server/backups/backup-harden-20261115T053017Z/haydn-backup.sh /data/server/bin/haydn-backup.sh"
+su -c "cp /data/server/backups/backup-harden-20261115T053017Z/wifi-guard.sh /data/server/bin/wifi-guard.sh"
+```
+
+**仍未解决**
+
+1. 省电态被系统反复重置的根因未定位（每次重连后 `Power save: on`），目前靠每 5 分钟纠正；与掉线的因果为推断。
+2. 远端内容未做字节级回读：`download` 需要 fid，`browse --parent-fid` 返回 `-100` 未取到列表，已核验的是大小与 `.sha256` 伴随文件的字节数。
+3. 上传失败时保留的密文只在成功路径 prune，连续多日失败会累积（约 98 MB/天），需人工清理。
+4. 测试小文件 `haydn-upload-probe-20261115.txt`（117 B）仍留在 `夸克网盘/haydn-server-backup`：该 CLI 没有删除远端文件的命令（`download delete` 只删任务记录），需在网盘客户端手工删除。
 
 ## 12. Git 服务 Forgejo 挂 `/git`（2026-11-14）
 

@@ -3,6 +3,37 @@
   "updated": "2026-11-15",
   "items": [
     {
+      "id": "BL-036",
+      "title": "余量预警处置：10 篇距上限 <15 行的文档逐个拆篇或精简",
+      "priority": "P2",
+      "area": "repo",
+      "status": "done",
+      "acceptance": "对 validate 报 DOC_LINES_MARGIN 的文档逐一处理：PIT-022/023/024/025 与 GRD-015 移出长证据或拆篇；toolkit/README 拆章节；toolkit/templates/runbook.md 精简；adr/README 把已 superseded/历史决策移入归档索引；cases/ace-pro-pgp110 与 cases/haydn-k40pro 的 README 属冻结案例，仅在用户授权的范围内做事实纠错或结构调整。处理后 `validate --strict` 的 advisory 清零，或经用户确认保留并记录理由；不删证据、不弱化检查。",
+      "outputs": [
+        "pitfalls/PIT-022-oem-unlock-quota.md",
+        "pitfalls/PIT-023-oneplus-arb-hard-brick.md",
+        "pitfalls/PIT-024-flash-tool-supply-chain.md",
+        "pitfalls/PIT-025-root-module-regression.md",
+        "guardrails/GRD-015-root-lab-controlled.md",
+        "toolkit/README.md",
+        "toolkit/tests/README.md",
+        "toolkit/templates/runbook.md",
+        "adr/README.md",
+        "cases/ace-pro-pgp110/p1-config.md",
+        "cases/haydn-k40pro/reuse-guide.md"
+      ],
+      "depends": [
+        "BL-035"
+      ],
+      "notes": "2026-11-14 完成：10 条 advisory 全部清零，处理后余量 PIT-022 21/PIT-023 20/PIT-024 17/PIT-025 16、GRD-015 16、adr README 16、toolkit README 27、runbook 17、cases 70/40 行；案例仅做结构下沉（附录 APP-001/002，不占 CASE 编号），事实/结论/未完成项未改写。",
+      "agent_hint": "余量预警处置优先合并同级列表/下沉附录；案例调整必须先取得用户授权并记录方式。",
+      "requires": "",
+      "owner": "protocol",
+      "updated": "2026-11-14",
+      "result": "PIT-022/023/024/025 合并触发场景与关联/证据列表（69/70/73/74 行）；GRD-015 合并关联引用（74）；adr/README 新增与维护流程改指 MTH-011 §2.4/§2.5 与 MTH-014 §7（74）；toolkit/README 测试覆盖清单下沉 toolkit/tests/README.md（413）；runbook 关联段合并（113）；用户授权下将 ACE §6.3 下沉 APP-001、haydn §8 下沉 APP-002 并回链，两篇 README 记录授权与处理方式（210/240 行）；cases/README 登记附录；validate --strict advisories=0。",
+      "risk": "M"
+    },
+    {
       "id": "BL-034",
       "title": "MTH-013 拆分：发布/兼容/数据治理独立为 MTH-016",
       "priority": "P2",
