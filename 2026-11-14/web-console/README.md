@@ -35,6 +35,7 @@
 | `deploy/haydn-alist.conf` | `/etc/supervisor/conf.d/haydn-alist.conf` | AList 程序定义（§17） |
 | `deploy/haydn-netdata.conf` | `/etc/supervisor/conf.d/haydn-netdata.conf` | Netdata 程序定义（§16） |
 | deploy/haydn-dsh.conf | /etc/supervisor/conf.d/haydn-dsh.conf | DSH Web UI 程序定义（2026-11-16 部署；loopback 3080，经网关 /ui 会话鉴权访问，§11.8） |
+| deploy/dsh-upgrade.sh | /data/server/bin/dsh-upgrade.sh | DSH 版本升级（写 `.stopped` 标记避免健康检查中途拉起、装后回归、失败自动回滚，§11.9） |
 | `deploy/chroot-enter.sh` | `/data/server/bin/chroot-enter.sh` | 追加 `/srv/haydn/{logs,run}` 绑定挂载 |
 | `deploy/backup-loop.sh` | `/data/server/bin/backup-loop.sh` | 追加"控制台手动触发"轮询 |
 | `deploy/haydn-backup.sh` | `/data/server/bin/haydn-backup.sh` | 逐来源：加密→解密自检→上传→保留 7 份 |
@@ -418,23 +419,48 @@ su -c "cp /data/server/backups/backup-harden-20261115T053017Z/wifi-guard.sh /dat
 
 | 项 | 值 |
 |---|---|
-| 组件 | `@deepseek-ai/dsh` **0.2.2-rc.1**（npm 最新版），654 包，安装到 chroot `/opt/dsh`（**804 MB**）；运行时 Node **v24.16.0**（`/opt/node24`，195 MB，满足 `engines.node>=24.9`） |
+| 组件 | `@deepseek-ai/dsh` **0.2.2-rc.3**（`next` dist-tag；`latest` 仍是 rc.1，安装须显式指定版本），安装到 chroot `/opt/dsh`（**约 1.0 GB**，643 包变更）；运行时 Node **v24.16.0**（`/opt/node24`，195 MB，满足 `engines.node>=24.9`）。2026-11-16 由 rc.1 升级至 rc.3（`/data/server/bin/dsh-upgrade.sh 0.2.2-rc.3`） |
 | 守护 | supervisor `[program:haydn-dsh]`：`--profile web --host 127.0.0.1 --port 3080 --no-open`，`NODE_OPTIONS=--max-old-space-size=768`，日志 `/srv/haydn/logs/dsh.log`，`autostart`+`autorestart`+`stopasgroup` |
 | 入口 | 网关 `upstreams[{name:deepseek-harness-ui, path:/ui, strip_prefix:true, preserve_host:true, websocket:true, auth:session}]` 由 `enabled:false` 改为 `true`；入口表新增「DSH 控制台 → /ui/」 |
 | **鉴权桥接（关键）** | DSH 对**每个请求**校验 authority 绑定的签名 cookie（`dsh-auth-<b64url(sha256(authority))>` = `v1.<body>.<hmac>`）。launch token 每进程随机，但**签名密钥持久**（DSH 凭据库 `client-connection/browser-session`）。故新增 [console/dsh_auth.py](console/dsh_auth.py)，由网关在**控制台会话通过后**按实际转发的 Host 现场铸造 cookie（[gateway.py](console/gateway.py) `_proxy` 与 `_tunnel` 两处），浏览器无需再碰 DSH 的 `?token=` 链接；密钥按文件 mtime 缓存，失败显式 503（不再让用户撞看不懂的 401） |
 | **`--trusted-host`** | `/api` 另有 browser-trust 围栏：Host 只接受 loopback / 绑定地址 / `--trusted-host` 声明的 authority。未声明时 `/api/remote.mux`（WebSocket mux）返回 **403**；已声明 `qingxuan.bbs0.cc` 与 `192.168.31.50:18090` |
 | 鉴权实测 | 未登录 `/ui/` → **401**（网关）；带控制台会话 → **200 / 40,102 B HTML**（公网 Host 与局域网 Host 两种 authority 均通过）；`/api/remote.mux` WS 升级 → **101 Switching Protocols**；页面 JS/CSS/插件 bundle 均 200 |
-| 资源 | 安装期可用内存 3,304 MB → **448 MB**（npm 峰值）；supervisor **16/16 RUNNING**（新增 haydn-dsh）；磁盘 206 G 可用 |
+| 资源 | DSH RSS 实测 **280–470 MB**（rc.3 + 已装插件后约 468 MB）；supervisor **16/16 RUNNING**；磁盘 206 G 可用、`/opt/dsh` 约 1.0 GB |
 | 回滚 | `stop haydn-dsh` → 删除 `haydn-dsh.conf` + `reread/update`；网关 `/ui`.enabled 置回 false 并重启网关；`rm -rf /opt/dsh`（`/opt/node24` 删除前先确认是否被复用） |
 | **pnpm（2026-11-16）** | 经 corepack 安装 **pnpm 12.21.0** 到 `/opt/node24/bin/pnpm`（Node24 官方 shim 目录，已在 supervisor PATH 内）；实测 DSH 插件管理器可调用：`dsh plugin --profile web add --help` 返回 pnpm 帮助、`.plugin-manager/logs/operation-*/pnpm.log` 正常创建；**真实插件安装未实测**（会改动 profile，本轮不冒险） |
 | **健康检查（2026-11-16）** | `haydn-healthcheck.sh` 增加 DSH 探针：`127.0.0.1:3080` 返回 **401 或 200** 均视为存活（DSH 未登录固定 401），连不上记 `FAIL dsh`；进程 RUNNING 但 HTTP 卡死时限频 15 分钟重启一次并记 `RECOVER dsh-http`（与 netdata 同口径）；实测：supervisor 停止后健康检查记 `RECOVER haydn-dsh` 并拉起、失败分支（临时副本探 3081）记 `FAIL dsh` |
 | **备份纳入 DSH（2026-11-16）** | `device-make-backup.sh` 打包 chroot `/root/.dsh`（profiles/sessions/storages + `.credentials.yaml` 600）；实测备份包内含 **27 条 `.dsh` 条目**、凭据权限 `-rw-------` 保留、验证后删除明文包；该目录含 DSH 签名密钥，只随**加密备份**入库（与 Vaultwarden 主密码同口径，见 BL-046） |
 | **内存现状（2026-11-16）** | DSH RSS **280–330 MB**（`NODE_OPTIONS=--max-old-space-size=768`）；整机 `/proc/meminfo` **MemAvailable ≈ 10.3–10.5 GiB / MemTotal 15.6 GiB**（约占 67%，远高于 healthcheck 的 10% 阈值），zram swap 9.9 GB 当前已用约 1.5 GB。**勘误**：早期按 `free -m` 列位误读为"仅剩 180–450 MB"，改以 `/proc/meminfo` 为准后**不存在内存告急**；本轮未调参 |
-| 未完成（不写通过） | 浏览器 DOM 级实际渲染未核验（需人工打开确认）；DSH 模型凭据（LLM key）未配置；WebSocket **长连接稳定性**未压测；真实插件安装未实测；**Android 内核未升级**（见 §11.8 末注） |
+| 未完成（不写通过） | 浏览器 DOM 级实际渲染未核验（需人工确认）；WebSocket **长连接稳定性**未压测；插件兼容性只在 rc.3 运行态核对（未逐插件升级）；**Android 内核未升级**（[ADR-0009](../../adr/0009-device-firmware-kernel-freeze.md)） |
 
 > 部署与重建步骤见 [deploy/haydn-dsh.conf](deploy/haydn-dsh.conf) 注释；`dsh_auth` 的算法与缓存行为有单测（`toolkit/tests/test_console_dsh_auth.py`，13 项）。**排障要点**：控制台给了 401 才是会话问题；已登录却仍报 "dsh web authentication required" = 网关未注入 DSH cookie；`/api` 报 403 = `--trusted-host` 缺当前 authority。
 
-## 12. Git 服务 Forgejo 挂 `/git`（2026-11-14）
+### 11.9 DSH 版本升级流程与两个实测坑（2026-11-16）
+
+**背景**：DSH 的 `latest` 与 `next` dist-tag 会分叉（本机升级时 `latest=0.2.2-rc.1`、`next=0.2.2-rc.3`），
+升级必须**显式指定版本**并做运行态回归，不能只信 `npm outdated`。
+
+**升级命令**（已封装为 `deploy/dsh-upgrade.sh` → 设备 `/data/server/bin/dsh-upgrade.sh`）：
+
+```sh
+/data/server/bin/dsh-upgrade.sh 0.2.2-rc.3            # 升级 + 自动回归（成功输出 OK）
+/data/server/bin/dsh-upgrade.sh 0.2.2-rc.3 --dry-run  # 只打印将执行的动作
+```
+
+脚本行为：①写 `/srv/haydn/run/.stopped-haydn-dsh` 标记（健康检查据此跳过自动拉起与探针）→ ②`supervisorctl stop haydn-dsh`
+→ ③`npm install -g --prefix /opt/dsh @deepseek-ai/dsh@<版本>` → ④回读版本不符即回滚 → ⑤删标记、启动服务、轮询 120s 确认
+`127.0.0.1:3080` 返回 200/401 → ⑥仍失败则保留并提示人工看 `dsh.log`。日志 `/data/server/logs/dsh-upgrade.log`（不含 token）。
+
+**两个实测坑**（真实发生过）：
+
+| 坑 | 现象 | 原因与对策 |
+|---|---|---|
+| 健康检查中途拉起服务 | 升级中 DSH 被反复重启，日志出现 `disabling profile plugin row "tool-subagent": … incompatible with dsh 0.2.2-rc.3`，插件行被禁用 | 健康检查每 5 分钟把「非人工停止」的服务拉起（自恢复本身是对的）。对策：升级前写 `.stopped-<svc>` 标记（脚本已内置），升级后删；若已出现中间态，**重启一次**即可消掉（实测新日志 0 条该告警） |
+| 脚本被写成 CRLF | 设备上 `sh -n` 报 `unexpected 'do'`，脚本不执行 | 经 Windows 工具改写易带 CRLF；toybox `sh` 的报错位置常在 `do`/`;;`。对策：提交前确认 deploy 脚本为 **LF**；本轮已转回 LF 并复测 |
+
+**升级后回归清单（本轮实测通过）**：`--version` 回读 rc.3；`/ui/` 带控制台会话 200（未登录 401）；
+`/api/remote.mux` WS 升级 101；页面 JS/CSS/插件 bundle 200；`health.log` 记 OK；supervisor 16/16 RUNNING。
+**注意**：插件与运行时版本强绑定，rc.1 插件在 rc.3 下会被禁用并提示精确版本豁免；本机 profile 已解析到 rc.3 版本，当前 0 告警。
 
 ## 12. Git 服务 Forgejo 挂 `/git`（2026-11-14）
 
