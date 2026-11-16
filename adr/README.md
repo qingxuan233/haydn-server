@@ -53,6 +53,7 @@ agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR �
 | ADR-0006 | MTH-009/MTH-002 拆分：扩展契约归 MTH-017，评估执行归 MTH-018 | accepted | 2026-11-14 | [ADR-0006](0006-mth-009-mth-002-split.md) |
 | ADR-0007 | 行数余量预警采用 advisory 级，不改变 strict/preflight 失败语义 | accepted | 2026-11-14 | [ADR-0007](0007-line-margin-advisory.md) |
 | ADR-0008 | 公网入口采用大陆节点 IP + 非标端口（放弃域名 443、境外节点、CF Tunnel、Tailscale Funnel） | accepted | 2026-11-14 | [ADR-0008](0008-public-entry-after-icp-sni-block.md) |
+| ADR-0009 | 实验设备固件与内核冻结：不刷内核、不升级固件（KernelSU 保持上游最新） | accepted | 2026-11-16 | [ADR-0009](0009-device-firmware-kernel-freeze.md) |
 
 新增 ADR 必须同步本表；索引与文件双向无遗漏（validate 的 ADR_INDEX 检查）。
 
@@ -71,5 +72,4 @@ agent_hint: 涉及架构选型、口径裁决、不可逆变更或协议 MAJOR �
 ## 7. 与其他层的关系
 
 - **methodology/**：规范正文（"应当怎么做"）；ADR 记录"这次为什么选这个方案"，被采纳的机制最终固化为 MTH 条款。
-- **guardrails/**：不可协商红线；红线永远压过 ADR，冲突时以 GRD 为准并报告 Lead 裁决。
-- **pitfalls/**：证据层；ADR 后果/风险段的证据应回链 PIT，不得只用推测；机检/模板/索引由 toolkit 实现，不手写生成物。
+- **guardrails/** 与 **pitfalls/**：红线永远压过 ADR，冲突时以 GRD 为准并报告 Lead 裁决；PIT 是证据层，ADR 后果/风险段的证据应回链 PIT，不得只用推测；机检/模板/索引由 toolkit 实现，不手写生成物。
