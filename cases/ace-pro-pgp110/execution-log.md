@@ -114,3 +114,16 @@ agent_hint: CASE-003 的结构性附录，承载 §6.1–§6.7 执行明细（�
 | 双回读（已核验） | slot0 primary/backup `d4cde900…`、`lpdump --slot 0` 摘要 `819f5863…` 均与写前一致；slot1 `1495823e…`，`lpdump --slot 1` rc=0、`Metadata size: 7020`、17 个 `_b` + 2 个 `_b-cow`，与 pre-align 逐行仅差 `Current slot`（运行时值）；8 服务/端口/遥测无变化 |
 | 未验证（不写通过） | **B 能否启动未知**：B 数据区已被 A extents 覆盖 99.3%（未覆盖仅 `my_stock_b` 尾部约 71.6 MiB），cow extent 与 A live 数据的关系未知；用户决定**不做启动验证、维持单槽** |
 | 硬约束 | **单槽模式**——禁止 `fastboot --set-active=b`；在 A 槽用 fastbootd 修改任何逻辑分区都会再次覆盖 metadata slot 1、使 B 元数据丢失；下次系统 OTA 前需评估该状态对非激活槽的影响 |
+
+### 6.8 系统更新关闭（2026-11-16，用户决定冻结固件，已核验）
+
+> 依据 [GRD-014](../../guardrails/GRD-014-firmware-freeze-ota.md)（冻结固件 + 关闭自动更新）与 §6.7 的单槽约束：非激活槽（B）元数据已被覆盖、数据区 99.3% 被 A 覆盖，**任何 OTA 都可能在重启切换到 B 时失败**，因此用户决定冻结固件、关闭系统更新。
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| 用户决定 | 不升级，冻结在 ColorOS 15.0.0.1901(CN01C20P01)、安全补丁 2026-07-01；不触发 [PIT-023](../../pitfalls/PIT-023-oneplus-arb-hard-brick.md) 降级路径 | 用户 2026-11-16 指令 |
+| UI 层关闭 | 「软件更新 → ⋮ → 自动更新设置」：**自动下载 = 关闭**、**夜间自动更新 = 关闭** | 运行期截图（UI 状态核对），设置页可复现 |
+| 应用层关闭 | `pm disable-user --user 0 com.oplus.ota` → `new state: disabled-user`；`com.oplus.cota` / `com.oplus.romupdate` **保持启用**（维持系统完整性） | `pm list packages -d` 回读：`com.oplus.ota disabled=1` |
+| 状态回读 | `com.oplus.ota.downloaded_status=0`（无待装包）；`can_update_at_night=0`；`/data/ota_package/OTA` 下 `.otaPackage`/`.localUpdatePackage` 均无载荷 | `settings get` + `ls` |
+| 未做 | 未安装任何 OTA、未刷写、未改槽；A 槽保持当前运行槽与 KSU 补丁 boot | — |
+| 回滚 | `pm enable com.oplus.ota` + 在「自动更新设置」恢复原选项（自动下载/WLAN、夜间自动更新）；若日后确需升级，必须重走 GRD-014 全流程（备份→官方 OFP→维护窗口→重 Root→全量验收） | — |
