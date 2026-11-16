@@ -7,7 +7,7 @@ audience: human, agent
 tags: toolkit, cli, schema, templates, termux, index, validate, governance, preflight, offline-fixture
 depends: MTH-000, MTH-002
 updated: 2026-11-14
-agent_hint: 改工具前先读本页契约与 [AGENTS](../AGENTS.md) §7；任何子命令/字段/schema 变更必须同步 tests + schema + 本 README，并重跑 preflight（index→validate --strict→unittest→check-links，退出码 0/3/4）
+agent_hint: 改工具前先读本页契约与 [AGENTS](../AGENTS.md) §7；任何子命令/字段/schema 变更必须同步 tests + schema + 本 README，并重跑 preflight（index→validate --strict→unittest→check-links→check-secrets，退出码 0/3/4）
 ---
 
 # TOOL-000 · 通用改造工具链 toolkit
@@ -103,7 +103,7 @@ agent-manifest.d/          # <layer>.json；单层 >40 条时拆为 <layer>-p01.
 | `new-profile` | `--codename`（必填）、`--out` | 打印 profile JSON | 从模板生成可编辑骨架（含 unknowns 提示），后续人工补证 |
 | `index` | `--root`、`--out`、`--check`、`--json` | 人类摘要 | 扫描四层 front matter，生成根摘要 + `agent-manifest.d/` 分片；单层 >40 条按层内顺序自动拆为 `<layer>-p01.json`…（每片 ≤40 条）；目录缺失跳过不失败；旧分片自动清理。`--check` 只读重建并与磁盘生成物比较（规范化 generated_at；一致 exit 0 / 不一致 exit 4，不写盘） |
 | `validate` | `--root`、`--strict`、`--mtime-check`、`--json` | 人类摘要 | 检查 front matter/ID/相对链接/JSON、AGENTS.md 协议（章节/版本/哨兵/320 行硬上限）、新层命名、PIT/ADR/CHANGELOG 归档/backlog schema、manifest 一致性、TOOL 登记表↔CLI↔manifest 一致性、`updated` 新鲜度（advisory）；`--strict` 下 warning 也失败；索引一致性以内容机检为准，`--mtime-check` 才按文件 mtime 判过期（默认关闭，CI 安全） |
-| `preflight` | `--root`、`--no-index`、`--skip-tests`、`--skip-links`、`--json` | 步骤表 | 串联 index → validate --strict → unittest → check-links；输出步骤 name/status/耗时/摘要；`--json` 为 `repurpose.preflight.v1`（ok/steps/skipped/failed）；退出码 **0 全绿 / 3 有 SKIPPED / 4 任一步 FAILED**；index 步幂等（内容未变保留原 `generated_at`，不产生时间戳变更） |
+| `preflight` | `--root`、`--no-index`、`--skip-tests`、`--skip-links`、`--skip-secrets`、`--json` | 步骤表 | 串联 index → validate --strict → unittest → check-links → check-secrets；输出步骤 name/status/耗时/摘要；`--json` 为 `repurpose.preflight.v1`（ok/steps/skipped/failed）；退出码 **0 全绿 / 3 有 SKIPPED / 4 任一步 FAILED**；index 步幂等（内容未变保留原 `generated_at`，不产生时间戳变更） |
 
 **退出码**（与 `--help` epilog 一致）：
 
@@ -111,8 +111,8 @@ agent-manifest.d/          # <layer>.json；单层 >40 条时拆为 <layer>-p01.
 |---|---|---|
 | 0 | 成功 | 命令完成且无失败（preflight 全绿） |
 | 2 | 用法/输入错误 | argparse 参数错误、profile 结构不合法、`--route` 非法 |
-| 3 | 前置条件不满足 / 步骤被跳过 | 无 adb、无在线设备、fixture 不可用、probe 无 base 且无设备；**preflight 存在 SKIPPED**（`--skip-tests/--skip-links/--no-index` 或 check-links 脚本缺失，CI 可消费） |
-| 4 | 校验失败 | `validate` 发现 error；`rootcheck --strict` 非 `tech-ready`；`rescue-kit --verify` 不一致；**`index --check` 生成物不一致**；**`preflight` 任一步 FAILED**；`--strict` 下 warning 也算失败 |
+| 3 | 前置条件不满足 / 步骤被跳过 | 无 adb、无在线设备、fixture 不可用、probe 无 base 且无设备；**preflight 存在 SKIPPED**（`--skip-tests/--skip-links/--skip-secrets/--no-index` 或 check-links/check-secrets 脚本缺失，CI 可消费） |
+| 4 | 校验失败 | `validate` 发现 error；`rootcheck --strict` 非 `tech-ready`；`rescue-kit --verify` 不一致；**`index --check` 生成物不一致**；**`preflight` 任一步 FAILED**（含 check-secrets 命中）；`--strict` 下 warning 也算失败 |
 | 130 | 被中断 | Ctrl-C（脚本类：termux 脚本明确可中断；Python 命令不写设备） |
 
 `index`/`preflight` 是仅有的会更新仓库根生成物的命令。默认路径且内容未变化时 `index` **不重写**（保留原 `generated_at`），因此 `preflight` 全绿后工作区不会产生"仅时间戳"变更；仅内容变化、显式 `--out` 或显式传入 `generated_at` 时才写盘。`index --check` 与 `preflight --no-index` 只读；其余探测命令只读设备。
@@ -134,7 +134,8 @@ agent-manifest.d/          # <layer>.json；单层 >40 条时拆为 <layer>-p01.
 | TOOL-010 | Termux:Boot 自启引导（幂等/dry-run） | [termux/boot-starter.sh](termux/boot-starter.sh) | Termux 内 |
 | TOOL-011 | Root 实验设备技术姿态检查（含人工确认项） | `python -m toolkit.repurpose rootcheck` | 离线（消费 profile） |
 | TOOL-012 | 救援包 SHA-256 清单生成/校验（G-L1） | `python -m toolkit.repurpose rescue-kit` | 离线（本地目录） |
-| TOOL-013 | 统一质量门（index→validate --strict→unittest→check-links，三态退出码 0/3/4） | `python -m toolkit.repurpose preflight` | 离线（仓库内；外部步骤用 `sys.executable`） |
+| TOOL-013 | 统一质量门（index→validate --strict→unittest→check-links→check-secrets，三态退出码 0/3/4） | `python -m toolkit.repurpose preflight` | 离线（仓库内；外部步骤用 `sys.executable`） |
+| TOOL-014 | 秘密/凭据模式扫描（私钥块、云/平台固定格式令牌、授权码、URL 内嵌口令等；只报路径:行号，不输出原文） | `python scripts/dev/check-secrets.py` | 离线（仓库内，只读；已并入 TOOL-013） |
 
 > 规则：①新增能力**先登记** `TOOL-<下一个号>` 再实现；ID 只增不复用。②`agent-manifest.json` 的 `tools` 是**物理入口视图**（当前 5 个：CLI/包装器/3 个 Termux 脚本），不替代本登记表。③`toolkit/templates/*` 中的 `TOOL-*`/示例 ID 只是排版示例，不占正式编号。④改契约必须同步实现 + tests + 本表 + schema + README，并重跑 `preflight`（§10 质量门）。
 

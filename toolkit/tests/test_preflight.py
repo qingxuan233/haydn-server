@@ -1,9 +1,9 @@
 """preflight 三态退出码 / 步骤表 / --json 字段测试（临时仓库，不触碰真实仓库）。
 
 三态契约：
-- 0 全绿（index/validate/unittest/check-links 全部 OK）；
-- 3 存在 SKIPPED（--skip-tests / --skip-links / --no-index / check-links 脚本缺失）；
-- 4 任一步 FAILED（index errors / validate 非绿 / unittest 失败 / check-links 失败）。
+- 0 全绿（index/validate/unittest/check-links/check-secrets 全部 OK）；
+- 3 存在 SKIPPED（--skip-tests / --skip-links / --skip-secrets / --no-index / 脚本缺失）；
+- 4 任一步 FAILED（index errors / validate 非绿 / unittest 失败 / check-links 失败 / check-secrets 命中）。
 """
 
 from __future__ import annotations
@@ -69,9 +69,12 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(report["failed"], 0)
         self.assertEqual(
             [step["name"] for step in report["steps"]],
-            ["index", "validate", "unittest", "check-links"],
+            ["index", "validate", "unittest", "check-links", "check-secrets"],
         )
-        self.assertEqual(_statuses(report), {name: "OK" for name in ("index", "validate", "unittest", "check-links")})
+        self.assertEqual(
+            _statuses(report),
+            {name: "OK" for name in ("index", "validate", "unittest", "check-links", "check-secrets")},
+        )
         for step in report["steps"]:
             self.assertIsInstance(step["duration_ms"], int)
             self.assertGreaterEqual(step["duration_ms"], 0)
@@ -81,7 +84,7 @@ class PreflightTests(unittest.TestCase):
         result = self._preflight()
         self.assertEqual(result.returncode, 0, msg=result.stderr + result.stdout)
         self.assertIn("preflight 结果：OK", result.stdout)
-        for name in ("index", "validate", "unittest", "check-links"):
+        for name in ("index", "validate", "unittest", "check-links", "check-secrets"):
             self.assertIn(name, result.stdout)
         self.assertIn("skipped=0 failed=0 exit=0", result.stdout)
 
@@ -125,6 +128,26 @@ class PreflightTests(unittest.TestCase):
         report = json.loads(result.stdout)
         self.assertEqual(_statuses(report)["unittest"], "FAILED")
         self.assertGreaterEqual(report["failed"], 1)
+
+    def test_secrets_hit_returns_4(self) -> None:
+        write_preflight_harness(self.root, secrets_ok=False)
+        result = self._preflight("--json")
+        self.assertEqual(result.returncode, 4, msg=result.stderr + result.stdout)
+        statuses = _statuses(json.loads(result.stdout))
+        self.assertEqual(statuses["check-secrets"], "FAILED")
+
+    def test_skip_secrets_returns_3(self) -> None:
+        result = self._preflight("--skip-secrets", "--json")
+        self.assertEqual(result.returncode, 3, msg=result.stderr + result.stdout)
+        report = json.loads(result.stdout)
+        self.assertEqual(_statuses(report)["check-secrets"], "SKIPPED")
+        self.assertEqual(report["skipped"], 1)
+
+    def test_missing_check_secrets_script_is_skipped(self) -> None:
+        (self.root / "scripts" / "dev" / "check-secrets.py").unlink()
+        result = self._preflight("--json")
+        self.assertEqual(result.returncode, 3, msg=result.stderr + result.stdout)
+        self.assertEqual(_statuses(json.loads(result.stdout))["check-secrets"], "SKIPPED")
 
     def test_check_links_failure_returns_4(self) -> None:
         write_preflight_harness(self.root, links_ok=False)

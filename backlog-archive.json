@@ -1,6 +1,6 @@
 {
   "schema": "repurpose.backlog-archive.v1",
-  "updated": "2026-11-15",
+  "updated": "2026-11-16",
   "items": [
     {
       "id": "BL-038",
@@ -435,6 +435,29 @@
       "updated": "2026-11-14",
       "result": "两篇拆到健康档（MTH-009/MTH-002 均 ≤200 行；MTH-017/MTH-018 各约 110–120 行）；新增 ADR-0006/0007 并登记 adr 索引；同步 AGENTS/README/methodology/README/MTH-000/001/003/004/005/006/007/009/010/013/015、toolkit/README；doc-policy 余量预警以 advisory 输出且不改变 preflight 退出码；preflight 全绿。",
       "risk": "L"
+    },
+    {
+      "id": "BL-039",
+      "title": "控制台：服务入口、凭据 CSV 一次性导出、按钮化轮换与密码库写库",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "控制台首页有服务入口（配置注入）；凭据 CSV 可一次性下载（600、令牌单次有效）；控制台/WebDAV/Forgejo 可按钮轮换并在失败时回滚；轮换后密码库条目同步更新且失败不丢一次性口令；CSV 拉到本机 gitignored 目录；Vaultwarden 条目端到端加密说明写入 README。",
+      "outputs": [
+        "2026-11-14/web-console/console/console_credentials.py",
+        "2026-11-14/web-console/console/gateway.py",
+        "2026-11-14/web-console/console/console_ui.py",
+        "2026-11-14/web-console/README.md"
+      ],
+      "depends": [
+        "BL-037"
+      ],
+      "notes": "2026-11-14 收尾：按用户确认删除旧用户 admin@haydn.local 与库数据、删失效的 vaultwarden-initial-account.txt；新版两步注册重建专用账号，32 位主密码落 /opt/haydn/secrets/vaultwarden-master.txt（600），注册开关已恢复并回读 disableUserRegistration=true；bw 升级 2026.10.1（/opt/haydn/bwnew，经既有 stunnel https://127.0.0.1:18445 + NODE_EXTRA_CA_CERTS），credentials.vault.enabled=true。",
+      "agent_hint": "写库/回读或排查 bw 登录失败先看 web-console README §13.5；重跑全量对齐用 gateway.py --vault-sync；主密码/解锁会话不得入日志或仓库，注册开关用完必须回读确认关闭。",
+      "owner": "agent",
+      "updated": "2026-11-14",
+      "risk": "M",
+      "result": "四项已落地并实测：7 个入口由配置注入；CSV 6 行一次性下载（二次 410）并拉至 inventory/haydn-credentials.csv（gitignored，设备侧 /srv/haydn/run、/tmp、/data/local/tmp 明文副本已删）；webdav(207)/forgejo(200)/console(新 200/旧 401) 轮换通过；密码库账号重建后 --vault-sync 写入 5 条并逐条回读一致（device-root 无明文口令跳过），WebDAV 轮换三项步骤全 True 且库内同步，停服务轮换 400/rolled_back:True，vault.client=/bin/false 时保留一次性口令并报错。"
     }
   ]
 }

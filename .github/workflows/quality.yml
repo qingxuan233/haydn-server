@@ -29,5 +29,5 @@ jobs:
           python-version: "3.11"
       - name: 生成物与内容一致（index --check，不写盘）
         run: python -m toolkit.repurpose index --check
-      - name: 统一质量门（index + validate --strict + unittest + check-links）
+      - name: 统一质量门（index + validate --strict + unittest + check-links + check-secrets）
         run: python -m toolkit.repurpose preflight

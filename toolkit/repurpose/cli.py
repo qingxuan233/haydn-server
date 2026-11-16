@@ -61,6 +61,8 @@ SCHEMA_PREFLIGHT = "repurpose.preflight.v1"
 """``preflight --json`` 报告 schema。"""
 
 PREFLIGHT_CHECK_LINKS_SCRIPT = "scripts/dev/check-links.py"
+# 秘密扫描步骤：与 check-links 同级的**内容安全门**（只读、不联网、不写仓库）
+PREFLIGHT_CHECK_SECRETS_SCRIPT = "scripts/dev/check-secrets.py"
 """仍与其他步骤串联的相对链接质量门（冻结例外，可随文档结构维护）。"""
 
 EPILOG = """退出码：
@@ -279,6 +281,9 @@ def build_parser() -> argparse.ArgumentParser:
     preflight_parser.add_argument("--no-index", action="store_true", help="跳过 index 步骤（CI 用已提交生成物）")
     preflight_parser.add_argument("--skip-tests", action="store_true", help="跳过 unittest 步骤（快速编排检查）")
     preflight_parser.add_argument("--skip-links", action="store_true", help="跳过 check-links 步骤")
+    preflight_parser.add_argument(
+        "--skip-secrets", action="store_true", help="跳过 check-secrets（秘密扫描）步骤"
+    )
     preflight_parser.add_argument("--json", action="store_true", help="打印 repurpose.preflight.v1 JSON")
     preflight_parser.set_defaults(handler=cmd_preflight)
 
@@ -581,10 +586,10 @@ def format_preflight_human(report: dict[str, Any]) -> str:
     """人类可读 preflight 步骤表：name/status/耗时/摘要 + 失败定位。"""
     status = "OK" if report["ok"] else ("FAILED" if report["failed"] else "SKIPPED")
     lines = [f"preflight 结果：{status}（0=全绿 / 3=有跳过 / 4=失败）"]
-    lines.append(f"  {'步骤':<12}{'状态':<9}{'耗时':>8}  摘要")
+    lines.append(f"  {'步骤':<13}{'状态':<9}{'耗时':>8}  摘要")
     for step in report["steps"]:
         lines.append(
-            f"  {step['name']:<12}{step['status']:<9}{step['duration_ms']:>6}ms  {step['summary']}"
+            f"  {step['name']:<13}{step['status']:<9}{step['duration_ms']:>6}ms  {step['summary']}"
         )
     if report["failed"]:
         lines.append("失败详情：")
@@ -662,6 +667,33 @@ def cmd_preflight(args: argparse.Namespace, *, transport: Any = None) -> int:
         status = "OK" if code == 0 else "FAILED"
         summary = "相对链接全部有效" if code == 0 else "check-links 失败：" + _tail_summary(output)
         steps.append(_preflight_step("check-links", status, started, summary))
+        if status == "FAILED":
+            failed += 1
+
+    # 5) check-secrets（--skip-secrets 可裁剪；脚本缺失降级 SKIPPED）
+    started = time.perf_counter()
+    secrets_script = root / PREFLIGHT_CHECK_SECRETS_SCRIPT
+    if args.skip_secrets:
+        steps.append(_preflight_step("check-secrets", "SKIPPED", started, "按 --skip-secrets 跳过"))
+        skipped += 1
+    elif not secrets_script.is_file():
+        steps.append(
+            _preflight_step(
+                "check-secrets", "SKIPPED", started,
+                f"脚本不存在：{PREFLIGHT_CHECK_SECRETS_SCRIPT}",
+            )
+        )
+        skipped += 1
+    else:
+        code, output = _run_external([sys.executable, PREFLIGHT_CHECK_SECRETS_SCRIPT], root)
+        status = "OK" if code == 0 else "FAILED"
+        match = re.search(r"findings=(\d+)", output)
+        count = match.group(1) if match else "?"
+        summary = (
+            "未发现秘密模式命中" if code == 0
+            else "check-secrets 失败：findings=" + count + "；" + _tail_summary(output)
+        )
+        steps.append(_preflight_step("check-secrets", status, started, summary))
         if status == "FAILED":
             failed += 1
 

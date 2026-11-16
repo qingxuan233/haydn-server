@@ -453,11 +453,14 @@ def write_preflight_harness(
     links_ok: bool = True,
     with_tests: bool = True,
     with_check_links: bool = True,
+    secrets_ok: bool = True,
+    with_check_secrets: bool = True,
 ) -> None:
     """写 preflight 外部步骤的最小 stub（临时仓库内）：
 
     - ``toolkit/__init__.py`` + ``toolkit/tests/``：可被 unittest discover 的冒烟测试；
-    - ``scripts/dev/check-links.py``：退出码 0/1 的 stub（不访问真实 scripts/）。
+    - ``scripts/dev/check-links.py``：退出码 0/1 的 stub（不访问真实 scripts/）；
+    - ``scripts/dev/check-secrets.py``：退出码 0/1 的 stub（不访问真实 scripts/）。
     """
     if with_tests:
         write_text(root, "toolkit/__init__.py", '"""fixture toolkit 包（preflight 测试用）。"""\n')
@@ -481,6 +484,17 @@ def write_preflight_harness(
             "import sys\n\n"
             'print("fixture check-links: ok")\n'
             f"sys.exit({exit_code})\n",
+        )
+    if with_check_secrets:
+        secrets_exit = 0 if secrets_ok else 1
+        findings = 0 if secrets_ok else 1
+        write_text(
+            root,
+            "scripts/dev/check-secrets.py",
+            '"""fixture 秘密扫描 stub（不触碰真实仓库）。"""\n\n'
+            "import sys\n\n"
+            f'print("SECRET SCAN  files=1  findings={findings}")\n'
+            f"sys.exit({secrets_exit})\n",
         )
 
 

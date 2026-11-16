@@ -32,7 +32,7 @@
       "title": "补齐 CI 质量门（链接/单测/秘密扫描/front matter）",
       "priority": "P1",
       "area": "repo",
-      "status": "in_progress",
+      "status": "done",
       "acceptance": "任意 CI（GitHub Actions 或等价）在 push/PR 上运行：unittest、validate --strict、check-links --strict-anchors、secret scan；全绿才可合并。",
       "outputs": [
         ".github/workflows/（或等价 CI 配置）",
@@ -45,8 +45,8 @@
       "agent_hint": "首次 push 后确认 Actions 实跑结果，再补 secret scan 步骤。",
       "requires": "仓库 push 权限（首次 CI 实跑验证）",
       "owner": "lead",
-      "updated": "2026-11-13",
-      "result": "CI 配置已落地：本地 index --check + 完整 preflight 全绿；GitHub Actions 首次实跑成功（run #43465049307，commit 6c3bf74，2026-11-13T16:40Z，conclusion=success）。secret scan 仍未纳入（BL-010），故保持 in_progress。"
+      "updated": "2026-11-16",
+      "result": "2026-11-16 补齐 secret scan：新增 scripts/dev/check-secrets.py（TOOL-014）并接入 preflight 第 5 步 check-secrets（--skip-secrets 可裁剪、脚本缺失降级 SKIPPED、命中 FAILED），CI 已跑完整 preflight；仓库 277 文件 0 命中、植入假密钥夹具 4/4 检出、309 项单测 OK、preflight 全绿 exit 0。 历史：CI 配置已落地：本地 index --check + 完整 preflight 全绿；GitHub Actions 首次实跑成功（run #43465049307，commit 6c3bf74，2026-11-13T16:40Z，conclusion=success）。secret scan 仍未纳入（BL-010），故保持 in_progress。"
     },
     {
       "id": "BL-004",
@@ -368,29 +368,6 @@
       "updated": "",
       "result": "",
       "risk": "H"
-    },
-    {
-      "id": "BL-039",
-      "title": "控制台：服务入口、凭据 CSV 一次性导出、按钮化轮换与密码库写库",
-      "priority": "P1",
-      "area": "device",
-      "status": "done",
-      "acceptance": "控制台首页有服务入口（配置注入）；凭据 CSV 可一次性下载（600、令牌单次有效）；控制台/WebDAV/Forgejo 可按钮轮换并在失败时回滚；轮换后密码库条目同步更新且失败不丢一次性口令；CSV 拉到本机 gitignored 目录；Vaultwarden 条目端到端加密说明写入 README。",
-      "outputs": [
-        "2026-11-14/web-console/console/console_credentials.py",
-        "2026-11-14/web-console/console/gateway.py",
-        "2026-11-14/web-console/console/console_ui.py",
-        "2026-11-14/web-console/README.md"
-      ],
-      "depends": [
-        "BL-037"
-      ],
-      "notes": "2026-11-14 收尾：按用户确认删除旧用户 admin@haydn.local 与库数据、删失效的 vaultwarden-initial-account.txt；新版两步注册重建专用账号，32 位主密码落 /opt/haydn/secrets/vaultwarden-master.txt（600），注册开关已恢复并回读 disableUserRegistration=true；bw 升级 2026.10.1（/opt/haydn/bwnew，经既有 stunnel https://127.0.0.1:18445 + NODE_EXTRA_CA_CERTS），credentials.vault.enabled=true。",
-      "agent_hint": "写库/回读或排查 bw 登录失败先看 web-console README §13.5；重跑全量对齐用 gateway.py --vault-sync；主密码/解锁会话不得入日志或仓库，注册开关用完必须回读确认关闭。",
-      "owner": "agent",
-      "updated": "2026-11-14",
-      "risk": "M",
-      "result": "四项已落地并实测：7 个入口由配置注入；CSV 6 行一次性下载（二次 410）并拉至 inventory/haydn-credentials.csv（gitignored，设备侧 /srv/haydn/run、/tmp、/data/local/tmp 明文副本已删）；webdav(207)/forgejo(200)/console(新 200/旧 401) 轮换通过；密码库账号重建后 --vault-sync 写入 5 条并逐条回读一致（device-root 无明文口令跳过），WebDAV 轮换三项步骤全 True 且库内同步，停服务轮换 400/rolled_back:True，vault.client=/bin/false 时保留一次性口令并报错。"
     },
     {
       "id": "BL-040",
