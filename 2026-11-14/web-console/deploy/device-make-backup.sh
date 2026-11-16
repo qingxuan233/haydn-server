@@ -34,6 +34,12 @@ cp -r /data/server/rootfs/var/log/haydn "$STAGE/data/server/rootfs/var/log/haydn
 cp -r /data/server/logs "$STAGE/data/server/logs"
 cp -r /data/adb/modules/server-chroot "$STAGE/data/adb/modules/server-chroot"
 
+# DSH 状态（2026-11-16）：profiles/sessions/storages 与凭据库（.credentials.yaml，600）入包；
+# 仅存于**加密备份**，明文包不落盘；体积小（约 62 KB），不含 node_modules 缓存。
+mkdir -p "$STAGE/data/server/rootfs/root/.dsh"
+cp -a /data/server/rootfs/root/.dsh/. "$STAGE/data/server/rootfs/root/.dsh/" 2>/dev/null
+rm -rf "$STAGE/data/server/rootfs/root/.dsh/profiles"/*/node_modules 2>/dev/null
+
 # metadata for restore reference (no secrets)
 date -u +%Y-%m-%dT%H:%M:%SZ > "$STAGE/meta/backup-time.txt"
 getprop ro.build.version.ota > "$STAGE/meta/build-ota.txt"

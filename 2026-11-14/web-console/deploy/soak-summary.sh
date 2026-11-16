@@ -46,6 +46,12 @@ CSV=/data/server/logs/telemetry.csv
   echo "## process instances"
   echo "telemetry_loops=$(pgrep -f 'telemetry-loop\.sh' 2>/dev/null | wc -l)"
   echo "watchdog_loops=$(pgrep -f 'watchdog-loop\.sh --loop' 2>/dev/null | wc -l)"
+  echo
+  echo "## dsh web ui (2026-11-16)"
+  echo "dsh_rss_mb=$(ps -A -o rss,args 2>/dev/null | awk '/bin\.js --profile web/ {s+=$1} END {printf "%.1f", s/1024}')"
+  echo "dsh_http=$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:3080/ 2>/dev/null)"
+  echo "dsh_listen=$(ss -ltn 2>/dev/null | grep -c '127.0.0.1:3080')"
+  echo "pnpm_version=$(/data/server/bin/chroot-enter.sh sh -c 'PATH=/opt/node24/bin:$PATH pnpm --version' 2>/dev/null)"
 } > "$OUT" 2>&1
 
 echo "SUMMARY=$OUT"

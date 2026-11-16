@@ -34,6 +34,31 @@ curl -fsS -m 5 http://127.0.0.1:9100/metrics >/dev/null 2>&1 || FAIL="$FAIL node
   curl -fsS -m 5 http://127.0.0.1:19999/api/v1/info >/dev/null 2>&1 || FAIL="$FAIL netdata"
 ss -ltn 2>/dev/null | grep -q '127.0.0.1:22' || FAIL="$FAIL sshd"
 
+# DSH Web UI 存活（2026-11-16）：DSH 未登录固定返回 401，故"401 或 200"都算存活；
+# 连不上才算故障。人工停止（.stopped-haydn-dsh）时跳过。
+if [ ! -f /srv/haydn/run/.stopped-haydn-dsh ]; then
+  dsh_code=$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:3080/ 2>/dev/null)
+  case "$dsh_code" in
+    200|401) ;;
+    *) FAIL="$FAIL dsh" ;;
+  esac
+  # 进程 RUNNING 但 HTTP 卡死：限频 15 分钟重启一次（与 netdata 自恢复同口径）
+  case "$dsh_code" in
+    200|401) ;;
+    *)
+      MARK=/srv/haydn/run/.dsh-http-restart
+      NOW=$(date +%s)
+      PREV=$(stat -c %Y "$MARK" 2>/dev/null || echo 0)
+      if [ $((NOW - PREV)) -ge 900 ]; then
+        if $SUP restart haydn-dsh >/dev/null 2>&1; then
+          date +%s > "$MARK"
+          echo "$STAMP RECOVER dsh-http" >> "$LOG"
+        fi
+      fi
+      ;;
+  esac
+fi
+
 USED=$(stat -f / 2>/dev/null | awk '/^Blocks:/{for(i=1;i<=NF;i++){if($i=="Total:")t=$(i+1); if($i=="Available:")a=$(i+1)}} END{if(t>0) print int((t-a)*100/t)}')
 if [ -n "$USED" ] && [ "$USED" -ge 90 ]; then FAIL="$FAIL disk_${USED}pct"; fi
 
