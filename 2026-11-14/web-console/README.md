@@ -429,7 +429,7 @@ su -c "cp /data/server/backups/backup-harden-20261115T053017Z/wifi-guard.sh /dat
 | **pnpm（2026-11-16）** | 经 corepack 安装 **pnpm 12.21.0** 到 `/opt/node24/bin/pnpm`（Node24 官方 shim 目录，已在 supervisor PATH 内）；实测 DSH 插件管理器可调用：`dsh plugin --profile web add --help` 返回 pnpm 帮助、`.plugin-manager/logs/operation-*/pnpm.log` 正常创建；**真实插件安装未实测**（会改动 profile，本轮不冒险） |
 | **健康检查（2026-11-16）** | `haydn-healthcheck.sh` 增加 DSH 探针：`127.0.0.1:3080` 返回 **401 或 200** 均视为存活（DSH 未登录固定 401），连不上记 `FAIL dsh`；进程 RUNNING 但 HTTP 卡死时限频 15 分钟重启一次并记 `RECOVER dsh-http`（与 netdata 同口径）；实测：supervisor 停止后健康检查记 `RECOVER haydn-dsh` 并拉起、失败分支（临时副本探 3081）记 `FAIL dsh` |
 | **备份纳入 DSH（2026-11-16）** | `device-make-backup.sh` 打包 chroot `/root/.dsh`（profiles/sessions/storages + `.credentials.yaml` 600）；实测备份包内含 **27 条 `.dsh` 条目**、凭据权限 `-rw-------` 保留、验证后删除明文包；该目录含 DSH 签名密钥，只随**加密备份**入库（与 Vaultwarden 主密码同口径，见 BL-046） |
-| **内存现状（2026-11-16）** | DSH RSS **279–306 MB**（`NODE_OPTIONS=--max-old-space-size=768`）；整机 MemAvailable 约 180–450 MB，zram swap 9.9 GB 已用 1.5 GB；healthcheck 保留 `mem_<n>pct`（<10% 告警），本轮未调参 |
+| **内存现状（2026-11-16）** | DSH RSS **280–330 MB**（`NODE_OPTIONS=--max-old-space-size=768`）；整机 `/proc/meminfo` **MemAvailable ≈ 10.3–10.5 GiB / MemTotal 15.6 GiB**（约占 67%，远高于 healthcheck 的 10% 阈值），zram swap 9.9 GB 当前已用约 1.5 GB。**勘误**：早期按 `free -m` 列位误读为"仅剩 180–450 MB"，改以 `/proc/meminfo` 为准后**不存在内存告急**；本轮未调参 |
 | 未完成（不写通过） | 浏览器 DOM 级实际渲染未核验（需人工打开确认）；DSH 模型凭据（LLM key）未配置；WebSocket **长连接稳定性**未压测；真实插件安装未实测；**Android 内核未升级**（见 §11.8 末注） |
 
 > 部署与重建步骤见 [deploy/haydn-dsh.conf](deploy/haydn-dsh.conf) 注释；`dsh_auth` 的算法与缓存行为有单测（`toolkit/tests/test_console_dsh_auth.py`，13 项）。**排障要点**：控制台给了 401 才是会话问题；已登录却仍报 "dsh web authentication required" = 网关未注入 DSH cookie；`/api` 报 403 = `--trusted-host` 缺当前 authority。
