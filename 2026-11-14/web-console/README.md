@@ -414,20 +414,21 @@ su -c "cp /data/server/backups/backup-harden-20261115T053017Z/wifi-guard.sh /dat
 
 **设计取舍**：未把看门狗放进 supervisord——supervisord 在 chroot 内运行，只能看到 `/srv/haydn/{logs,run}` 绑定，`/data/server/bin/*.sh` 与 `/proc` 语义都在宿主侧；宿主侧自启链（模块 `service.sh`）才是正确位置。曾试挂 supervisor 的 `haydn-watchdog` 程序，因 `can't find command '/data/server/bin/watchdog-loop.sh'` 立即 FATAL，已回滚删除该配置并重启 supervisord 清理残留条目。
 
-### 11.8 DSH Web UI 部署（2026-11-16，已核验）
+### 11.8 DSH Web UI 部署与控制台鉴权桥接（2026-11-16，已核验）
 
 | 项 | 值 |
 |---|---|
 | 组件 | `@deepseek-ai/dsh` **0.2.2-rc.1**（npm 最新版），654 包，安装到 chroot `/opt/dsh`（**804 MB**）；运行时 Node **v24.16.0**（`/opt/node24`，195 MB，满足 `engines.node>=24.9`） |
-| 守护 | supervisor `[program:haydn-dsh]`：`--profile web --host 127.0.0.1 --port 3080 --no-open`，`NODE_OPTIONS=--max-old-space-size=768`，日志 `/srv/haydn/logs/dsh.log`，`autorestart`+`stopasgroup` |
+| 守护 | supervisor `[program:haydn-dsh]`：`--profile web --host 127.0.0.1 --port 3080 --no-open`，`NODE_OPTIONS=--max-old-space-size=768`，日志 `/srv/haydn/logs/dsh.log`，`autostart`+`autorestart`+`stopasgroup` |
 | 入口 | 网关 `upstreams[{name:deepseek-harness-ui, path:/ui, strip_prefix:true, preserve_host:true, websocket:true, auth:session}]` 由 `enabled:false` 改为 `true`；入口表新增「DSH 控制台 → /ui/」 |
-| 鉴权 | DSH 自身 401（首次 `?token=` 换 cookie）；网关 `/ui` 需控制台会话（**未登录 401**，已核验）；控制台口令只以 PBKDF2 哈希存在 → **无法脚本化登录**（设计如此，不为自动化写明文口令） |
-| 资源 | 安装后可用内存 3,304 MB → **448 MB**（安装期 npm 峰值）；DSH 进程常驻 RSS 待观察；磁盘 206 G 可用 |
-| 服务数 | supervisor **16/16 RUNNING**（新增 haydn-dsh） |
+| **鉴权桥接（关键）** | DSH 对**每个请求**校验 authority 绑定的签名 cookie（`dsh-auth-<b64url(sha256(authority))>` = `v1.<body>.<hmac>`）。launch token 每进程随机，但**签名密钥持久**（DSH 凭据库 `client-connection/browser-session`）。故新增 [console/dsh_auth.py](console/dsh_auth.py)，由网关在**控制台会话通过后**按实际转发的 Host 现场铸造 cookie（[gateway.py](console/gateway.py) `_proxy` 与 `_tunnel` 两处），浏览器无需再碰 DSH 的 `?token=` 链接；密钥按文件 mtime 缓存，失败显式 503（不再让用户撞看不懂的 401） |
+| **`--trusted-host`** | `/api` 另有 browser-trust 围栏：Host 只接受 loopback / 绑定地址 / `--trusted-host` 声明的 authority。未声明时 `/api/remote.mux`（WebSocket mux）返回 **403**；已声明 `qingxuan.bbs0.cc` 与 `192.168.31.50:18090` |
+| 鉴权实测 | 未登录 `/ui/` → **401**（网关）；带控制台会话 → **200 / 40,102 B HTML**（公网 Host 与局域网 Host 两种 authority 均通过）；`/api/remote.mux` WS 升级 → **101 Switching Protocols**；页面 JS/CSS/插件 bundle 均 200 |
+| 资源 | 安装期可用内存 3,304 MB → **448 MB**（npm 峰值）；supervisor **16/16 RUNNING**（新增 haydn-dsh）；磁盘 206 G 可用 |
 | 回滚 | `stop haydn-dsh` → 删除 `haydn-dsh.conf` + `reread/update`；网关 `/ui`.enabled 置回 false 并重启网关；`rm -rf /opt/dsh`（`/opt/node24` 删除前先确认是否被复用） |
-| 未完成（不写通过） | 浏览器 DOM 级渲染未核验（需人工登录）；DSH 模型/凭据配置（模型 key）未在本轮配置；`/ui` 下 WebSocket 长连接未压测；插件（pnpm）环境仍需按需安装 |
+| 未完成（不写通过） | 浏览器 DOM 级实际渲染未核验（需人工打开确认）；DSH 模型凭据（LLM key）未配置；WebSocket **长连接稳定性**未压测；`pnpm` 插件环境未安装 |
 
-> 部署脚本与幂等重建步骤见 `deploy/haydn-dsh.conf` 注释；安装耗时约 11 分钟（654 包）。
+> 部署与重建步骤见 [deploy/haydn-dsh.conf](deploy/haydn-dsh.conf) 注释；`dsh_auth` 的算法与缓存行为有单测（`toolkit/tests/test_console_dsh_auth.py`，13 项）。**排障要点**：控制台给了 401 才是会话问题；已登录却仍报 "dsh web authentication required" = 网关未注入 DSH cookie；`/api` 报 403 = `--trusted-host` 缺当前 authority。
 
 ## 12. Git 服务 Forgejo 挂 `/git`（2026-11-14）
 

@@ -187,7 +187,11 @@
       "preserve_host": true,
       "websocket": true,
       "auth": "session",
-      "enabled": false
+      "dsh_session": {
+        "credentials": "/root/.dsh/.credentials.yaml",
+        "max_age_days": 30
+      },
+      "enabled": true
     },
     {
       "name": "webdav",

@@ -34,6 +34,7 @@ import auth
 import console_actions as actions
 import console_credentials as credentials
 import console_ui
+import dsh_auth
 import lan_access
 import webdav_ui
 
@@ -142,6 +143,10 @@ def parse_hostport(value: str) -> tuple[str, int]:
     return host or "127.0.0.1", int(port)
 
 
+class DshCookieError(Exception):
+    """DSH 上游会话 cookie 无法铸造（凭据缺失/格式异常/Host 缺失）。"""
+
+
 class GatewayServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -150,6 +155,18 @@ class GatewayServer(ThreadingHTTPServer):
     def __init__(self, address, handler, config):
         super().__init__(address, handler)
         self.config = config
+        self._dsh_minters: dict[tuple[str, int], dsh_auth.DshCookieMinter] = {}
+        self._dsh_lock = threading.Lock()
+
+    def dsh_minter(self, credentials: str, max_age_days: int) -> dsh_auth.DshCookieMinter:
+        """按（凭据路径, TTL）缓存铸造器；密钥本身按文件 mtime 在模块内缓存。"""
+        key = (credentials, max_age_days)
+        with self._dsh_lock:
+            minter = self._dsh_minters.get(key)
+            if minter is None:
+                minter = dsh_auth.DshCookieMinter(credentials, max_age_days)
+                self._dsh_minters[key] = minter
+            return minter
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1009,6 +1026,26 @@ class Handler(BaseHTTPRequestHandler):
             kept.append(item)
         return "; ".join(kept)
 
+    def _dsh_injected_cookie(self, route: dict, forwarded_host: str) -> str:
+        """按路由配置铸造 DSH 上游 cookie（authority = 实际转发出去的 Host）。
+
+        仅在路由声明 `dsh_session` 时生效；DSH 自身要求 authority 绑定的签名 cookie，
+        令牌每进程随机但签名密钥持久，故由网关代浏览器完成这层握手。
+        失败抛 DshCookieError，由调用方转成显式 5xx，避免用户撞上看不懂的 401。
+        """
+        spec = route.get("dsh_session")
+        if not isinstance(spec, dict) or not spec.get("enabled", True):
+            return ""
+        if not forwarded_host:
+            raise DshCookieError("网关未取得转发 Host，无法铸造 DSH 会话")
+        credentials = str(spec.get("credentials") or "/root/.dsh/.credentials.yaml")
+        try:
+            max_age_days = int(spec.get("max_age_days") or dsh_auth.COOKIE_TTL_DAYS_DEFAULT)
+        except (TypeError, ValueError):
+            max_age_days = dsh_auth.COOKIE_TTL_DAYS_DEFAULT
+        minter = self.server.dsh_minter(credentials, max_age_days)
+        return minter.cookie_pair(forwarded_host)
+
     def _proxy(self, route: dict, path: str, query: str):
         host, port = parse_hostport(route["upstream"])
         target = self._upstream_path(route, path, query)
@@ -1030,6 +1067,16 @@ class Handler(BaseHTTPRequestHandler):
             headers["Host"] = self.headers["Host"]
         else:
             headers["Host"] = f"{host}:{port}"
+        try:
+            injected = self._dsh_injected_cookie(route, headers["Host"])
+        except Exception as exc:  # noqa: BLE001 - 统一转 5xx，提示运维检查 DSH 凭据
+            self.log_error("dsh_session unavailable: %s", exc.__class__.__name__)
+            self._json(503, {"error": "DSH 上游会话不可用（检查 dsh_session.credentials）"})
+            return
+        if injected:
+            headers["Cookie"] = dsh_auth.DshCookieMinter.merge_cookie_header(
+                headers.get("Cookie", ""), injected
+            )
         headers["X-Forwarded-For"] = self.client_address[0]
         headers["X-Forwarded-Proto"] = "http" if getattr(self.server, "lan_mode", False) else "https"
         headers["X-Forwarded-Host"] = self.headers.get("Host", "")
@@ -1095,6 +1142,24 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 lines.append(f"{key}: {value}")
         lines.append(f"X-Forwarded-Prefix: /{str(route.get('path', '/')).strip('/')}")
+        forwarded_host = (
+            self.headers["Host"] if route.get("preserve_host") and self.headers.get("Host") else f"{host}:{port}"
+        )
+        try:
+            injected = self._dsh_injected_cookie(route, forwarded_host)
+        except Exception as exc:  # noqa: BLE001 - WebSocket 升级同样需要可诊断的失败
+            upstream.close()
+            self.log_error("dsh_session unavailable (ws): %s", exc.__class__.__name__)
+            self._json(503, {"error": "DSH 上游会话不可用（检查 dsh_session.credentials）"})
+            return
+        if injected:
+            for index, line in enumerate(lines):
+                if line.lower().startswith("cookie:"):
+                    existing = line.split(":", 1)[1].strip()
+                    lines[index] = "Cookie: " + dsh_auth.DshCookieMinter.merge_cookie_header(existing, injected)
+                    break
+            else:
+                lines.insert(-1, "Cookie: " + injected)
         upstream.sendall(("\r\n".join(lines) + "\r\n\r\n").encode("latin-1"))
 
         self.close_connection = True
