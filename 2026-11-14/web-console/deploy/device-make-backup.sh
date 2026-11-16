@@ -47,6 +47,21 @@ iptables -S INPUT > "$STAGE/meta/iptables-input.txt" 2>/dev/null
 cat /data/server/logs/soak-start.txt > "$STAGE/meta/soak-start.txt" 2>/dev/null
 cat /data/server/logs/soak-baseline.txt > "$STAGE/meta/soak-baseline.txt" 2>/dev/null
 
+# 观测证据归档（2026-11-16）：生成一次 soak 摘要（peaks/可用率/看门狗/告警/健康/服务）随包入库，
+# 便于"备份包自身即可证明观测期状态"。脚本缺失只记一行，不阻断备份。
+mkdir -p "$STAGE/meta/observability"
+if [ -x /data/server/bin/soak-summary.sh ]; then
+  /data/server/bin/soak-summary.sh >/dev/null 2>&1
+  latest=$(ls -t /data/server/logs/soak-summary-*.txt 2>/dev/null | head -1)
+  [ -n "$latest" ] && cp -f "$latest" "$STAGE/meta/observability/"
+  cp -f /data/server/logs/watchdog.log "$STAGE/meta/observability/" 2>/dev/null
+  cp -f /data/server/logs/alerts.log "$STAGE/meta/observability/" 2>/dev/null
+  cp -f /data/server/logs/wifi-guard.log "$STAGE/meta/observability/" 2>/dev/null
+  echo "observability=$(ls "$STAGE/meta/observability" | wc -l) 个文件" >> "$STAGE/meta/observability/index.txt"
+else
+  echo "soak-summary.sh 缺失，跳过观测证据归档" >> "$STAGE/meta/observability/index.txt"
+fi
+
 # checksum manifest (relative paths; exclude the manifest itself to avoid a self-referential hash)
 cd "$STAGE" || exit 1
 (find . -type f ! -name MANIFEST.sha256 | sort | while read -r f; do sha256sum "$f"; done) > /data/local/tmp/manifest.txt

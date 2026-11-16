@@ -119,7 +119,7 @@
       "title": "24h soak 观测自动化增强（证据归档与判定）",
       "priority": "P1",
       "area": "validation",
-      "status": "in_progress",
+      "status": "done",
       "acceptance": "`toolkit/termux/soak.sh` 支持输出 JSONL、失败计数、可用率汇总；MTH-008 给出样例报告格式与判定规则；案例补一次实际 soak 记录（如用户执行）。",
       "outputs": [
         "toolkit/termux/soak.sh",
@@ -131,7 +131,7 @@
       "agent_hint": "先定观测字段与成功标准，再改脚本输出。",
       "owner": "lead",
       "updated": "2026-11-16",
-      "result": "2026-11-16 落地外部看门狗（宿主侧，supervisor 之外）：新增 /data/server/bin/watchdog-loop.sh （每 300s 检查 telemetry-loop 进程存活 + telemetry.csv 末行新鲜度 ≤900s，两种失效都重启循环并写 /data/server/logs/watchdog.log；区分 reason=process_missing / stale_data）；已写入 KernelSU 模块 service.sh 自启链（重启验证：boot.log \"watchdog started pid=9166\"、watchdog=1/telemetry=1、15 个 supervisor 服务 RUNNING）；故障注入两次均自愈（kill -9 遥测循环 → process_missing → RESTARTED）；同期清理了重复的遥测循环实例（曾有 3 个并发）。restic/Quark 加密备份与恢复演练、24h 观测数据归档仍待完成（故保持 in_progress）。"
+      "result": "2026-11-16 观测证据闭环完成：①外部看门狗 watchdog-loop.sh 落地（宿主侧模块自启；process_missing/stale_data 两类失效自愈，两次 kill -9 注入验证 RESTARTED，重启后自启正常）；②新增 soak-summary.sh（设备侧只读摘要：采样数量/末次时间/温区与电池峰值/内存下限/可用率/看门狗日志/告警/健康检查/服务状态/实例数），已产出 4,260 B 摘要；③device-make-backup.sh 增加 meta/observability/ 归档（摘要 + watchdog.log + alerts.log + wifi-guard.log + index.txt），实测备份包内 4 个观测文件齐全（包 18,900 文件/98 MB），验证后已删除设备明文包；④证据链路：摘要随每日加密备份入库并上传夸克，备份包自身即可证明观测期状态。未完成（保持已知）：24h 满期观测结论判定、run #3（2026-11-14T09:43:00Z 起）期间经历多次重启/维护，需按 MTH-008 判定规则在稳定窗口后重新计一次完整 24h。"
     },
     {
       "id": "BL-009",
@@ -371,30 +371,6 @@
       "updated": "2026-11-16",
       "result": "2026-11-16 用户决定冻结固件、不升级，按 GRD-014 关闭系统更新并取证：①「软件更新 → ⋮ → 自动更新设置」实测：自动下载=关闭、夜间自动更新=关闭（截图与 UI 状态均已核对）；②OTA 助手 com.oplus.ota 执行 pm disable-user（可逆，pm enable 回滚），com.oplus.cota / com.oplus.romupdate 保持启用以维持系统完整性；③关闭后 com.oplus.ota.downloaded_status=0（无待装包）、全局 can_update_at_night=0、/data/ota_package/OTA 无载荷；④当前版本保持 ColorOS 15.0.0.1901(CN01C20P01)、安全补丁 2026-07-01、活动槽 _b，未做任何 OTA/刷写。ARB 风险不适用（不升级即不触发 PIT-023 的降级硬砖路径）；未做：若日后恢复升级需重新走 GRD-014 全流程（备份+OFP+维护窗口+重 Root）。",
       "risk": "H"
-    },
-    {
-      "id": "BL-041",
-      "title": "异地备份上传失败处置：补传旧归档 + 预检/互不阻断/wifi-guard 三条加固",
-      "priority": "P1",
-      "area": "device",
-      "status": "done",
-      "acceptance": "①向夸克上传 <1 KB 测试文件确认链路可用；②补传 haydn-backup-20261114T193917Z.tar.gz.enc 并核对远端大小与本地一致；③上传前 DNS/TCP 预检，不通快速失败且密文留本地待补传；④三来源互不阻断并汇总成功/失败；⑤wifi-guard 掉线写告警与计数、重连后复查省电态；改脚本前备份并给回滚，不重启整机，不打印凭据或备份口令，三项加固均需实测。",
-      "outputs": [
-        "2026-11-14/web-console/deploy/haydn-backup.sh",
-        "2026-11-14/web-console/deploy/wifi-guard.sh",
-        "2026-11-14/web-console/README.md",
-        "CHANGELOG.md"
-      ],
-      "depends": [
-        "BL-040"
-      ],
-      "notes": "根因：11-15 03:30 定时备份在“上传”步骤报 EAI_AGAIN，同窗口设备 Wi-Fi 链路中断（frpc 对 IP 直连持续 network is unreachable、wlan0 反复失址），夸克侧与解析器配置实测正常。回滚备份在设备 /data/server/backups/backup-harden-20261115T053017Z/；仓库副本与设备脚本 sha256 一致（haydn-backup.sh b960e494…、wifi-guard.sh 6ed2f57d…）。",
-      "agent_hint": "排查上传失败先看 /data/server/logs/backup.log 的 upload precheck / upload ok 行；演练用 SOURCES=<label> 单跑某来源、WIFI_FORCE_DOWN=1 与 WIFI_DEV 模拟掉线；wifi-guard 由 telemetry-loop.sh 每 300 秒调用，状态在 /data/server/run/wifi-guard.state。",
-      "requires": "",
-      "owner": "agent",
-      "updated": "2026-11-15",
-      "result": "三步均实测：①117 B 测试文件上传 code:0、远端 size 117 一致（CLI 无删除远端文件能力，需在网盘客户端手工删）；②补传旧归档 code:0、远端 97,806,928+107 B 与本地逐项一致（fid 取不到，未做字节级回读）；③预检对不可达域名 2 s 内失败且日志记 keep=…（待补传），forgejo 置 644 时 haydn/vaultwarden 仍 upload ok（SUMMARY ok=2 fail=1，rc=1），权限还原后单跑 forgejo upload code:0，WIFI_FORCE_DOWN=1 两次演练告警落 alerts.log 且恢复后记 RECOVER 并复查 power_save=off；preflight 全绿。",
-      "risk": "M"
     },
     {
       "id": "BL-042",

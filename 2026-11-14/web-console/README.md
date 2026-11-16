@@ -39,7 +39,7 @@
 | `deploy/haydn-backup.sh` | `/data/server/bin/haydn-backup.sh` | 逐来源：加密→解密自检→上传→保留 7 份 |
 | `deploy/backup-vaultwarden.sh` | `/data/server/bin/backup-vaultwarden.sh` | Vaultwarden 数据一致性快照（SQLite backup API） |
 | `deploy/backup-forgejo.sh` | `/data/server/bin/backup-forgejo.sh` | Forgejo 数据一致性快照（SQLite backup API + 仓库目录） |
-| `deploy/device-make-backup.sh` | `/data/server/bin/device-make-backup.sh` | 整机配置快照（排除可重建大二进制） |
+| `deploy/device-make-backup.sh` | `/data/server/bin/device-make-backup.sh` | 整机配置快照（排除可重建大二进制）；2026-11-16 起把观测证据归档到 `meta/observability/`（soak 摘要 + watchdog/alerts/wifi-guard 日志） |
 | `deploy/install.sh` | `/data/local/tmp/web-console/deploy/install.sh` | 幂等安装脚本（自动备份原配置） |
 | `deploy/haydn-healthcheck.sh` | `/usr/local/bin/haydn-healthcheck.sh` | 周期健康检查（磁盘/内存水位 + 异常服务自动拉起，§14.3） |
 | `deploy/haydn-observe.sh` | `/usr/local/bin/haydn-observe.sh` | 24 小时观察采样：每小时 host 汇总 + 每服务 RSS（§18） |

@@ -486,6 +486,30 @@
       "updated": "2026-11-15",
       "risk": "M",
       "result": "阶段一确证 3 高（WebDAV 验证恒真、最后采样时间恒空、Vaultwarden 登录回路断）12 中 10 低并单独汇报；阶段二 H1 改经网关 PROPFIND（错误口令 401/直连 18082 仍 207 作根因证据）、H2 改用 last_ts 并统一空值/证书过期/soak 本地时间、H3 DOMAIN 改 60177（公网 /api/config 200 且 environment 为新地址）、M8 ROOT_URL 改 60875/git/、链路服务禁止 stop（400+原因）、logout 补 CSRF、lan-probe 收敛字段、登录先验口令再记限流、代理剥离会话 cookie、请求体 2MiB/64MiB 上限（3MiB→413）、凭据锁与 bw --passwordenv 及登录后解锁重试（--vault-sync 5 ok/1 skipped）；运行环境：目录 777→755、审计与 CSV 640、logrotate 加 maxsize 与 CSV 日轮转（-d 解析无 duplicate）、healthcheck 增内存水位与异常自动拉起并实测 RECOVER/跳过人工停止；阶段三 Forgejo [i18n] LANGS=zh-CN,en-US + NAMES 后无 Accept-Language 即 zh-CN、zh-CN/en-US 各自正确，Vaultwarden locales/zh_CN 存在并写出客户端设置路径；未重启整机、未改 frpc/stunnel/证书，回滚备份在 /data/server/backups/{console-p2,p2-runtime,p2-upstream}-*；preflight 全绿。"
+    },
+    {
+      "id": "BL-041",
+      "title": "异地备份上传失败处置：补传旧归档 + 预检/互不阻断/wifi-guard 三条加固",
+      "priority": "P1",
+      "area": "device",
+      "status": "done",
+      "acceptance": "①向夸克上传 <1 KB 测试文件确认链路可用；②补传 haydn-backup-20261114T193917Z.tar.gz.enc 并核对远端大小与本地一致；③上传前 DNS/TCP 预检，不通快速失败且密文留本地待补传；④三来源互不阻断并汇总成功/失败；⑤wifi-guard 掉线写告警与计数、重连后复查省电态；改脚本前备份并给回滚，不重启整机，不打印凭据或备份口令，三项加固均需实测。",
+      "outputs": [
+        "2026-11-14/web-console/deploy/haydn-backup.sh",
+        "2026-11-14/web-console/deploy/wifi-guard.sh",
+        "2026-11-14/web-console/README.md",
+        "CHANGELOG.md"
+      ],
+      "depends": [
+        "BL-040"
+      ],
+      "notes": "根因：11-15 03:30 定时备份在“上传”步骤报 EAI_AGAIN，同窗口设备 Wi-Fi 链路中断（frpc 对 IP 直连持续 network is unreachable、wlan0 反复失址），夸克侧与解析器配置实测正常。回滚备份在设备 /data/server/backups/backup-harden-20261115T053017Z/；仓库副本与设备脚本 sha256 一致（haydn-backup.sh b960e494…、wifi-guard.sh 6ed2f57d…）。",
+      "agent_hint": "排查上传失败先看 /data/server/logs/backup.log 的 upload precheck / upload ok 行；演练用 SOURCES=<label> 单跑某来源、WIFI_FORCE_DOWN=1 与 WIFI_DEV 模拟掉线；wifi-guard 由 telemetry-loop.sh 每 300 秒调用，状态在 /data/server/run/wifi-guard.state。",
+      "requires": "",
+      "owner": "agent",
+      "updated": "2026-11-15",
+      "result": "三步均实测：①117 B 测试文件上传 code:0、远端 size 117 一致（CLI 无删除远端文件能力，需在网盘客户端手工删）；②补传旧归档 code:0、远端 97,806,928+107 B 与本地逐项一致（fid 取不到，未做字节级回读）；③预检对不可达域名 2 s 内失败且日志记 keep=…（待补传），forgejo 置 644 时 haydn/vaultwarden 仍 upload ok（SUMMARY ok=2 fail=1，rc=1），权限还原后单跑 forgejo upload code:0，WIFI_FORCE_DOWN=1 两次演练告警落 alerts.log 且恢复后记 RECOVER 并复查 power_save=off；preflight 全绿。",
+      "risk": "M"
     }
   ]
 }
