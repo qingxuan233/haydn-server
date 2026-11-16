@@ -46,6 +46,7 @@
 | `deploy/cron.d-haydn-observe` | `/etc/cron.d/haydn-observe` | 观察采样定时（每小时第 7 分钟，§18） |
 | `deploy/cron.d-haydn-health` | `/etc/cron.d/haydn-health` | 健康检查定时（每 5 分钟，设备侧已生效、仓库补登） |
 | `deploy/wifi-guard.sh` | `/data/server/bin/wifi-guard.sh` | Wi-Fi 省电态纠正 + 掉线告警/计数 + 重连后复查（§11.6） |
+| `deploy/watchdog-loop.sh` | `/data/server/bin/watchdog-loop.sh` | 观测循环看门狗：每 300s 检查 telemetry-loop 进程与数据新鲜度（≤900s），失效即重启；宿主侧由 KernelSU 模块 `service.sh` 自启（§11.7） |
 | `deploy/logrotate.d-haydn` | `/etc/logrotate.d/haydn` | 日志轮转（仅 `*.log` 周轮转 + 10M 上限；不匹配 CSV） |
 | `deploy/logrotate.d-haydn-csv` | `/etc/logrotate.d/haydn-csv` | CSV 轮转：普通 CSV 日轮转 20M；`observe.csv`/`telemetry.csv` **移出日轮转**（仅 20M 大小兜底，§14.3/§18） |
 | `deploy/vaultwarden-run.sh` | `/opt/haydn/bin/vaultwarden-run.sh` | 读 env 与 600 token 后降权启动 Vaultwarden |
@@ -388,6 +389,29 @@ su -c "cp /data/server/backups/backup-harden-20261115T053017Z/wifi-guard.sh /dat
 2. 远端内容未做字节级回读：`download` 需要 fid，`browse --parent-fid` 返回 `-100` 未取到列表，已核验的是大小与 `.sha256` 伴随文件的字节数。
 3. 上传失败时保留的密文只在成功路径 prune，连续多日失败会累积（约 98 MB/天），需人工清理。
 4. 测试小文件 `haydn-upload-probe-20261115.txt`（117 B）仍留在 `夸克网盘/haydn-server-backup`：该 CLI 没有删除远端文件的命令（`download delete` 只删任务记录），需在网盘客户端手工删除。
+
+### 11.7 观测循环看门狗（2026-11-16）
+
+**问题**：遥测循环 `telemetry-loop.sh` 由模块 `service.sh` 以 `nohup` 启动一次，**无外部看门狗**；循环一旦静默退出（曾因脚本语法错误），遥测与告警只会滞后到下一次开机。
+
+**实现**（`deploy/watchdog-loop.sh` → 设备 `/data/server/bin/watchdog-loop.sh`）：
+
+| 项 | 内容 |
+|---|---|
+| 判定 | ①`pgrep -f telemetry-loop.sh` 无进程 → `reason=process_missing`；②`telemetry.csv` 末行距今 > 900s → `reason=stale_data`。任一命中即重启循环 |
+| 动作 | kill 残留实例 → `setsid` 启动 → 8s 后复查进程 → 写 `watchdog.log`（`OK`/`STALE`/`RESTARTED`/`RESTART_FAILED`） |
+| 日志 | `/data/server/logs/watchdog.log`（每 300s 一条 `OK alive=1 age=Ns`） |
+| 自启 | KernelSU 模块 `service.sh` 追加 `watchdog-loop.sh --loop 300`（**宿主侧**启动：supervisord 在 chroot 内看不到 `/data/server/bin`） |
+| 回滚 | 从 `service.sh` 删除 watchdog 段 → `kill $(cat /data/server/run/watchdog.pid)`；模块脚本改动前已备份到 `/data/server/backups/module-<ts>/service.sh` |
+
+**实测（2026-11-16，已核验）**
+
+1. 健康路径：`watchdog.log` 每 300s 追加 `OK alive=1 age=…`（11:03:49Z、11:06:32Z）。
+2. 故障注入两次：`kill -9` 遥测循环 → 看门狗记 `STALE alive=0 … reason=process_missing` → `RESTARTED pid=…`，8s 后循环恢复单实例。
+3. 重启验证：`service.sh` 自启链输出 `watchdog started pid=9166`，重启后 `telemetry=1`、`watchdog=1`、supervisor 15 个服务 RUNNING、`boot.log` 顺序正常（supervisord → 遥测 → backup → lan-fw → watchdog）。
+4. 顺带清理：排查中发现**重复遥测实例**（曾有 3 个并发写入同一 CSV）——初次排查时 `pgrep` 匹配到正在退出的僵尸 shell 造成误判，已 `kill -9` 收敛为 1 个，并在看门狗里保留单实例语义（重启前先 kill 全部）。
+
+**设计取舍**：未把看门狗放进 supervisord——supervisord 在 chroot 内运行，只能看到 `/srv/haydn/{logs,run}` 绑定，`/data/server/bin/*.sh` 与 `/proc` 语义都在宿主侧；宿主侧自启链（模块 `service.sh`）才是正确位置。曾试挂 supervisor 的 `haydn-watchdog` 程序，因 `can't find command '/data/server/bin/watchdog-loop.sh'` 立即 FATAL，已回滚删除该配置并重启 supervisord 清理残留条目。
 
 ## 12. Git 服务 Forgejo 挂 `/git`（2026-11-14）
 
